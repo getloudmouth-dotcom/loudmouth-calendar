@@ -116,7 +116,9 @@ export default function App() {
   const today = new Date();
   const [step, setStep] = useState(1);
   const [clientName, setClientName] = useState("");
-  const [clients, setClients] = useState(DEFAULT_CLIENTS);
+  const [clients, setClients] = useState(() => {
+    try { const s = localStorage.getItem("lm_clients"); return s ? JSON.parse(s) : DEFAULT_CLIENTS; } catch { return DEFAULT_CLIENTS; }
+  });
   const [addingClient, setAddingClient] = useState(false);
   const [newClientInput, setNewClientInput] = useState("");
   const [month, setMonth] = useState(today.getMonth());
@@ -126,6 +128,10 @@ export default function App() {
   const [posts, setPosts] = useState({});
   const [dragOver, setDragOver] = useState(null);
   const [driveApiKey, setDriveApiKey] = useState(() => localStorage.getItem("lm_driveKey") || "");
+  const [drafts, setDrafts] = useState(() => {
+    try { const s = localStorage.getItem("lm_drafts"); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
+  const [showDrafts, setShowDrafts] = useState(false);
   const [drivePicker, setDrivePicker] = useState(null); // { day, postIdx }
 
   async function handleDriveFileDrop(day, postIdx, fileId) {
@@ -275,7 +281,11 @@ export default function App() {
   function addNewClient() {
     const name = newClientInput.trim();
     if (!name) return;
-    setClients(prev => [...prev, name]);
+    setClients(prev => {
+      const next = [...prev, name];
+      localStorage.setItem("lm_clients", JSON.stringify(next));
+      return next;
+    });
     setClientName(name);
     setNewClientInput("");
     setAddingClient(false);
@@ -293,6 +303,36 @@ export default function App() {
       pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, w, h);
     }
     pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
+  }
+
+  function saveDraft() {
+    const key = `${clientName} — ${MONTHS[month]} ${year}`;
+    const draft = { clientName, month, year, postsPerPage, selectedDays, posts };
+    const next = { ...drafts, [key]: { ...draft, savedAt: new Date().toLocaleDateString() } };
+    setDrafts(next);
+    localStorage.setItem("lm_drafts", JSON.stringify(next));
+    alert(`Draft saved: "${key}"`);
+  }
+
+  function loadDraft(key) {
+    const d = drafts[key];
+    if (!d) return;
+    setClientName(d.clientName);
+    setMonth(d.month);
+    setYear(d.year);
+    setPostsPerPage(d.postsPerPage);
+    setSelectedDays(d.selectedDays);
+    setPosts(d.posts);
+    setShowDrafts(false);
+    setStep(1);
+  }
+
+  function deleteDraft(key) {
+    if (!window.confirm(`Delete "${key}"?`)) return;
+    const next = { ...drafts };
+    delete next[key];
+    setDrafts(next);
+    localStorage.setItem("lm_drafts", JSON.stringify(next));
   }
 
   const stepLabels = ["Setup", "Pick Days", "Content", "Preview"];
@@ -317,8 +357,37 @@ export default function App() {
           })}
         </div>
         {step === 4 && <button onClick={exportPDF} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px" }}>↓ Export PDF</button>}
-        {step !== 4 && <div style={{ width: 120 }} />}
+        {step !== 4 && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setShowDrafts(s => !s)} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>📂 Drafts</button>
+            {clientName && <button onClick={saveDraft} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
+          </div>
+        )}
       </nav>
+      {showDrafts && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}
+          onClick={e => e.target === e.currentTarget && setShowDrafts(false)}>
+          <div style={{ background: "white", width: 340, height: "100vh", overflowY: "auto", padding: 24, boxShadow: "-4px 0 24px rgba(0,0,0,0.15)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>Saved Drafts</div>
+              <button onClick={() => setShowDrafts(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+            </div>
+            {Object.keys(drafts).length === 0 && (
+              <div style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "40px 0" }}>No saved drafts yet.<br/>Hit 💾 Save to save your work.</div>
+            )}
+            {Object.keys(drafts).map(key => (
+              <div key={key} style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 3 }}>{key}</div>
+                <div style={{ fontSize: 11, color: "#aaa", marginBottom: 10 }}>Saved {drafts[key].savedAt}</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => loadDraft(key)} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 6, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Load</button>
+                  <button onClick={() => deleteDraft(key)} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 6, padding: "7px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* STEPS 1–3 */}
       {step !== 4 && (
