@@ -219,7 +219,28 @@ export default function App() {
           return { ...p, [day]: arr };
         });
       };
-      reader.readAsDataURL(blob);
+      const img2 = new Image();
+      const burl = URL.createObjectURL(blob);
+      img2.onload = () => {
+        const MAX2 = 1200;
+        const scale2 = Math.min(1, MAX2 / Math.max(img2.width, img2.height));
+        const c2 = document.createElement("canvas");
+        c2.width = img2.width * scale2; c2.height = img2.height * scale2;
+        c2.getContext("2d").drawImage(img2, 0, 0, c2.width, c2.height);
+        URL.revokeObjectURL(burl);
+        reader.onload = ev => {
+          setPosts(p => {
+            const arr = [...(p[day] || [])];
+            const post = { ...arr[postIdx] };
+            post.imageUrls = [...(post.imageUrls || []), ev.target.result];
+            if (post.imageUrls.length > 1) post.contentType = "Carousel";
+            arr[postIdx] = post;
+            return { ...p, [day]: arr };
+          });
+        };
+        c2.toBlob(b => reader.readAsDataURL(b), "image/jpeg", 0.82);
+      };
+      img2.src = burl;
     } catch (e) {
       alert("Couldn't load from Drive: " + e.message);
     }
@@ -317,9 +338,19 @@ export default function App() {
     if (imageFiles.length === 0) return;
     const forceCarousel = imageFiles.length > 1;
     const promises = imageFiles.map(file => new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = ev => resolve(ev.target.result);
-      reader.readAsDataURL(file);
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const MAX = 1200;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = url;
     }));
     Promise.all(promises).then(dataUrls => {
       setPosts(p => {
