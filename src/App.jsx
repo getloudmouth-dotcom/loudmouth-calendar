@@ -11,14 +11,14 @@ async function compressToBlob(file) {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const MAX = 1200;
+      const MAX = 3000;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
       canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.82);
+      canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.95);
     };
     img.src = url;
   });
