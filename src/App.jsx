@@ -192,6 +192,11 @@ export default function App() {
   const [canRedo, setCanRedo] = useState(false);
 
   useEffect(() => {
+    document.body.style.background = "#f4f4f0";
+    document.body.style.margin = "0";
+  }, []);
+
+  useEffect(() => {
     if (isUndoingRef.current) return;
     const timer = setTimeout(() => {
       const snap = JSON.stringify({ posts, selectedDays, clientName, month, year, postsPerPage });
