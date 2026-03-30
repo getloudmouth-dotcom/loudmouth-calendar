@@ -451,7 +451,7 @@ export default function App() {
       const h = pages[0].offsetHeight;
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
+        const canvas = await html2canvas(pages[i], { scale: 1.2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
         if (i > 0) pdf.addPage([w, h], "landscape");
         pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, w, h);
       }
