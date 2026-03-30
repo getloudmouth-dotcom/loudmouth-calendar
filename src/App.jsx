@@ -2,6 +2,37 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
+const CLOUDINARY_CLOUD = "djaxz6tef";
+const CLOUDINARY_PRESET = "loudmouth_uploads";
+
+async function compressToBlob(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 1200;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(blob => resolve(blob), "image/jpeg", 0.82);
+    };
+    img.src = url;
+  });
+}
+
+async function uploadToCloudinary(fileOrBlob) {
+  const form = new FormData();
+  form.append("file", fileOrBlob);
+  form.append("upload_preset", CLOUDINARY_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: "POST", body: form });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.secure_url;
+}
+
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const CONTENT_TYPES = ["Photo", "Reel", "Carousel", "Story"];
 const DEFAULT_CLIENTS = ["Sane Studio", "10 Mas Seis", "Loudmouth Media"];
@@ -208,39 +239,15 @@ export default function App() {
       const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${driveApiKey}`);
       if (!res.ok) throw new Error("Fetch failed — check API key or file visibility");
       const blob = await res.blob();
-      const reader = new FileReader();
-      reader.onload = ev => {
-        setPosts(p => {
-          const arr = [...(p[day] || [])];
-          const post = { ...arr[postIdx] };
-          post.imageUrls = [...(post.imageUrls || []), ev.target.result];
-          if (post.imageUrls.length > 1) post.contentType = "Carousel";
-          arr[postIdx] = post;
-          return { ...p, [day]: arr };
-        });
-      };
-      const img2 = new Image();
-      const burl = URL.createObjectURL(blob);
-      img2.onload = () => {
-        const MAX2 = 1200;
-        const scale2 = Math.min(1, MAX2 / Math.max(img2.width, img2.height));
-        const c2 = document.createElement("canvas");
-        c2.width = img2.width * scale2; c2.height = img2.height * scale2;
-        c2.getContext("2d").drawImage(img2, 0, 0, c2.width, c2.height);
-        URL.revokeObjectURL(burl);
-        reader.onload = ev => {
-          setPosts(p => {
-            const arr = [...(p[day] || [])];
-            const post = { ...arr[postIdx] };
-            post.imageUrls = [...(post.imageUrls || []), ev.target.result];
-            if (post.imageUrls.length > 1) post.contentType = "Carousel";
-            arr[postIdx] = post;
-            return { ...p, [day]: arr };
-          });
-        };
-        c2.toBlob(b => reader.readAsDataURL(b), "image/jpeg", 0.82);
-      };
-      img2.src = burl;
+      const url = await uploadToCloudinary(blob);
+      setPosts(p => {
+        const arr = [...(p[day] || [])];
+        const post = { ...arr[postIdx] };
+        post.imageUrls = [...(post.imageUrls || []), url];
+        if (post.imageUrls.length > 1) post.contentType = "Carousel";
+        arr[postIdx] = post;
+        return { ...p, [day]: arr };
+      });
     } catch (e) {
       alert("Couldn't load from Drive: " + e.message);
     }
@@ -333,39 +340,28 @@ export default function App() {
     });
   }
 
-  function handleFiles(day, postIdx, files) {
+  async function handleFiles(day, postIdx, files) {
     const imageFiles = [...files].filter(f => f.type.startsWith("image/"));
     if (imageFiles.length === 0) return;
     const forceCarousel = imageFiles.length > 1;
-    const promises = imageFiles.map(file => new Promise(resolve => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const MAX = 1200;
-        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(url);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
-      };
-      img.src = url;
-    }));
-    Promise.all(promises).then(dataUrls => {
+    try {
+      const urls = await Promise.all(imageFiles.map(async file => {
+        const blob = await compressToBlob(file);
+        return await uploadToCloudinary(blob);
+      }));
       setPosts(p => {
         const arr = [...(p[day] || [])];
         const post = { ...arr[postIdx] };
         if (forceCarousel || post.contentType === "Carousel") {
           post.contentType = "Carousel";
-          post.imageUrls = [...(post.imageUrls || []), ...dataUrls];
+          post.imageUrls = [...(post.imageUrls || []), ...urls];
         } else {
-          post.imageUrls = [dataUrls[0]];
+          post.imageUrls = [urls[0]];
         }
         arr[postIdx] = post;
         return { ...p, [day]: arr };
       });
-    });
+    } catch(e) { alert("Upload failed: " + e.message); }
   }
 
   function removeImageFromPost(day, postIdx, imgIdx) {
@@ -378,14 +374,17 @@ export default function App() {
     });
   }
 
-  function handleBatchImport(files) {
+  async function handleBatchImport(files) {
     const imageFiles = [...files].filter(f => f.type.startsWith("image/"));
     if (!imageFiles.length) return;
-    Promise.all(imageFiles.map(file => new Promise(resolve => {
-      const reader = new FileReader();
-      reader.onload = ev => resolve(ev.target.result);
-      reader.readAsDataURL(file);
-    }))).then(dataUrls => {
+    let dataUrls;
+    try {
+      dataUrls = await Promise.all(imageFiles.map(async file => {
+        const blob = await compressToBlob(file);
+        return await uploadToCloudinary(blob);
+      }));
+    } catch(e) { alert("Upload failed: " + e.message); return; }
+    {
       const newDays = [];
       setPosts(p => {
         const next = { ...p };
@@ -420,7 +419,7 @@ export default function App() {
       if (newDays.length > 0) {
         setSelectedDays(prev => [...new Set([...prev, ...newDays])]);
       }
-    });
+    }
   }
 
   function addNewClient() {
@@ -1024,20 +1023,18 @@ function DrivePickerModal({ apiKey, onSelect, onClose }) {
     if (!selected) return;
     setAdding(true);
     try {
-      let dataUrl = previewing;
-      if (!dataUrl || dataUrl === "error") {
+      let blob;
+      if (!previewing || previewing === "error") {
         const r = await fetch(`https://www.googleapis.com/drive/v3/files/${selected.id}?alt=media&key=${apiKey}`);
-        const blob = await r.blob();
-        dataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(blob); });
+        blob = await r.blob();
       } else {
-        // convert blob URL to dataURL for persistence
-        const r = await fetch(dataUrl);
-        const blob = await r.blob();
-        dataUrl = await new Promise(res => { const fr = new FileReader(); fr.onload = e => res(e.target.result); fr.readAsDataURL(blob); });
+        const r = await fetch(previewing);
+        blob = await r.blob();
       }
-      onSelect(dataUrl);
+      const url = await uploadToCloudinary(blob);
+      onSelect(url);
       onClose();
-    } catch { alert("Failed to load image"); }
+    } catch { alert("Failed to upload image"); }
     setAdding(false);
   }
 
@@ -1349,20 +1346,20 @@ function PostCard({ post, month, year, onUpdate, isExporting }) {
   const dayName = getDayName(year, month, post.day);
   const dateStr = formatDate(month, post.day);
 
-  function handleReplaceFiles(files) {
+  async function handleReplaceFiles(files) {
     const file = [...files].find(f => f.type.startsWith("image/"));
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
+    try {
+      const blob = await compressToBlob(file);
+      const url = await uploadToCloudinary(blob);
       if (isCarousel) {
         const newUrls = [...(post.imageUrls || [])];
-        newUrls[currentSlide] = ev.target.result;
+        newUrls[currentSlide] = url;
         onUpdate("imageUrls", newUrls);
       } else {
-        onUpdate("imageUrls", [ev.target.result]);
+        onUpdate("imageUrls", [url]);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch(e) { alert("Upload failed: " + e.message); }
     setReframing(false);
   }
 
