@@ -132,7 +132,65 @@ export default function App() {
     try { const s = localStorage.getItem("lm_drafts"); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
   const [showDrafts, setShowDrafts] = useState(false);
+  const historyRef = useRef([]);
+  const historyIdxRef = useRef(-1);
+  const isUndoingRef = useRef(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  useEffect(() => {
+    if (isUndoingRef.current) return;
+    const timer = setTimeout(() => {
+      const snap = JSON.stringify({ posts, selectedDays, clientName, month, year, postsPerPage });
+      const history = historyRef.current;
+      if (history[historyIdxRef.current] === snap) return;
+      history.splice(historyIdxRef.current + 1);
+      history.push(snap);
+      if (history.length > 60) history.shift();
+      historyIdxRef.current = history.length - 1;
+      setCanUndo(historyIdxRef.current > 0);
+      setCanRedo(false);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [posts, selectedDays, clientName, month, year, postsPerPage]);
+
+  function restoreSnap(snap) {
+    isUndoingRef.current = true;
+    setPosts(snap.posts); setSelectedDays(snap.selectedDays);
+    setClientName(snap.clientName); setMonth(snap.month);
+    setYear(snap.year); setPostsPerPage(snap.postsPerPage);
+    setTimeout(() => { isUndoingRef.current = false; }, 200);
+  }
+
+  function undo() {
+    if (historyIdxRef.current <= 0) return;
+    historyIdxRef.current--;
+    restoreSnap(JSON.parse(historyRef.current[historyIdxRef.current]));
+    setCanUndo(historyIdxRef.current > 0);
+    setCanRedo(true);
+  }
+
+  function redo() {
+    if (historyIdxRef.current >= historyRef.current.length - 1) return;
+    historyIdxRef.current++;
+    restoreSnap(JSON.parse(historyRef.current[historyIdxRef.current]));
+    setCanUndo(true);
+    setCanRedo(historyIdxRef.current < historyRef.current.length - 1);
+  }
+
+  function resetCalendar() {
+    // push current state first so reset is undoable
+    const snap = JSON.stringify({ posts, selectedDays, clientName, month, year, postsPerPage });
+    historyRef.current.splice(historyIdxRef.current + 1);
+    historyRef.current.push(snap);
+    historyIdxRef.current = historyRef.current.length - 1;
+    // now reset
+    setSelectedDays([]); setPosts({}); setClientName("");
+    setMonth(today.getMonth()); setYear(today.getFullYear());
+    setPostsPerPage(3); setStep(1);
+  }
   const [drivePicker, setDrivePicker] = useState(null); // { day, postIdx }
+  const [editingClients, setEditingClients] = useState(false);
 
   async function handleDriveFileDrop(day, postIdx, fileId) {
     try {
@@ -356,13 +414,14 @@ export default function App() {
             );
           })}
         </div>
-        {step === 4 && <button onClick={exportPDF} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px" }}>↓ Export PDF</button>}
-        {step !== 4 && (
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setShowDrafts(s => !s)} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>📂 Drafts</button>
-            {clientName && <button onClick={saveDraft} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          {step === 4 && <button onClick={exportPDF} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px" }}>↓ Export PDF</button>}
+          <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
+          <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
+          <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
+          <button onClick={() => setShowDrafts(s => !s)} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>📂 Drafts</button>
+          {clientName && <button onClick={saveDraft} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
+        </div>
       </nav>
       {showDrafts && (
         <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}
@@ -401,18 +460,51 @@ export default function App() {
                 <p style={{ color: "#999", fontSize: 14, marginBottom: 28 }}>Basic info before we build your calendar.</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 520 }}>
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <label style={labelStyle}>Client Name</label>
+                  <label style={labelStyle}>Client Name</label>
                     {!addingClient ? (
-                      <select value={clientName} onChange={e => { if (e.target.value === "__add__") setAddingClient(true); else setClientName(e.target.value); }} style={inputStyle}>
-                        <option value="">— Select a client —</option>
-                        {clients.map(c => <option key={c} value={c}>{c}</option>)}
-                        <option value="__add__">+ Add new client...</option>
-                      </select>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <select value={clientName} onChange={e => { if (e.target.value === "__add__") setAddingClient(true); else setClientName(e.target.value); }} style={inputStyle}>
+                          <option value="">— Select a client —</option>
+                          {clients.map(c => <option key={c} value={c}>{c}</option>)}
+                          <option value="__add__">+ Add new client...</option>
+                        </select>
+                        <button onClick={() => setEditingClients(true)} style={{ background: "none", border: "none", fontSize: 11, color: "#aaa", cursor: "pointer", textAlign: "left", padding: 0, textDecoration: "underline" }}>Edit client list</button>
+                      </div>
                     ) : (
                       <div style={{ display: "flex", gap: 8 }}>
                         <input autoFocus value={newClientInput} onChange={e => setNewClientInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNewClient()} placeholder="Type new client name..." style={inputStyle} />
                         <button onClick={addNewClient} style={{ ...primaryBtn, marginTop: 0, padding: "9px 18px", whiteSpace: "nowrap", fontSize: 13 }}>Add</button>
                         <button onClick={() => { setAddingClient(false); setNewClientInput(""); }} style={{ ...secondaryBtn, padding: "9px 14px", whiteSpace: "nowrap" }}>Cancel</button>
+                      </div>
+                    )}
+                    {editingClients && (
+                      <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        onClick={e => e.target === e.currentTarget && setEditingClients(false)}>
+                        <div style={{ background: "white", borderRadius: 14, width: 380, padding: 24, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <div style={{ fontWeight: 800, fontSize: 16 }}>Edit Client List</div>
+                            <button onClick={() => setEditingClients(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
+                            {clients.map(c => (
+                              <div key={c} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#f8f8f8", borderRadius: 8, border: "1px solid #eee" }}>
+                                <span style={{ flex: 1, fontSize: 13, color: "#333" }}>{c}</span>
+                                <button onClick={() => {
+                                  const newName = prompt("Rename:", c);
+                                  if (!newName || newName.trim() === c) return;
+                                  setClients(prev => { const next = prev.map(x => x === c ? newName.trim() : x); localStorage.setItem("lm_clients", JSON.stringify(next)); return next; });
+                                  if (clientName === c) setClientName(newName.trim());
+                                }} style={{ background: "#f0f0f0", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#555", fontWeight: 600 }}>Rename</button>
+                                <button onClick={() => {
+                                  if (!window.confirm(`Delete "${c}"?`)) return;
+                                  setClients(prev => { const next = prev.filter(x => x !== c); localStorage.setItem("lm_clients", JSON.stringify(next)); return next; });
+                                  if (clientName === c) setClientName("");
+                                }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", color: "#ccc" }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                          <button onClick={() => setEditingClients(false)} style={{ ...primaryBtn, width: "100%", marginTop: 16, padding: "10px 0", textAlign: "center" }}>Done</button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -572,33 +664,22 @@ export default function App() {
                                       )
                                     )}
                                   </div>
-                                  <div>
+                                  {!isCarousel && <div>
                                     <label style={labelStyle}>{isReel ? "Reel Links" : "Content Link (for client)"}</label>
                                     {isReel ? (
                                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                        {[...(post.urls && post.urls.length > 0 ? post.urls : [""]), ""].map((u, ui) => {
-                                          const isLastEmpty = ui === (post.urls?.length || 0);
-                                          return (
-                                            <div key={ui} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                              <input
-                                                value={u}
-                                                placeholder={`Link ${ui + 1}...`}
-                                                onChange={e => {
-                                                  const newUrls = [...(post.urls || [])];
-                                                  newUrls[ui] = e.target.value;
-                                                  updatePost(day, postIdx, "urls", newUrls.filter((v, i) => v || i < newUrls.length - 1));
-                                                }}
-                                                style={{ ...inputStyle, fontSize: 12, padding: "7px 10px" }}
-                                              />
-                                              {!isLastEmpty && <button onClick={() => { const newUrls = (post.urls || []).filter((_, i) => i !== ui); updatePost(day, postIdx, "urls", newUrls); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16, flexShrink: 0 }}>✕</button>}
-                                            </div>
-                                          );
-                                        })}
+                                        {(post.urls || []).map((u, ui) => (
+                                          <div key={ui} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                            <input value={u} placeholder={`Link ${ui + 1}...`} onChange={e => { const newUrls = [...(post.urls || [])]; newUrls[ui] = e.target.value; updatePost(day, postIdx, "urls", newUrls); }} style={{ ...inputStyle, fontSize: 12, padding: "7px 10px" }} />
+                                            <button onClick={() => { const newUrls = (post.urls || []).filter((_, i) => i !== ui); updatePost(day, postIdx, "urls", newUrls); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16, flexShrink: 0 }}>✕</button>
+                                          </div>
+                                        ))}
+                                        <button onClick={() => updatePost(day, postIdx, "urls", [...(post.urls || []), ""])} style={{ background: "none", border: "1.5px dashed #d0d0d0", borderRadius: 6, fontSize: 11, color: "#aaa", cursor: "pointer", padding: "6px 0", fontFamily: "inherit" }}>+ Add link</button>
                                       </div>
                                     ) : (
                                       <input value={post.url || ""} placeholder="https://..." onChange={e => updatePost(day, postIdx, "url", e.target.value)} style={inputStyle} />
                                     )}
-                                  </div>
+                                    </div>}
                                   <div style={{ gridColumn: "1 / -1" }}>
                                     <label style={labelStyle}>Caption</label>
                                     <textarea value={post.caption || ""} rows={2} placeholder="Caption or hook..." onChange={e => updatePost(day, postIdx, "caption", e.target.value)} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
@@ -1034,7 +1115,7 @@ function ReorderFeedGrid({ allPosts, onSwap }) {
             >
               {post?.imageUrls?.[0] ? (
                 <>
-                  <img src={post.imageUrls[0]} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }} />
+                  <img src={post.imageUrls[0]} alt="" style={{ position: "absolute", width: `${(post.scale??1)*100}%`, height: `${(post.scale??1)*100}%`, objectFit: "cover", left: `${(1-(post.scale??1))*(post.cropX??50)}%`, top: `${(1-(post.scale??1))*(post.cropY??50)}%`, display: "block", pointerEvents: "none" }} />
                   {/* Date label on hover */}
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.55)", color: "white", fontSize: 7, padding: "2px 3px", textAlign: "center", fontWeight: 700, opacity: isTarget ? 1 : 0, transition: "opacity 0.15s" }}>
                     {formatDate(post.day ? new Date().getMonth() : 0, post.day)}
@@ -1056,6 +1137,7 @@ function PostCard({ post, month, year, onUpdate }) {
   const [reframing, setReframing] = useState(false);
   const [dropHighlight, setDropHighlight] = useState(false);
   const [hovering, setHovering] = useState(false);
+  const [carouselView, setCarouselView] = useState("gallery"); // "gallery" | "stacked"
   const isReel = post.contentType === "Reel";
   const isCarousel = post.contentType === "Carousel";
   const totalSlides = post.imageUrls?.length || 0;
@@ -1108,7 +1190,7 @@ function PostCard({ post, month, year, onUpdate }) {
         onDragLeave={() => setDropHighlight(false)}
         onDrop={e => { e.preventDefault(); setDropHighlight(false); handleReplaceFiles(e.dataTransfer.files); }}
       >
-        <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s" }}>
+        <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && carouselView === "stacked") ? "hidden" : "visible" }}>
           <DraggableImage src={mainImage} cropX={post.cropX ?? 50} cropY={post.cropY ?? 50} scale={post.scale ?? 1} onUpdate={onUpdate} isCarousel={isCarousel} imageUrls={post.imageUrls} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
@@ -1141,7 +1223,7 @@ function PostCard({ post, month, year, onUpdate }) {
             style={{ position: "absolute", top: 6, right: 6, background: "transparent", color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, lineHeight: 1, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
           >✕</button>
         )}
-        {isCarousel && totalSlides > 1 && (
+        {isCarousel && totalSlides > 1 && carouselView === "gallery" && (
           <>
             <button onClick={() => setSlideIdx(i => Math.max(0, i - 1))} disabled={currentSlide === 0} style={{ position: "absolute", left: -13, top: "50%", transform: "translateY(-50%)", background: currentSlide === 0 ? "#e8e8e8" : "#1a1a2e", color: currentSlide === 0 ? "#bbb" : "white", border: "none", borderRadius: "50%", width: 26, height: 26, fontSize: 14, cursor: currentSlide === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", zIndex: 10 }}>‹</button>
             <button onClick={() => setSlideIdx(i => Math.min(totalSlides - 1, i + 1))} disabled={currentSlide === totalSlides - 1} style={{ position: "absolute", right: -13, top: "50%", transform: "translateY(-50%)", background: currentSlide === totalSlides - 1 ? "#e8e8e8" : "#1a1a2e", color: currentSlide === totalSlides - 1 ? "#bbb" : "white", border: "none", borderRadius: "50%", width: 26, height: 26, fontSize: 14, cursor: currentSlide === totalSlides - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", zIndex: 10 }}>›</button>
@@ -1152,7 +1234,33 @@ function PostCard({ post, month, year, onUpdate }) {
             </div>
           </>
         )}
+        {isCarousel && totalSlides > 1 && carouselView === "stacked" && (
+          <div style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", zIndex: 5 }}>
+            {[...post.imageUrls].reverse().map((url, i) => {
+              const total = post.imageUrls.length;
+              const stackIdx = total - 1 - i; // 0 = top/front
+              const vertOffset = stackIdx * 22; // px down from top per layer
+              const rotate = (stackIdx - (total - 1) / 2) * 3;
+              return (
+                <img key={i} src={url} alt="" style={{
+                  position: "absolute", top: vertOffset, left: "8%", width: "84%",
+                  aspectRatio: "4/5", objectFit: "cover", borderRadius: 6,
+                  border: "3px solid white", boxShadow: "0 4px 14px rgba(0,0,0,0.22)",
+                  transform: `rotate(${rotate}deg)`,
+                  zIndex: total - stackIdx,
+                  pointerEvents: "none",
+                }} />
+              );
+            })}
+          </div>
+        )}
       </div>
+      {isCarousel && totalSlides > 1 && (
+        <div className="no-print" style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+          <button onClick={() => setCarouselView("gallery")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderRadius: "6px 0 0 6px", background: carouselView === "gallery" ? "#1a1a2e" : "white", color: carouselView === "gallery" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>▶ Gallery</button>
+          <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
+        </div>
+      )}
       <a href={linkHref || "#"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
         {isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"}
       </a>
