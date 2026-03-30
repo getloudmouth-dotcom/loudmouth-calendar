@@ -737,7 +737,7 @@ pdf.addImage(imgData, "JPEG", 0, 0, w, h);
 
       {/* STEPS 1–3 */}
       {step !== 4 && (
-        <div className="no-print" style={{ maxWidth: 1200, margin: "0 auto", padding: "36px 24px", display: "flex", gap: 32, alignItems: "flex-start" }}>
+        <div className="no-print" style={{ maxWidth: "none", margin: "0", padding: "36px 40px", display: "flex", gap: 32, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
 
             {/* STEP 1 */}
