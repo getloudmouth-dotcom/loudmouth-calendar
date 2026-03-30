@@ -127,7 +127,7 @@ function DraggableImage({ src, cropX, cropY, scale, onUpdate, isCarousel, imageU
     }}>
       {src ? (
         <>
-          <img src={src} alt="" style={{ position: "absolute", width: `${(scale??1)*100}%`, height: `${(scale??1)*100}%`, objectFit: "cover", left: `${(1-(scale??1))*cropX}%`, top: `${(1-(scale??1))*cropY}%`, display: "block", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${src})`, backgroundSize: (scale ?? 1) <= 1.05 ? "cover" : `${(scale ?? 1) * 100}%`, backgroundPosition: `${cropX ?? 50}% ${cropY ?? 50}%`, backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
           
         </>
       ) : (
@@ -463,9 +463,10 @@ export default function App() {
       const h = pages[0].offsetHeight;
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 1.2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
-        if (i > 0) pdf.addPage([w, h], "landscape");
-        pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, w, h);
+        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
+const imgData = canvas.toDataURL("image/jpeg", 0.92);
+if (i > 0) pdf.addPage([w, h], "landscape");
+pdf.addImage(imgData, "JPEG", 0, 0, w, h);
       }
       pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
     } finally {
