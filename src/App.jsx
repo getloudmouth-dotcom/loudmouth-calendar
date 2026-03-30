@@ -156,7 +156,7 @@ export default function App() {
       if (history[historyIdxRef.current] === snap) return;
       history.splice(historyIdxRef.current + 1);
       history.push(snap);
-      if (history.length > 60) history.shift();
+      if (history.length > 15) history.shift();
       historyIdxRef.current = history.length - 1;
       setCanUndo(historyIdxRef.current > 0);
       setCanRedo(false);
@@ -452,7 +452,7 @@ export default function App() {
       const h = pages[0].offsetHeight;
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
+        const canvas = await html2canvas(pages[i], { scale: 1.5, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
         if (i > 0) pdf.addPage([w, h], "landscape");
         pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, w, h);
       }
@@ -470,7 +470,7 @@ export default function App() {
     const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
     const next = { ...drafts, [key]: { ...draft, savedAt } };
     setDrafts(next);
-    localStorage.setItem("lm_drafts", JSON.stringify(next));
+    try { localStorage.setItem("lm_drafts", JSON.stringify(next)); } catch { alert("Draft saved in memory but couldn't write to browser storage — too much image data. Export your PDF as a backup."); }
     alert(`Draft saved: "${key}"`);
   }
 
@@ -492,7 +492,7 @@ export default function App() {
     const next = { ...drafts };
     delete next[key];
     setDrafts(next);
-    localStorage.setItem("lm_drafts", JSON.stringify(next));
+    try { localStorage.setItem("lm_drafts", JSON.stringify(next)); } catch { alert("Draft saved in memory but couldn't write to browser storage — too much image data. Export your PDF as a backup."); }
   }
 
   const stepLabels = ["Setup", "Pick Days", "Content", "Preview"];
