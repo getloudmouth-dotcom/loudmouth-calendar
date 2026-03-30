@@ -5,6 +5,7 @@ import html2canvas from "html2canvas";
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const CONTENT_TYPES = ["Photo", "Reel", "Carousel", "Story"];
 const DEFAULT_CLIENTS = ["Sane Studio", "10 Mas Seis", "Loudmouth Media"];
+const DEFAULT_BUILDERS = ["Julio", "Ronnie"];
 
 function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
 function getFirstDayOfMonth(year, month) { return new Date(year, month, 1).getDay(); }
@@ -16,9 +17,9 @@ function chunkArray(arr, size) {
   return chunks;
 }
 function newPost() {
-  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], caption: "", cropX: 50, cropY: 50, scale: 1, placeholder: "" };
+  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], caption: "", cropX: 50, cropY: 50, scale: 1, placeholder: "", postingNotes: "" };
 }
-const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "caption", "cropX", "cropY", "scale", "placeholder"];
+const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "caption", "cropX", "cropY", "scale", "placeholder", "postingNotes"];
 
 const labelStyle = { fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 };
 const inputStyle = { width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 7, fontSize: 13, outline: "none", fontFamily: "inherit", transition: "border-color 0.15s", background: "white", color: "#111" };
@@ -53,7 +54,9 @@ function DatePicker({ day, month, year, daysInMonth, selectedDays, onChangeDay }
                   background: isSelected ? "#1a1a2e" : "transparent",
                   color: isSelected ? "#D7FA06" : isTaken ? "#ddd" : "#333",
                   transition: "all 0.1s",
-                }}>{d}</div>
+                }}onMouseEnter={e => e.currentTarget.style.background = "#f0f0f0"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >{d}</div>
               );
             })}
           </div>
@@ -119,6 +122,13 @@ export default function App() {
   const [clients, setClients] = useState(() => {
     try { const s = localStorage.getItem("lm_clients"); return s ? JSON.parse(s) : DEFAULT_CLIENTS; } catch { return DEFAULT_CLIENTS; }
   });
+  const [builders, setBuilders] = useState(() => {
+    try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : DEFAULT_BUILDERS; } catch { return DEFAULT_BUILDERS; }
+  });
+  const [builderName, setBuilderName] = useState("");
+  const [addingBuilder, setAddingBuilder] = useState(false);
+  const [newBuilderInput, setNewBuilderInput] = useState("");
+  const [editingBuilders, setEditingBuilders] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
   const [newClientInput, setNewClientInput] = useState("");
   const [month, setMonth] = useState(today.getMonth());
@@ -190,6 +200,7 @@ export default function App() {
     setPostsPerPage(3); setStep(1);
   }
   const [drivePicker, setDrivePicker] = useState(null); // { day, postIdx }
+  const [exporting, setExporting] = useState(false);
   const [editingClients, setEditingClients] = useState(false);
 
   async function handleDriveFileDrop(day, postIdx, fileId) {
@@ -336,6 +347,51 @@ export default function App() {
     });
   }
 
+  function handleBatchImport(files) {
+    const imageFiles = [...files].filter(f => f.type.startsWith("image/"));
+    if (!imageFiles.length) return;
+    Promise.all(imageFiles.map(file => new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = ev => resolve(ev.target.result);
+      reader.readAsDataURL(file);
+    }))).then(dataUrls => {
+      const newDays = [];
+      setPosts(p => {
+        const next = { ...p };
+        let queue = [...dataUrls];
+        // Use existing days that only have one post with no image (one slot per day)
+        const days = [...selectedDays].sort((a, b) => a - b);
+        for (const day of days) {
+          if (!queue.length) break;
+          const arr = [...(next[day] || [])];
+          // Only use this day if it has exactly one post and no image yet
+          if (arr.length === 1 && !arr[0].imageUrls?.length) {
+            arr[0] = { ...arr[0], imageUrls: [queue.shift()] };
+            next[day] = arr;
+          }
+        }
+        // For remaining images, pick days chronologically after the last selected day
+        if (queue.length > 0) {
+          const usedDays = new Set([...selectedDays, ...newDays]);
+          const totalDays = getDaysInMonth(year, month);
+          const lastDay = Math.max(...selectedDays, 0);
+          for (let d = lastDay + 1; d <= totalDays && queue.length > 0; d++) {
+            if (!usedDays.has(d)) {
+              usedDays.add(d);
+              newDays.push(d);
+              next[d] = [{ ...newPost(), imageUrls: [queue.shift()] }];
+            }
+          }
+        }
+        return next;
+      });
+      // Add any new days to selectedDays
+      if (newDays.length > 0) {
+        setSelectedDays(prev => [...new Set([...prev, ...newDays])]);
+      }
+    });
+  }
+
   function addNewClient() {
     const name = newClientInput.trim();
     if (!name) return;
@@ -350,23 +406,38 @@ export default function App() {
   }
 
   async function exportPDF() {
-    const pages = document.querySelectorAll(".cal-page");
-    if (!pages.length) return;
-    const w = pages[0].offsetWidth;
-    const h = pages[0].offsetHeight;
-    const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
-    for (let i = 0; i < pages.length; i++) {
-      const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
-      if (i > 0) pdf.addPage([w, h], "landscape");
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, w, h);
+    // Inject CSS to hide UI-only elements and inject exporting class
+    const style = document.createElement("style");
+    style.id = "pdf-export-style";
+    style.textContent = `.no-print { display: none !important; } .no-export { display: none !important; } .feed-header { justify-content: center !important; } .feed-label { font-size: 11px !important; }`;
+    document.head.appendChild(style);
+    setExporting(true);
+    // Wait for React to re-render with exporting=true
+    await new Promise(r => setTimeout(r, 80));
+    try {
+      const pages = document.querySelectorAll(".cal-page");
+      if (!pages.length) return;
+      const w = pages[0].offsetWidth;
+      const h = pages[0].offsetHeight;
+      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
+      for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
+        if (i > 0) pdf.addPage([w, h], "landscape");
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, w, h);
+      }
+      pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
+    } finally {
+      setExporting(false);
+      document.head.removeChild(style);
     }
-    pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
   }
 
   function saveDraft() {
     const key = `${clientName} — ${MONTHS[month]} ${year}`;
     const draft = { clientName, month, year, postsPerPage, selectedDays, posts };
-    const next = { ...drafts, [key]: { ...draft, savedAt: new Date().toLocaleDateString() } };
+    const now = new Date();
+    const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    const next = { ...drafts, [key]: { ...draft, savedAt } };
     setDrafts(next);
     localStorage.setItem("lm_drafts", JSON.stringify(next));
     alert(`Draft saved: "${key}"`);
@@ -532,7 +603,47 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => setStep(2)} disabled={!clientName.trim()} style={{ ...primaryBtn, marginTop: 32, opacity: clientName.trim() ? 1 : 0.4 }}>
+                <div style={{ marginTop: 20, maxWidth: 520 }}>
+                  <label style={labelStyle}>Built by</label>
+                  {!addingBuilder ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <select value={builderName} onChange={e => { if (e.target.value === "__add__") setAddingBuilder(true); else setBuilderName(e.target.value); }} style={inputStyle}>
+                        <option value="">— Select your name —</option>
+                        {builders.map(b => <option key={b} value={b}>{b}</option>)}
+                        <option value="__add__">+ Add name...</option>
+                      </select>
+                      <button onClick={() => setEditingBuilders(true)} style={{ background: "none", border: "none", fontSize: 11, color: "#aaa", cursor: "pointer", textAlign: "left", padding: 0, textDecoration: "underline" }}>Edit names</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input autoFocus value={newBuilderInput} onChange={e => setNewBuilderInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { const n = newBuilderInput.trim(); if (!n) return; setBuilders(prev => { const next = [...prev, n]; localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); setBuilderName(n); setNewBuilderInput(""); setAddingBuilder(false); }}} placeholder="Your name..." style={inputStyle} />
+                      <button onClick={() => { const n = newBuilderInput.trim(); if (!n) return; setBuilders(prev => { const next = [...prev, n]; localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); setBuilderName(n); setNewBuilderInput(""); setAddingBuilder(false); }} style={{ ...primaryBtn, marginTop: 0, padding: "9px 18px", whiteSpace: "nowrap", fontSize: 13 }}>Add</button>
+                      <button onClick={() => { setAddingBuilder(false); setNewBuilderInput(""); }} style={{ ...secondaryBtn, padding: "9px 14px" }}>Cancel</button>
+                    </div>
+                  )}
+                  {editingBuilders && (
+                    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onClick={e => e.target === e.currentTarget && setEditingBuilders(false)}>
+                      <div style={{ background: "white", borderRadius: 14, width: 340, padding: 24, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                          <div style={{ fontWeight: 800, fontSize: 16 }}>Edit Names</div>
+                          <button onClick={() => setEditingBuilders(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto" }}>
+                          {builders.map(b => (
+                            <div key={b} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#f8f8f8", borderRadius: 8, border: "1px solid #eee" }}>
+                              <span style={{ flex: 1, fontSize: 13 }}>{b}</span>
+                              <button onClick={() => { const n = prompt("Rename:", b); if (!n || n.trim() === b) return; setBuilders(prev => { const next = prev.map(x => x === b ? n.trim() : x); localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); if (builderName === b) setBuilderName(n.trim()); }} style={{ background: "#f0f0f0", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#555", fontWeight: 600 }}>Rename</button>
+                              <button onClick={() => { if (!window.confirm(`Delete "${b}"?`)) return; setBuilders(prev => { const next = prev.filter(x => x !== b); localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); if (builderName === b) setBuilderName(""); }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", color: "#ccc" }}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={() => setEditingBuilders(false)} style={{ ...primaryBtn, width: "100%", marginTop: 16, padding: "10px 0", textAlign: "center" }}>Done</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setStep(2)} disabled={!clientName.trim()} style={{ ...primaryBtn, marginTop: 24, opacity: clientName.trim() ? 1 : 0.4 }}>
                   Next: Pick Posting Days →
                 </button>
               </div>
@@ -546,9 +657,32 @@ export default function App() {
                 <div style={{ background: "white", borderRadius: 14, padding: 24, maxWidth: 400, boxShadow: "0 2px 16px rgba(0,0,0,0.07)" }}>
                   <div style={{ textAlign: "center", fontWeight: 800, fontSize: 15, marginBottom: 16, color: "#222", letterSpacing: "0.04em" }}>{MONTHS[month].toUpperCase()} {year}</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 6 }}>
-                    {["S","M","T","W","T","F","S"].map((d, i) => (
-                      <div key={i} style={{ textAlign: "center", fontSize: 10, color: "#bbb", fontWeight: 700, padding: "4px 0" }}>{d}</div>
-                    ))}
+                    {["S","M","T","W","T","F","S"].map((d, colIdx) => {
+                      const daysInCol = calendarCells.reduce((acc, day, cellIdx) => {
+                        if (day && cellIdx % 7 === colIdx) acc.push(day);
+                        return acc;
+                      }, []);
+                      const allSelected = daysInCol.length > 0 && daysInCol.every(day => selectedDays.includes(day));
+                      return (
+                        <div key={colIdx} onClick={() => {
+                          if (allSelected) {
+                            setSelectedDays(prev => {
+                              const next = prev.filter(d => !daysInCol.includes(d));
+                              setPosts(p => { const c = { ...p }; daysInCol.forEach(d => delete c[d]); return c; });
+                              return next;
+                            });
+                          } else {
+                            const toAdd = daysInCol.filter(d => !selectedDays.includes(d));
+                            setPosts(p => { const c = { ...p }; toAdd.forEach(d => { c[d] = [newPost()]; }); return c; });
+                            setSelectedDays(prev => [...new Set([...prev, ...daysInCol])]);
+                          }
+                        }} style={{ textAlign: "center", fontSize: 10, fontWeight: 700, padding: "4px 0", cursor: "pointer", color: allSelected ? "#1a1a2e" : "#bbb", borderRadius: 4, userSelect: "none", transition: "background 0.1s" }}
+                        title={`Select all ${["Sundays","Mondays","Tuesdays","Wednesdays","Thursdays","Fridays","Saturdays"][colIdx]}`}
+                        onMouseEnter={e => e.currentTarget.style.background = "#f0f0ee"}
+                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                      >{d}</div>
+                      );
+                    })}
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
                     {calendarCells.map((day, i) => {
@@ -641,30 +775,31 @@ export default function App() {
                                           <button onClick={() => updatePost(day, postIdx, "imageUrls", [])} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18, padding: 0 }}>✕</button>
                                         </div>
                                       ) : (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                          <DropZone isDropTarget={isDropTarget} label="Drag & drop or browse" onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }} onDragLeave={() => setDragOver(null)} onDrop={e => { e.preventDefault(); setDragOver(null); const did = e.dataTransfer.getData("driveFileId"); did ? handleDriveFileDrop(day, postIdx, did) : handleFiles(day, postIdx, e.dataTransfer.files); }} onFileInput={e => handleFiles(day, postIdx, e.target.files)} urlValue={post.imageUrls?.[0] || ""} onUrlChange={v => updatePost(day, postIdx, "imageUrls", v ? [v] : [])} />
-                                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                            {post.placeholder ? (
-                                              <div style={{ position: "relative" }}>
-                                                <textarea autoFocus value={post.placeholder} onChange={e => updatePost(day, postIdx, "placeholder", e.target.value)} placeholder="e.g. Pending photo · Coming soon · In editing..." rows={2} style={{ width: "100%", padding: "8px 10px", background: "#FFF9C4", border: "1px solid #F0E060", borderRadius: 6, fontSize: 12, fontFamily: "'Helvetica Neue', sans-serif", resize: "none", outline: "none", color: "#555", boxShadow: "2px 2px 6px rgba(0,0,0,0.08)" }} />
-                                                <button onClick={() => updatePost(day, postIdx, "placeholder", "")} style={{ position: "absolute", top: -6, right: -6, background: "#ccc", color: "white", border: "none", borderRadius: "50%", width: 16, height: 16, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-                                              </div>
-                                            ) : (
+                                        <>{post.placeholder ? (
+                                          <div style={{ position: "relative", background: "#FFF9C4", border: "1.5px solid #F0E060", borderRadius: 8, padding: "14px 16px", boxShadow: "2px 3px 10px rgba(0,0,0,0.07)", minHeight: 90, display: "flex", flexDirection: "column", gap: 8 }}>
+                                            <div style={{ fontSize: 11, color: "#bba000", fontWeight: 700, letterSpacing: "0.04em" }}>📝 PLACEHOLDER</div>
+                                            <textarea autoFocus value={post.placeholder} onChange={e => updatePost(day, postIdx, "placeholder", e.target.value)} placeholder="e.g. Pending photo · Coming soon · In editing..." rows={3} style={{ width: "100%", background: "transparent", border: "none", outline: "none", resize: "none", fontSize: 12, fontFamily: "'Helvetica Neue', sans-serif", color: "#555", lineHeight: 1.5, padding: 0 }} />
+                                            <button onClick={() => updatePost(day, postIdx, "placeholder", "")} style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.12)", color: "#888", border: "none", borderRadius: "50%", width: 16, height: 16, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                            <DropZone isDropTarget={isDropTarget} label="Drag & drop or browse" onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }} onDragLeave={() => setDragOver(null)} onDrop={e => { e.preventDefault(); setDragOver(null); const did = e.dataTransfer.getData("driveFileId"); did ? handleDriveFileDrop(day, postIdx, did) : handleFiles(day, postIdx, e.dataTransfer.files); }} onFileInput={e => handleFiles(day, postIdx, e.target.files)} urlValue={post.imageUrls?.[0] || ""} onUrlChange={v => updatePost(day, postIdx, "imageUrls", v ? [v] : [])} />
+                                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                                               <button onClick={() => updatePost(day, postIdx, "placeholder", "Pending photo")} style={{ width: "100%", padding: "7px 0", background: "#FFFDE7", border: "1.5px dashed #F0E060", borderRadius: 6, fontSize: 11, color: "#aaa", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
                                                 📝 Add placeholder note
                                               </button>
-                                            )}
-                                            {driveApiKey && (
-                                              <button onClick={() => setDrivePicker({ day, postIdx })} style={{ width: "100%", padding: "7px 0", background: "#f0f4ff", border: "1.5px solid #d0d8ff", borderRadius: 6, fontSize: 11, color: "#555", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
-                                                📁 Pick from Drive
-                                              </button>
-                                            )}
+                                              {driveApiKey && (
+                                                <button onClick={() => setDrivePicker({ day, postIdx })} style={{ width: "100%", padding: "7px 0", background: "#f0f4ff", border: "1.5px solid #d0d8ff", borderRadius: 6, fontSize: 11, color: "#555", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                                                  📁 Pick from Drive
+                                                </button>
+                                              )}
+                                            </div>
                                           </div>
-                                        </div>
+                                        )}</>
                                       )
                                     )}
                                   </div>
-                                  {!isCarousel && <div>
+                                  {!isCarousel && !post.placeholder && <div>
                                     <label style={labelStyle}>{isReel ? "Reel Links" : "Content Link (for client)"}</label>
                                     {isReel ? (
                                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -739,7 +874,16 @@ export default function App() {
                 </div>
               </div>
               </div>
-          
+            {step === 3 && (
+              <div style={{ background: "white", border: "1px solid #e8e8e8", borderRadius: 12, padding: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+                <ReorderFeedGrid
+                  allPosts={allPosts.filter(p => p.contentType !== "Story")}
+                  onSwap={swapPostContent}
+                  onBatchImport={handleBatchImport}
+                />
+              </div>
+            )}
+
           </div>
         </div>
       )}
@@ -764,7 +908,10 @@ export default function App() {
             <CalendarPage key={pageIdx} posts={pagePosts} allPosts={allPosts} clientName={clientName} month={month} year={year}
             onUpdatePost={(day, postIdx, field, val) => updatePost(day, postIdx, field, val)}
             onSwapPosts={swapPostContent}
+            onBatchImport={handleBatchImport}
             postsPerPage={postsPerPage}
+            exporting={exporting}
+            builderName={builderName}
           />
           ))}
         </div>
@@ -786,7 +933,7 @@ export default function App() {
         />
       )}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input:focus, select:focus, textarea:focus { border-color: #1a1a2e !important; }
         @media print {
@@ -1028,22 +1175,22 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
   );
 }
 
-function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, postsPerPage }) {
+function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, postsPerPage, exporting, builderName }) {
   const [notes, setNotes] = useState("");
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
   return (
-    <div className="cal-page" style={{ background: "white", borderRadius: 0, boxShadow: "none", padding: "48px 56px", marginBottom: 0, border: "1px solid #e8e8e8" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 40, borderBottom: "1px solid #eee", paddingBottom: 16 }}>
-        <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, fontSize: 52, color: "#111", lineHeight: 1 }}>
+    <div className="cal-page" style={{ background: "white", borderRadius: 0, boxShadow: "none", padding: `${postsPerPage > 2 ? 28 : 40}px ${postsPerPage > 2 ? 40 : 56}px`, marginBottom: 0, border: "1px solid #e8e8e8", aspectRatio: "1.41 / 1", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, borderBottom: "1px solid #eee", paddingBottom: 8, flexShrink: 0 }}>
+        <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, fontSize: postsPerPage > 3 ? 22 : postsPerPage > 2 ? 26 : 32, color: "#111", lineHeight: 1 }}>
           {MONTHS[month]} {year} &nbsp;<em>| Content Calendar</em>
         </h1>
-        <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, fontSize: 48, color: "#222" }}>{clientName}</h2>
+        <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, fontSize: postsPerPage > 3 ? 20 : postsPerPage > 2 ? 24 : 30, color: "#222" }}>{clientName}</h2>
       </div>
-      <div style={{ display: "flex", gap: 20, alignItems: "stretch" }}>
-      <div style={{ flex: 1, display: "flex", gap: 18, alignItems: "stretch" }}>
+      <div style={{ display: "flex", gap: 20, alignItems: "stretch", flex: 1, minHeight: 0 }}>
+      <div style={{ flex: 1, display: "flex", gap: 18, alignItems: "stretch", minHeight: 0 }}>
           {posts.map((post, i) => (
             <div key={i} style={{ flex: "0 0 auto", width: `calc((100% - ${(postsPerPage - 1) * 18}px) / ${postsPerPage})`, display: "flex" }}>
-            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} />
+            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} isExporting={exporting} />
           </div>
           ))}
           {/* Ghost spacers so partial pages stay the right size */}
@@ -1053,40 +1200,62 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
             </div>
           ))}
         </div>
-        <div style={{ width: 270, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "12px 14px" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#333", marginBottom: 8 }}>Notes:</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={5} placeholder="Add notes..." style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 13, color: "#444", fontFamily: "inherit", lineHeight: 1.6, background: "white", borderRadius: 4, padding: "4px 0" }} />
+        <div style={{ width: 270, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
+          <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "10px 12px", flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#333", marginBottom: 6 }}>Notes:</div>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes..." style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "white", borderRadius: 4, padding: "2px 0" }} />
           </div>
-          <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} />
+          <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+            <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} />
+          </div>
         </div>
       </div>
-      <div style={{ marginTop: 20, paddingTop: 12, borderTop: "1px solid #f0f0f0", textAlign: "right", fontSize: 9, color: "#ccc", letterSpacing: "0.04em" }}>
-        © 2026 Loudmouth. All rights reserved.
+      <div style={{ marginTop: 8, paddingTop: 6, borderTop: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "baseline", flexShrink: 0 }}>
+        {builderName ? (
+          <span style={{ fontSize: 8, color: "#bbb", letterSpacing: "0.02em" }}>
+            This calendar was custom built for you by <span style={{ fontFamily: "'Dancing Script', cursive", fontSize: 13, color: "#999" }}>{builderName}</span>
+          </span>
+        ) : <span />}
+        <span style={{ fontSize: 8, color: "#ccc", letterSpacing: "0.04em" }}>© 2026 Loudmouth. All rights reserved.</span>
       </div>
     </div>
   );
 }
 
 // ── Reorderable Feed Grid ──
-function ReorderFeedGrid({ allPosts, onSwap }) {
+function ReorderFeedGrid({ allPosts, onSwap, onBatchImport }) {
   const [dragSrc, setDragSrc] = useState(null); // { day, postIdx }
   const [hoverTarget, setHoverTarget] = useState(null);
+  const [dropHighlight, setDropHighlight] = useState(false);
 
   const postsWithImages = allPosts.filter(p => p?.imageUrls?.[0] || p?.placeholder);
+  // Instagram order: newest top-left, oldest bottom-right
+  // Reverse so newest is first, pad front with nulls to push newest to right of top row
   const reversed = [...postsWithImages].reverse();
-  const cells = [];
-  while (cells.length + reversed.length < 12) cells.push(null);
-  cells.push(...reversed);
+  const padCount = reversed.length % 3 === 0 ? 0 : 3 - (reversed.length % 3);
+  const cells = [...Array(padCount).fill(null), ...reversed];
 
   return (
-    <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "12px 14px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>Feed:</div>
-        <div className="no-print" style={{ fontSize: 9, color: "#bbb", letterSpacing: "0.04em" }}>drag to reorder</div>
+    <div
+      style={{ border: `1.5px solid ${dropHighlight ? "#1a1a2e" : "#e8e8e8"}`, borderRadius: 10, padding: "12px 14px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box", background: dropHighlight ? "#f4f4ff" : "white", transition: "border-color 0.15s, background 0.15s" }}
+      onDragOver={e => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDropHighlight(true); } }}
+      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDropHighlight(false); }}
+      onDrop={e => { e.preventDefault(); setDropHighlight(false); if (onBatchImport && e.dataTransfer.files.length) onBatchImport(e.dataTransfer.files); }}
+    >
+      <div className="feed-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+      <div className="feed-label" style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>Feed:</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="no-print" style={{ fontSize: 9, color: "#bbb", letterSpacing: "0.04em" }}>drag to reorder</div>
+          {onBatchImport && (
+            <label className="no-print" title="Batch import images — fills posts in order" style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 5, fontSize: 8, fontWeight: 700, padding: "3px 7px", cursor: "pointer", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
+              + Batch Import
+              <input type="file" accept="image/*" multiple onChange={e => { onBatchImport(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
+            </label>
+          )}
+        </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0 }}>
-        {cells.slice(0, 12).map((post, i) => {
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0, flex: 1, minHeight: 0, overflow: "hidden", alignContent: "start" }}>
+        {cells.map((post, i) => {
           const isTarget = hoverTarget === i && dragSrc !== null && post !== null;
           return (
             <div
@@ -1132,12 +1301,15 @@ function ReorderFeedGrid({ allPosts, onSwap }) {
   );
 }
 
-function PostCard({ post, month, year, onUpdate }) {
+function PostCard({ post, month, year, onUpdate, isExporting }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [reframing, setReframing] = useState(false);
   const [dropHighlight, setDropHighlight] = useState(false);
   const [hovering, setHovering] = useState(false);
+  const [showTypeMenu, setShowTypeMenu] = useState(false);
+  const [showPostingNotes, setShowPostingNotes] = useState(false);
   const [carouselView, setCarouselView] = useState("gallery"); // "gallery" | "stacked"
+  const effectiveView = isExporting ? "stacked" : carouselView;
   const isReel = post.contentType === "Reel";
   const isCarousel = post.contentType === "Carousel";
   const totalSlides = post.imageUrls?.length || 0;
@@ -1190,7 +1362,7 @@ function PostCard({ post, month, year, onUpdate }) {
         onDragLeave={() => setDropHighlight(false)}
         onDrop={e => { e.preventDefault(); setDropHighlight(false); handleReplaceFiles(e.dataTransfer.files); }}
       >
-        <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && carouselView === "stacked") ? "hidden" : "visible" }}>
+        <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
           <DraggableImage src={mainImage} cropX={post.cropX ?? 50} cropY={post.cropY ?? 50} scale={post.scale ?? 1} onUpdate={onUpdate} isCarousel={isCarousel} imageUrls={post.imageUrls} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
@@ -1216,6 +1388,21 @@ function PostCard({ post, month, year, onUpdate }) {
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>drag to reposition · dbl-click to exit</div>
           </div>
         )}
+        {hovering && (
+          <div style={{ position: "absolute", top: 6, left: 6, zIndex: 20, display: "flex", alignItems: "center", gap: 5 }} onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
+            <button onClick={() => setShowTypeMenu(s => !s)} style={{ background: "rgba(0,0,0,0.55)", color: "white", border: "none", borderRadius: 20, padding: "3px 9px", fontSize: 9, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, letterSpacing: "0.04em" }}>
+              {post.contentType} <span style={{ fontSize: 8 }}>▾</span>
+            </button>
+            
+            {showTypeMenu && (
+              <div style={{ position: "absolute", top: "110%", left: 0, background: "white", border: "1.5px solid #e0e0e0", borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,0.15)", overflow: "hidden", minWidth: 110 }}>
+                {CONTENT_TYPES.map(t => (
+                  <div key={t} onClick={() => { onUpdate("contentType", t); setShowTypeMenu(false); }} style={{ padding: "7px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: t === post.contentType ? "#f0f4ff" : "white", color: t === post.contentType ? "#1a1a2e" : "#444" }}>{t}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {mainImage && hovering && (
           <button
             onClick={e => { e.stopPropagation(); handleDelete(); }}
@@ -1223,7 +1410,19 @@ function PostCard({ post, month, year, onUpdate }) {
             style={{ position: "absolute", top: 6, right: 6, background: "transparent", color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, lineHeight: 1, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
           >✕</button>
         )}
-        {isCarousel && totalSlides > 1 && carouselView === "gallery" && (
+        {isCarousel && hovering && (
+          <label title="Add photo to carousel" onClick={e => e.stopPropagation()} style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.55)", color: "white", borderRadius: "50%", width: 26, height: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
+            <span style={{ fontSize: 18, fontWeight: 300, lineHeight: 1, marginTop: -1, pointerEvents: "none" }}>+</span>
+            <input type="file" accept="image/*" multiple onChange={e => {
+              const files = [...e.target.files].filter(f => f.type.startsWith("image/"));
+              Promise.all(files.map(f => new Promise(res => { const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(f); }))).then(urls => {
+                onUpdate("imageUrls", [...(post.imageUrls || []), ...urls]);
+              });
+              e.target.value = "";
+            }} style={{ display: "none" }} />
+          </label>
+        )}
+        {isCarousel && totalSlides > 1 && effectiveView === "gallery" && (
           <>
             <button onClick={() => setSlideIdx(i => Math.max(0, i - 1))} disabled={currentSlide === 0} style={{ position: "absolute", left: -13, top: "50%", transform: "translateY(-50%)", background: currentSlide === 0 ? "#e8e8e8" : "#1a1a2e", color: currentSlide === 0 ? "#bbb" : "white", border: "none", borderRadius: "50%", width: 26, height: 26, fontSize: 14, cursor: currentSlide === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", zIndex: 10 }}>‹</button>
             <button onClick={() => setSlideIdx(i => Math.min(totalSlides - 1, i + 1))} disabled={currentSlide === totalSlides - 1} style={{ position: "absolute", right: -13, top: "50%", transform: "translateY(-50%)", background: currentSlide === totalSlides - 1 ? "#e8e8e8" : "#1a1a2e", color: currentSlide === totalSlides - 1 ? "#bbb" : "white", border: "none", borderRadius: "50%", width: 26, height: 26, fontSize: 14, cursor: currentSlide === totalSlides - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", zIndex: 10 }}>›</button>
@@ -1234,25 +1433,32 @@ function PostCard({ post, month, year, onUpdate }) {
             </div>
           </>
         )}
-        {isCarousel && totalSlides > 1 && carouselView === "stacked" && (
+        {isCarousel && totalSlides > 1 && effectiveView === "stacked" && (
           <div style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", zIndex: 5 }}>
-            {[...post.imageUrls].reverse().map((url, i) => {
-              const total = post.imageUrls.length;
-              const stackIdx = total - 1 - i; // 0 = top/front
-              const vertOffset = stackIdx * 22; // px down from top per layer
-              const rotate = (stackIdx - (total - 1) / 2) * 3;
+          {[...post.imageUrls].reverse().map((url, i) => {
+            const total = post.imageUrls.length;
+            const stackIdx = total - 1 - i; // 0 = top-left/front, total-1 = bottom-right/back
+            // cardW sized so 40% is hidden (60% visible) and stack spans corner to corner
+              // Derived: (1 - spread/cardW)² = 0.40 → spread = 0.3675*cardW
+              // Corner-to-corner: (N-1)*spread = 100-cardW → cardW = 100/(0.3675*(N-1)+1)
+              const cardW = total > 1 ? 100 / (0.3675 * (total - 1) + 1) : 70;
+              const spread = total > 1 ? (100 - cardW) / (total - 1) : 0;
+              const leftPct = stackIdx * spread;
+              const topPct = stackIdx * spread;
               return (
                 <img key={i} src={url} alt="" style={{
-                  position: "absolute", top: vertOffset, left: "8%", width: "84%",
-                  aspectRatio: "4/5", objectFit: "cover", borderRadius: 6,
-                  border: "3px solid white", boxShadow: "0 4px 14px rgba(0,0,0,0.22)",
-                  transform: `rotate(${rotate}deg)`,
+                  position: "absolute",
+                  top: `${topPct}%`,
+                  left: `${leftPct}%`,
+                  width: `${cardW}%`,
+                  aspectRatio: "4/5", objectFit: "cover", borderRadius: 4,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   zIndex: total - stackIdx,
                   pointerEvents: "none",
                 }} />
-              );
-            })}
-          </div>
+            );
+          })}
+        </div>
         )}
       </div>
       {isCarousel && totalSlides > 1 && (
@@ -1264,9 +1470,20 @@ function PostCard({ post, month, year, onUpdate }) {
       <a href={linkHref || "#"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
         {isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"}
       </a>
-      <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 8, padding: "14px 16px", flex: 1, minHeight: 160 }}>
+      <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 8, padding: "14px 16px", flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "#333", marginBottom: 10 }}>Caption:</div>
-        <textarea value={post.caption || ""} onChange={e => onUpdate("caption", e.target.value)} placeholder="Caption..." rows={4} style={{ fontSize: 13, color: "#444", lineHeight: 1.7, width: "100%", border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0 }} />
+        <textarea value={post.caption || ""} onChange={e => onUpdate("caption", e.target.value)} placeholder="Caption..." rows={4} style={{ fontSize: 13, color: "#444", lineHeight: 1.7, width: "100%", border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0, flex: 1 }} />
+        <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 10, paddingTop: 8 }}>
+          {showPostingNotes || post.postingNotes ? (
+            <div style={{ position: "relative" }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#aaa", marginBottom: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Posting Notes</div>
+              <textarea value={post.postingNotes || ""} onChange={e => onUpdate("postingNotes", e.target.value)} placeholder="e.g. Post Tuesday 6pm · tag @partner · add location..." rows={2} style={{ width: "100%", fontSize: 11, color: "#666", lineHeight: 1.5, border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0 }} />
+              {!post.postingNotes && <button onClick={() => setShowPostingNotes(false)} style={{ position: "absolute", top: 0, right: 0, background: "none", border: "none", fontSize: 11, color: "#ccc", cursor: "pointer" }}>✕</button>}
+            </div>
+          ) : (
+            <button onClick={() => setShowPostingNotes(true)} className="no-export" style={{ background: "none", border: "none", fontSize: 10, color: "#ccc", cursor: "pointer", padding: 0, fontFamily: "inherit", letterSpacing: "0.04em" }}>+ posting notes</button>
+          )}
+        </div>
       </div>
     </div>
   );
