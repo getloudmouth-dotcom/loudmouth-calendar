@@ -36,8 +36,8 @@ async function uploadToCloudinary(fileOrBlob) {
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const CONTENT_TYPES = ["Photo", "Reel", "Carousel", "Story"];
-const DEFAULT_CLIENTS = ["Sane Studio", "10 Mas Seis", "Loudmouth Media"];
-const DEFAULT_BUILDERS = ["Julio", "Ronnie"];
+const DEFAULT_CLIENTS = [];
+const DEFAULT_BUILDERS = [];
 
 function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
 function getFirstDayOfMonth(year, month) { return new Date(year, month, 1).getDay(); }
@@ -152,10 +152,10 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [clientName, setClientName] = useState("");
   const [clients, setClients] = useState(() => {
-    try { const s = localStorage.getItem("lm_clients"); return s ? JSON.parse(s) : DEFAULT_CLIENTS; } catch { return DEFAULT_CLIENTS; }
+    try { const s = localStorage.getItem("lm_clients"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [builders, setBuilders] = useState(() => {
-    try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : DEFAULT_BUILDERS; } catch { return DEFAULT_BUILDERS; }
+    try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [builderName, setBuilderName] = useState("");
   const [addingBuilder, setAddingBuilder] = useState(false);
