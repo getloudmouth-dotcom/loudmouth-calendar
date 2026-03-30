@@ -503,6 +503,17 @@ export default function App() {
     setAuthBusy(false);
   }
 
+  async function resetPassword() {
+    if (!authEmail.trim()) return setAuthError("Enter your email first.");
+    setAuthBusy(true); setAuthError("");
+    const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+      redirectTo: window.location.origin,
+    });
+    if (error) setAuthError(error.message);
+    else setAuthError("Password reset email sent! Check your inbox.");
+    setAuthBusy(false);
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     setUser(null); setShowDashboard(true); setAllCalendars([]);
@@ -617,6 +628,11 @@ export default function App() {
         <button onClick={authMode === "login" ? signIn : signUp} disabled={authBusy} style={{ width: "100%", padding: "12px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer", letterSpacing: "0.06em" }}>
           {authBusy ? "..." : authMode === "login" ? "LOG IN" : "CREATE ACCOUNT"}
         </button>
+        {authMode === "login" && (
+          <button onClick={resetPassword} style={{ background: "none", border: "none", fontSize: 11, color: "#aaa", cursor: "pointer", marginTop: 12, width: "100%", textDecoration: "underline" }}>
+            Forgot password?
+          </button>
+        )}
       </div>
     </div>
   );
