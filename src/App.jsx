@@ -468,10 +468,10 @@ export default function App() {
       const h = pages[0].offsetHeight;
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
-const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        const canvas = await html2canvas(pages[i], { scale: 3, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
+const imgData = canvas.toDataURL("image/png");
 if (i > 0) pdf.addPage([w, h], "landscape");
-pdf.addImage(imgData, "JPEG", 0, 0, w, h);
+pdf.addImage(imgData, "PNG", 0, 0, w, h);
       }
       pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
     } finally {
