@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { supabase } from "./supabase";
 
 const CLOUDINARY_CLOUD = "djaxz6tef";
 const CLOUDINARY_PRESET = "loudmouth_uploads";
@@ -169,10 +170,21 @@ export default function App() {
   const [posts, setPosts] = useState({});
   const [dragOver, setDragOver] = useState(null);
   const [driveApiKey, setDriveApiKey] = useState(() => localStorage.getItem("lm_driveKey") || "");
-  const [drafts, setDrafts] = useState(() => {
-    try { const s = localStorage.getItem("lm_drafts"); return s ? JSON.parse(s) : {}; } catch { return {}; }
-  });
+  const [drafts, setDrafts] = useState([]);
   const [showDrafts, setShowDrafts] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authMode, setAuthMode] = useState("login"); // "login" | "signup"
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(true);
+  const [allCalendars, setAllCalendars] = useState([]);
+  const [currentCalendarId, setCurrentCalendarId] = useState(null);
+  const [draftHistory, setDraftHistory] = useState([]);
+  const [showDraftHistory, setShowDraftHistory] = useState(false);
+  const [savingLabel, setSavingLabel] = useState("");
   const historyRef = useRef([]);
   const historyIdxRef = useRef(-1);
   const isUndoingRef = useRef(false);
@@ -462,39 +474,193 @@ export default function App() {
     }
   }
 
-  function saveDraft() {
-    const key = `${clientName} — ${MONTHS[month]} ${year}`;
-    const draft = { clientName, month, year, postsPerPage, selectedDays, posts };
-    const now = new Date();
-    const savedAt = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " · " + now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-    const next = { ...drafts, [key]: { ...draft, savedAt } };
-    setDrafts(next);
-    try { localStorage.setItem("lm_drafts", JSON.stringify(next)); } catch { alert("Draft saved in memory but couldn't write to browser storage — too much image data. Export your PDF as a backup."); }
-    alert(`Draft saved: "${key}"`);
+  // ── Auth ──
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+      if (session?.user) loadAllCalendars();
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) loadAllCalendars();
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function signIn() {
+    setAuthBusy(true); setAuthError("");
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+    if (error) setAuthError(error.message);
+    setAuthBusy(false);
   }
 
-  function loadDraft(key) {
-    const d = drafts[key];
-    if (!d) return;
-    setClientName(d.clientName);
-    setMonth(d.month);
-    setYear(d.year);
-    setPostsPerPage(d.postsPerPage);
-    setSelectedDays(d.selectedDays);
-    setPosts(d.posts);
-    setShowDrafts(false);
+  async function signUp() {
+    setAuthBusy(true); setAuthError("");
+    const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+    if (error) setAuthError(error.message);
+    else setAuthError("Check your email for a confirmation link!");
+    setAuthBusy(false);
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    setUser(null); setShowDashboard(true); setAllCalendars([]);
+    setCurrentCalendarId(null); setClientName(""); setSelectedDays([]); setPosts({});
+  }
+
+  // ── Calendars ──
+  async function loadAllCalendars() {
+    const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
+    setAllCalendars(data || []);
+  }
+
+  async function openCalendar(cal) {
+    setCurrentCalendarId(cal.id);
+    setClientName(cal.client_name);
+    setMonth(cal.month);
+    setYear(cal.year);
+    setPostsPerPage(cal.posts_per_page);
+    setBuilderName(cal.builder_name || "");
+    setSelectedDays(cal.selected_days || []);
+    // Load most recent draft
+    const { data } = await supabase.from("calendar_drafts")
+      .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
+    if (data?.[0]) setPosts(data[0].posts);
+    setShowDashboard(false);
     setStep(1);
+    loadDraftHistory(cal.id);
   }
 
-  function deleteDraft(key) {
-    if (!window.confirm(`Delete "${key}"?`)) return;
-    const next = { ...drafts };
-    delete next[key];
-    setDrafts(next);
-    try { localStorage.setItem("lm_drafts", JSON.stringify(next)); } catch { alert("Draft saved in memory but couldn't write to browser storage — too much image data. Export your PDF as a backup."); }
+  async function loadDraftHistory(calId) {
+    const id = calId || currentCalendarId;
+    if (!id) return;
+    const { data } = await supabase.from("calendar_drafts")
+      .select("*").eq("calendar_id", id).order("saved_at", { ascending: false }).limit(20);
+    setDraftHistory(data || []);
+  }
+
+  async function saveDraft(label = "") {
+    if (!clientName.trim()) return alert("Please select a client first.");
+    if (!user) return alert("Please log in first.");
+    const lbl = label || savingLabel || "Manual save";
+    // Upsert the calendar record
+    const { data: calData, error: calErr } = await supabase.from("calendars").upsert({
+      user_id: user.id, client_name: clientName, month, year,
+      posts_per_page: postsPerPage, builder_name: builderName,
+      selected_days: selectedDays, updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,client_name,month,year" }).select().single();
+    if (calErr) return alert("Save failed: " + calErr.message);
+    setCurrentCalendarId(calData.id);
+    // Insert a draft snapshot
+    await supabase.from("calendar_drafts").insert({
+      calendar_id: calData.id, posts, label: lbl,
+    });
+    await loadAllCalendars();
+    await loadDraftHistory(calData.id);
+    setSavingLabel("");
+    alert(`Saved: ${clientName} — ${MONTHS[month]} ${year}`);
+  }
+
+  async function restoreDraft(draft) {
+    if (!window.confirm(`Restore draft from ${new Date(draft.saved_at).toLocaleString()}?`)) return;
+    setPosts(draft.posts);
+    setShowDraftHistory(false);
+  }
+
+  async function deleteCalendar(cal) {
+    if (!window.confirm(`Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`)) return;
+    await supabase.from("calendars").delete().eq("id", cal.id);
+    await loadAllCalendars();
+    if (currentCalendarId === cal.id) {
+      setCurrentCalendarId(null); setShowDashboard(true);
+    }
+  }
+
+  async function newCalendar() {
+    // Check for duplicate
+    if (clientName.trim()) {
+      const existing = allCalendars.find(c =>
+        c.client_name === clientName && c.month === month && c.year === year
+      );
+      if (existing) {
+        if (window.confirm(`A calendar for ${clientName} — ${MONTHS[month]} ${year} already exists. Open it?`)) {
+          openCalendar(existing);
+        }
+        return;
+      }
+    }
+    setCurrentCalendarId(null);
+    setClientName(""); setSelectedDays([]); setPosts({});
+    setMonth(today.getMonth()); setYear(today.getFullYear());
+    setPostsPerPage(3); setStep(1); setShowDashboard(false);
   }
 
   const stepLabels = ["Setup", "Pick Days", "Content", "Preview"];
+
+  if (authLoading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "'Helvetica Neue', Arial, sans-serif", background: "#1a1a2e", color: "#D7FA06", fontSize: 16, fontWeight: 700, letterSpacing: "0.08em" }}>LOADING...</div>;
+
+  if (!user) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#1a1a2e", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
+      <div style={{ background: "white", borderRadius: 16, padding: 40, width: 360, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
+        <div style={{ marginBottom: 28, textAlign: "center" }}>
+          <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: "0.08em", color: "#1a1a2e" }}>SMM CALENDAR CREATOR</div>
+          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
+        </div>
+        <div style={{ display: "flex", gap: 0, marginBottom: 24, border: "1.5px solid #e0e0e0", borderRadius: 8, overflow: "hidden" }}>
+          <button onClick={() => setAuthMode("login")} style={{ flex: 1, padding: "9px 0", background: authMode === "login" ? "#1a1a2e" : "white", color: authMode === "login" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Log In</button>
+          <button onClick={() => setAuthMode("signup")} style={{ flex: 1, padding: "9px 0", background: authMode === "signup" ? "#1a1a2e" : "white", color: authMode === "signup" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Sign Up</button>
+        </div>
+        <input type="email" placeholder="Email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 10, outline: "none", boxSizing: "border-box" }} />
+        <input type="password" placeholder="Password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && (authMode === "login" ? signIn() : signUp())} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 16, outline: "none", boxSizing: "border-box" }} />
+        {authError && <div style={{ fontSize: 12, color: authError.includes("Check") ? "#22aa66" : "#E8001C", marginBottom: 12, textAlign: "center" }}>{authError}</div>}
+        <button onClick={authMode === "login" ? signIn : signUp} disabled={authBusy} style={{ width: "100%", padding: "12px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer", letterSpacing: "0.06em" }}>
+          {authBusy ? "..." : authMode === "login" ? "LOG IN" : "CREATE ACCOUNT"}
+        </button>
+      </div>
+    </div>
+  );
+
+  if (showDashboard) return (
+    <div style={{ minHeight: "100vh", background: "#f4f4f0", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
+      <div style={{ background: "#1a1a2e", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em" }}>SMM CALENDAR CREATOR</div>
+          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ color: "#888", fontSize: 12 }}>{user.email}</span>
+          <button onClick={signOut} style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>Sign out</button>
+        </div>
+      </div>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>My Calendars</h1>
+          <button onClick={newCalendar} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ New Calendar</button>
+        </div>
+        {allCalendars.length === 0 && (
+          <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
+            <div style={{ fontSize: 40, marginBottom: 16 }}>📅</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No calendars yet</div>
+            <div style={{ fontSize: 13 }}>Hit "+ New Calendar" to get started</div>
+          </div>
+        )}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+          {allCalendars.map(cal => (
+            <div key={cal.id} style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
+              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{cal.client_name}</div>
+              <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>{MONTHS[cal.month]} {cal.year}</div>
+              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 14 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={e => { e.stopPropagation(); openCalendar(cal); }} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", minHeight: "100vh", background: "#f4f4f0" }}>
@@ -519,33 +685,33 @@ export default function App() {
           })}
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {step === 4 && <button onClick={exportPDF} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px" }}>↓ Export PDF</button>}
+        {step === 4 && <button onClick={exportPDF} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px" }}>↓ Export PDF</button>}
           <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
           <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
           <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
-          <button onClick={() => setShowDrafts(s => !s)} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>📂 Drafts</button>
-          {clientName && <button onClick={saveDraft} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
+          <button onClick={() => { setShowDashboard(true); }} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🗂 My Calendars</button>
+          {currentCalendarId && <button onClick={() => { loadDraftHistory(); setShowDraftHistory(true); }} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🕓 History</button>}
+          {clientName && <button onClick={() => saveDraft()} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
+          {user && <button onClick={signOut} style={{ background: "rgba(255,255,255,0.06)", color: "#888", border: "none", padding: "7px 12px", borderRadius: 7, fontSize: 11, cursor: "pointer" }}>Sign out</button>}
         </div>
       </nav>
-      {showDrafts && (
+      {showDraftHistory && (
         <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}
-          onClick={e => e.target === e.currentTarget && setShowDrafts(false)}>
-          <div style={{ background: "white", width: 340, height: "100vh", overflowY: "auto", padding: 24, boxShadow: "-4px 0 24px rgba(0,0,0,0.15)" }}>
+          onClick={e => e.target === e.currentTarget && setShowDraftHistory(false)}>
+          <div style={{ background: "white", width: 360, height: "100vh", overflowY: "auto", padding: 24, boxShadow: "-4px 0 24px rgba(0,0,0,0.15)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <div style={{ fontWeight: 800, fontSize: 16 }}>Saved Drafts</div>
-              <button onClick={() => setShowDrafts(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+              <div style={{ fontWeight: 800, fontSize: 16 }}>Draft History</div>
+              <button onClick={() => setShowDraftHistory(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
             </div>
-            {Object.keys(drafts).length === 0 && (
-              <div style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "40px 0" }}>No saved drafts yet.<br/>Hit 💾 Save to save your work.</div>
+            <div style={{ fontSize: 12, color: "#aaa", marginBottom: 16 }}>Last 20 saves for this calendar. Click any to restore.</div>
+            {draftHistory.length === 0 && (
+              <div style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "40px 0" }}>No saves yet for this calendar.</div>
             )}
-            {Object.keys(drafts).map(key => (
-              <div key={key} style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 3 }}>{key}</div>
-                <div style={{ fontSize: 11, color: "#aaa", marginBottom: 10 }}>Saved {drafts[key].savedAt}</div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => loadDraft(key)} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 6, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Load</button>
-                  <button onClick={() => deleteDraft(key)} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 6, padding: "7px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
-                </div>
+            {draftHistory.map(d => (
+              <div key={d.id} style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 2 }}>{d.label}</div>
+                <div style={{ fontSize: 11, color: "#aaa", marginBottom: 10 }}>{new Date(d.saved_at).toLocaleString()}</div>
+                <button onClick={() => restoreDraft(d)} style={{ width: "100%", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 6, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Restore this version</button>
               </div>
             ))}
           </div>
