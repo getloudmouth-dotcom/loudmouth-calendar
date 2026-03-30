@@ -1503,7 +1503,7 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport }) {
             >
               {post?.imageUrls?.[0] ? (
                 <>
-                  <img src={post.imageUrls[0]} alt="" style={{ position: "absolute", width: `${(post.scale??1)*100}%`, height: `${(post.scale??1)*100}%`, objectFit: "cover", left: `${(1-(post.scale??1))*(post.cropX??50)}%`, top: `${(1-(post.scale??1))*(post.cropY??50)}%`, display: "block", pointerEvents: "none" }} />
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${post.imageUrls[0]})`, backgroundSize: (post.scale ?? 1) <= 1.05 ? "cover" : `${(post.scale ?? 1) * 100}%`, backgroundPosition: `${post.cropX ?? 50}% ${post.cropY ?? 50}%`, backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
                   {/* Date label on hover */}
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.55)", color: "white", fontSize: 7, padding: "2px 3px", textAlign: "center", fontWeight: 700, opacity: isTarget ? 1 : 0, transition: "opacity 0.15s" }}>
                     {formatDate(post.day ? new Date().getMonth() : 0, post.day)}
@@ -1665,12 +1665,16 @@ function PostCard({ post, month, year, onUpdate, isExporting }) {
               const leftPct = stackIdx * spread;
               const topPct = stackIdx * spread;
               return (
-                <img key={i} src={url} alt="" style={{
+                <div key={i} style={{
                   position: "absolute",
                   top: `${topPct}%`,
                   left: `${leftPct}%`,
                   width: `${cardW}%`,
-                  aspectRatio: "4/5", objectFit: "cover", borderRadius: 4,
+                  aspectRatio: "4/5",
+                  backgroundImage: `url(${url})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  borderRadius: 4,
                   boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   zIndex: total - stackIdx,
                   pointerEvents: "none",
