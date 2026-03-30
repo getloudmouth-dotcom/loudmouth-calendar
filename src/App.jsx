@@ -501,7 +501,10 @@ export default function App() {
 
       {/* NAV */}
       <nav className="no-print" style={{ background: "#1a1a2e", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
-        <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 17, letterSpacing: "0.12em" }}>LOUDMOUTH</span>
+      <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start" }}>
+      <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16.5, letterSpacing: "0.06em" }}>SMM CALENDAR CREATOR</span>
+      <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em" }}>by <span style={{ letterSpacing: "0.1em" }}>LOUDMOUTH</span> CREATIVE</span>
+        </div>
         <div style={{ display: "flex", gap: 6 }}>
           {stepLabels.map((label, i) => {
             const s = i + 1;
