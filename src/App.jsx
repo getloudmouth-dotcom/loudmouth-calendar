@@ -190,6 +190,10 @@ export default function App() {
   const isUndoingRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [profileInput, setProfileInput] = useState("");
+  const [editingProfile, setEditingProfile] = useState(false);
 
   useEffect(() => {
     document.body.style.background = "#f4f4f0";
@@ -456,7 +460,7 @@ export default function App() {
     // Inject CSS to hide UI-only elements and inject exporting class
     const style = document.createElement("style");
     style.id = "pdf-export-style";
-    style.textContent = `.no-print { display: none !important; } .no-export { display: none !important; } .feed-header { justify-content: center !important; } .feed-label { font-size: 11px !important; }`;
+    style.textContent = `.no-print { display: none !important; } .no-export { display: none !important; } .feed-header { justify-content: center !important; } .feed-label { font-size: 11px !important; } @keyframes spin { from { stroke-dashoffset: 34.5; transform: rotate(0deg); } to { stroke-dashoffset: 0; transform: rotate(360deg); } }`;
     document.head.appendChild(style);
     setExporting(true);
     // Wait for React to re-render with exporting=true
@@ -485,11 +489,21 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
-      if (session?.user) loadAllCalendars();
+      if (session?.user) {
+        const name = session.user.user_metadata?.display_name || "";
+        setProfileName(name);
+        if (!name) setShowProfileSetup(true);
+        loadAllCalendars();
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) loadAllCalendars();
+      if (session?.user) {
+        const name = session.user.user_metadata?.display_name || "";
+        setProfileName(name);
+        if (!name) setShowProfileSetup(true);
+        loadAllCalendars();
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -518,6 +532,17 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
     if (error) setAuthError(error.message);
     else setAuthError("Password reset email sent! Check your inbox.");
     setAuthBusy(false);
+  }
+
+  async function saveProfile() {
+    const name = profileInput.trim();
+    if (!name) return;
+    const { error } = await supabase.auth.updateUser({ data: { display_name: name } });
+    if (error) return alert("Failed to save: " + error.message);
+    setProfileName(name);
+    setShowProfileSetup(false);
+    setEditingProfile(false);
+    setProfileInput("");
   }
 
   async function signOut() {
@@ -564,7 +589,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
     // Upsert the calendar record
     const { data: calData, error: calErr } = await supabase.from("calendars").upsert({
       user_id: user.id, client_name: clientName, month, year,
-      posts_per_page: postsPerPage, builder_name: builderName,
+      posts_per_page: postsPerPage, builder_name: profileName,
       selected_days: selectedDays, updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,client_name,month,year" }).select().single();
     if (calErr) return alert("Save failed: " + calErr.message);
@@ -643,6 +668,27 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
     </div>
   );
 
+  if (showProfileSetup) return (
+    <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
+      <div style={{ background: "white", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
+        <div style={{ color: "#D7FA06", background: "#1a1a2e", display: "inline-block", padding: "4px 12px", borderRadius: 20, fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", marginBottom: 20 }}>LOUDMOUTH CREATIVE</div>
+        <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111", marginBottom: 6 }}>One quick thing.</h2>
+        <p style={{ fontSize: 13, color: "#888", marginBottom: 24 }}>What's your name? This shows up in the calendar footer and on your account.</p>
+        <input
+          autoFocus
+          value={profileInput}
+          onChange={e => setProfileInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && saveProfile()}
+          placeholder="e.g. Julio Castillo"
+          style={{ width: "100%", padding: "11px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16 }}
+        />
+        <button onClick={saveProfile} disabled={!profileInput.trim()} style={{ width: "100%", padding: "12px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: profileInput.trim() ? "pointer" : "default", opacity: profileInput.trim() ? 1 : 0.4, letterSpacing: "0.04em" }}>
+          Let's go →
+        </button>
+      </div>
+    </div>
+  );
+
   if (showDashboard) return (
     <div style={{ minHeight: "100vh", background: "#f4f4f0", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "#1a1a2e", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -650,10 +696,25 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
           <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em" }}>SMM CALENDAR CREATOR</div>
           <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ color: "#888", fontSize: 12 }}>{user.email}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>{profileName || user.email}</span>
+          <button onClick={() => { setProfileInput(profileName); setEditingProfile(true); }} style={{ background: "rgba(255,255,255,0.08)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>Edit Profile</button>
           <button onClick={signOut} style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>Sign out</button>
         </div>
+        {editingProfile && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+            onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
+            <div style={{ background: "white", borderRadius: 14, width: 360, padding: 28, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+              <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Edit Profile</div>
+              <div style={{ fontSize: 12, color: "#aaa", marginBottom: 18 }}>This name appears in calendar footers and your account.</div>
+              <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..." style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16 }} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
+                <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
@@ -689,7 +750,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
 
       {/* NAV */}
       <nav className="no-print" style={{ background: "#1a1a2e", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
-      <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start" }}>
+      <div onClick={() => setShowDashboard(true)} style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start", flexShrink: 0, cursor: "pointer" }}>
       <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16.5, letterSpacing: "0.06em" }}>SMM CALENDAR CREATOR</span>
       <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em" }}>by <span style={{ letterSpacing: "0.1em" }}>LOUDMOUTH</span> CREATIVE</span>
         </div>
@@ -707,7 +768,22 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
           })}
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        {step === 4 && <button onClick={exportPDF} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px" }}>↓ Export PDF</button>}
+        {step === 4 && (
+          <button onClick={exportPDF} disabled={exporting} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px", opacity: exporting ? 0.7 : 1, cursor: exporting ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, minWidth: 130, justifyContent: "center" }}>
+            {exporting ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
+                  <circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="2" />
+                  <circle cx="7" cy="7" r="5.5" fill="none" stroke="#111" strokeWidth="2"
+                    strokeDasharray="34.5" strokeDashoffset="34.5"
+                    style={{ transformOrigin: "center", animation: "spin 1.2s linear infinite" }}
+                  />
+                </svg>
+                Exporting...
+              </>
+            ) : "↓ Export PDF"}
+          </button>
+        )}
           <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
           <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
           <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
@@ -824,48 +900,8 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
                     </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 20, maxWidth: 520 }}>
-                  <label style={labelStyle}>Built by</label>
-                  {!addingBuilder ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <select value={builderName} onChange={e => { if (e.target.value === "__add__") setAddingBuilder(true); else setBuilderName(e.target.value); }} style={inputStyle}>
-                        <option value="">— Select your name —</option>
-                        {builders.map(b => <option key={b} value={b}>{b}</option>)}
-                        <option value="__add__">+ Add name...</option>
-                      </select>
-                      <button onClick={() => setEditingBuilders(true)} style={{ background: "none", border: "none", fontSize: 11, color: "#aaa", cursor: "pointer", textAlign: "left", padding: 0, textDecoration: "underline" }}>Edit names</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <input autoFocus value={newBuilderInput} onChange={e => setNewBuilderInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { const n = newBuilderInput.trim(); if (!n) return; setBuilders(prev => { const next = [...prev, n]; localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); setBuilderName(n); setNewBuilderInput(""); setAddingBuilder(false); }}} placeholder="Your name..." style={inputStyle} />
-                      <button onClick={() => { const n = newBuilderInput.trim(); if (!n) return; setBuilders(prev => { const next = [...prev, n]; localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); setBuilderName(n); setNewBuilderInput(""); setAddingBuilder(false); }} style={{ ...primaryBtn, marginTop: 0, padding: "9px 18px", whiteSpace: "nowrap", fontSize: 13 }}>Add</button>
-                      <button onClick={() => { setAddingBuilder(false); setNewBuilderInput(""); }} style={{ ...secondaryBtn, padding: "9px 14px" }}>Cancel</button>
-                    </div>
-                  )}
-                  {editingBuilders && (
-                    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-                      onClick={e => e.target === e.currentTarget && setEditingBuilders(false)}>
-                      <div style={{ background: "white", borderRadius: 14, width: 340, padding: 24, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                          <div style={{ fontWeight: 800, fontSize: 16 }}>Edit Names</div>
-                          <button onClick={() => setEditingBuilders(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto" }}>
-                          {builders.map(b => (
-                            <div key={b} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#f8f8f8", borderRadius: 8, border: "1px solid #eee" }}>
-                              <span style={{ flex: 1, fontSize: 13 }}>{b}</span>
-                              <button onClick={() => { const n = prompt("Rename:", b); if (!n || n.trim() === b) return; setBuilders(prev => { const next = prev.map(x => x === b ? n.trim() : x); localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); if (builderName === b) setBuilderName(n.trim()); }} style={{ background: "#f0f0f0", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#555", fontWeight: 600 }}>Rename</button>
-                              <button onClick={() => { if (!window.confirm(`Delete "${b}"?`)) return; setBuilders(prev => { const next = prev.filter(x => x !== b); localStorage.setItem("lm_builders", JSON.stringify(next)); return next; }); if (builderName === b) setBuilderName(""); }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", color: "#ccc" }}>✕</button>
-                            </div>
-                          ))}
-                        </div>
-                        <button onClick={() => setEditingBuilders(false)} style={{ ...primaryBtn, width: "100%", marginTop: 16, padding: "10px 0", textAlign: "center" }}>Done</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
                 <button onClick={() => setStep(2)} disabled={!clientName.trim()} style={{ ...primaryBtn, marginTop: 24, opacity: clientName.trim() ? 1 : 0.4 }}>
-                  Next: Pick Posting Days →
+                  Next: Pick Posting Days &#8594;
                 </button>
               </div>
             )}
@@ -1132,7 +1168,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
             onBatchImport={handleBatchImport}
             postsPerPage={postsPerPage}
             exporting={exporting}
-            builderName={builderName}
+            builderName={profileName}
           />
           ))}
         </div>
