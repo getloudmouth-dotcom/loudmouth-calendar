@@ -671,9 +671,12 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
   if (showProfileSetup) return (
     <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
-        <div style={{ color: "#D7FA06", background: "#1a1a2e", display: "inline-block", padding: "4px 12px", borderRadius: 20, fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", marginBottom: 20 }}>LOUDMOUTH CREATIVE</div>
-        <h2 style={{ fontSize: 24, fontWeight: 800, color: "#111", marginBottom: 6 }}>One quick thing.</h2>
-        <p style={{ fontSize: 13, color: "#888", marginBottom: 24 }}>What's your name? This shows up in the calendar footer and on your account.</p>
+      <div style={{ marginBottom: 24, textAlign: "center" }}>
+          <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: "0.08em", color: "#1a1a2e" }}>SMM CALENDAR CREATOR</div>
+          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
+          </div>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 6 }}>One quick thing.</h2>
+        <p style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>What's your name? This shows up in the calendar footer and on your account.</p>
         <input
           autoFocus
           value={profileInput}
@@ -749,12 +752,12 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
     <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", minHeight: "100vh", background: "#f4f4f0" }}>
 
       {/* NAV */}
-      <nav className="no-print" style={{ background: "#1a1a2e", padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
-      <div onClick={() => setShowDashboard(true)} style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start", flexShrink: 0, cursor: "pointer" }}>
-      <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16.5, letterSpacing: "0.06em" }}>SMM CALENDAR CREATOR</span>
-      <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em" }}>by <span style={{ letterSpacing: "0.1em" }}>LOUDMOUTH</span> CREATIVE</span>
+      <nav className="no-print" style={{ background: "#1a1a2e", padding: "12px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, gap: 24 }}>
+        <div onClick={() => setShowDashboard(true)} style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start", flexShrink: 0, cursor: "pointer" }}>
+          <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16.5, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</span>
+          <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em" }}>by LOUDMOUTH CREATIVE</span>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           {stepLabels.map((label, i) => {
             const s = i + 1;
             return (
@@ -762,35 +765,40 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
                 background: step === s ? "#D7FA06" : "rgba(255,255,255,0.07)",
                 color: step === s ? "#111" : "#aaa",
                 border: "none", padding: "6px 16px", borderRadius: 20,
-                fontSize: 12, cursor: "pointer", fontWeight: 700, transition: "all 0.15s",
+                fontSize: 12, cursor: "pointer", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap",
               }}>{s}. {label}</button>
             );
           })}
         </div>
-        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-        {step === 4 && (
-          <button onClick={exportPDF} disabled={exporting} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px", opacity: exporting ? 0.7 : 1, cursor: exporting ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, minWidth: 130, justifyContent: "center" }}>
-            {exporting ? (
-              <>
-                <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
-                  <circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="2" />
-                  <circle cx="7" cy="7" r="5.5" fill="none" stroke="#111" strokeWidth="2"
-                    strokeDasharray="34.5" strokeDashoffset="34.5"
-                    style={{ transformOrigin: "center", animation: "spin 1.2s linear infinite" }}
-                  />
-                </svg>
-                Exporting...
-              </>
-            ) : "↓ Export PDF"}
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+          {step === 4 && (
+            <button onClick={exportPDF} disabled={exporting} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px", opacity: exporting ? 0.7 : 1, cursor: exporting ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, minWidth: 130, justifyContent: "center" }}>
+              {exporting ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
+                    <circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="2" />
+                    <circle cx="7" cy="7" r="5.5" fill="none" stroke="#111" strokeWidth="2"
+                      strokeDasharray="34.5" strokeDashoffset="34.5"
+                      style={{ transformOrigin: "center", animation: "spin 1.2s linear infinite" }}
+                    />
+                  </svg>
+                  Exporting...
+                </>
+              ) : "↓ Export PDF"}
+            </button>
+          )}
           <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
           <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
           <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
-          <button onClick={() => { setShowDashboard(true); }} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🗂 My Calendars</button>
-          {currentCalendarId && <button onClick={() => { loadDraftHistory(); setShowDraftHistory(true); }} style={{ background: "rgba(255,255,255,0.1)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>🕓 History</button>}
-          {clientName && <button onClick={() => saveDraft()} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
-          {user && <button onClick={signOut} style={{ background: "rgba(255,255,255,0.06)", color: "#888", border: "none", padding: "7px 12px", borderRadius: 7, fontSize: 11, cursor: "pointer" }}>Sign out</button>}
+          {clientName && <button onClick={() => saveDraft()} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 16px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
+          <NavProfileMenu
+            profileName={profileName}
+            currentCalendarId={currentCalendarId}
+            onMyCalendars={() => setShowDashboard(true)}
+            onHistory={() => { loadDraftHistory(); setShowDraftHistory(true); }}
+            onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
+            onSignOut={signOut}
+          />
         </div>
       </nav>
       {showDraftHistory && (
@@ -1555,7 +1563,36 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport }) {
     </div>
   );
 }
-
+function NavProfileMenu({ profileName, currentCalendarId, onMyCalendars, onHistory, onEditProfile, onSignOut }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 7, padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "white" }}>
+        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#D7FA06", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#111", flexShrink: 0 }}>
+          {profileName ? profileName[0].toUpperCase() : "?"}
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#ccc", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileName}</span>
+        <span style={{ fontSize: 9, color: "#666" }}>▾</span>
+      </button>
+      {open && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={() => setOpen(false)} />
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "white", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", minWidth: 180, overflow: "hidden", zIndex: 200 }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{profileName}</div>
+            </div>
+            <button onClick={() => { setOpen(false); onMyCalendars(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#333", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>🗂 My Calendars</button>
+            {currentCalendarId && <button onClick={() => { setOpen(false); onHistory(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#333", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>🕓 Version History</button>}
+            <button onClick={() => { setOpen(false); onEditProfile(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#333", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>✏️ Edit Profile</button>
+            <div style={{ borderTop: "1px solid #f0f0f0" }}>
+              <button onClick={() => { setOpen(false); onSignOut(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#E8001C", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>Sign out</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 function PostCard({ post, month, year, onUpdate, isExporting }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [reframing, setReframing] = useState(false);
