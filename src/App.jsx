@@ -190,6 +190,7 @@ export default function App() {
   const isUndoingRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
   const [profileName, setProfileName] = useState("");
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [profileInput, setProfileInput] = useState("");
@@ -468,18 +469,22 @@ export default function App() {
     try {
       const pages = document.querySelectorAll(".cal-page");
       if (!pages.length) return;
+      const total = pages.length;
+      setExportProgress({ current: 0, total });
       const w = pages[0].offsetWidth;
       const h = pages[0].offsetHeight;
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
+        setExportProgress({ current: i + 1, total });
         const canvas = await html2canvas(pages[i], { scale: 3, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
-const imgData = canvas.toDataURL("image/png");
-if (i > 0) pdf.addPage([w, h], "landscape");
-pdf.addImage(imgData, "PNG", 0, 0, w, h);
+        const imgData = canvas.toDataURL("image/png");
+        if (i > 0) pdf.addPage([w, h], "landscape");
+        pdf.addImage(imgData, "PNG", 0, 0, w, h);
       }
       pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
     } finally {
       setExporting(false);
+      setExportProgress({ current: 0, total: 0 });
       document.head.removeChild(style);
     }
   }
@@ -708,6 +713,25 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
           onSignOut={signOut}
         />
       </div>
+      {exporting && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
+          <svg width="48" height="48" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
+            <circle cx="24" cy="24" r="20" fill="none" stroke="#D7FA06" strokeWidth="4"
+              strokeDasharray="125.6"
+              strokeDashoffset={exportProgress.total > 0 ? 125.6 * (1 - exportProgress.current / exportProgress.total) : 100}
+              strokeLinecap="round"
+              style={{ transformOrigin: "center", transform: "rotate(-90deg)", transition: "stroke-dashoffset 0.4s ease" }}
+            />
+          </svg>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "white", fontWeight: 700, fontSize: 15, letterSpacing: "0.04em", marginBottom: 6 }}>
+              {exportProgress.total > 1 ? `Rendering page ${exportProgress.current} of ${exportProgress.total}...` : "Building your PDF..."}
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>This may take a few seconds</div>
+          </div>
+        </div>
+      )}
       {editingProfile && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
@@ -774,26 +798,10 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
           })}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-          {step === 4 && (
-            <button onClick={exportPDF} disabled={exporting} style={{ ...primaryBtn, fontSize: 12, padding: "8px 18px", opacity: exporting ? 0.7 : 1, cursor: exporting ? "default" : "pointer", display: "flex", alignItems: "center", gap: 8, minWidth: 130, justifyContent: "center" }}>
-              {exporting ? (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
-                    <circle cx="7" cy="7" r="5.5" fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="2" />
-                    <circle cx="7" cy="7" r="5.5" fill="none" stroke="#111" strokeWidth="2"
-                      strokeDasharray="34.5" strokeDashoffset="34.5"
-                      style={{ transformOrigin: "center", animation: "spin 1.2s linear infinite" }}
-                    />
-                  </svg>
-                  Exporting...
-                </>
-              ) : "↓ Export PDF"}
-            </button>
-          )}
-          <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
+        <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
           <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
           <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
-          {clientName && <button onClick={() => saveDraft()} style={{ background: "#D7FA06", color: "#111", border: "none", padding: "7px 16px", borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💾 Save</button>}
+          {clientName && <SaveMenu onSave={() => saveDraft()} onExport={exportPDF} showExport={step === 4} />}
           <NavProfileMenu
             profileName={profileName}
             currentCalendarId={currentCalendarId}
@@ -804,6 +812,25 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
           />
         </div>
         </nav>
+        {exporting && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
+          <svg width="48" height="48" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
+            <circle cx="24" cy="24" r="20" fill="none" stroke="#D7FA06" strokeWidth="4"
+              strokeDasharray="125.6"
+              strokeDashoffset={exportProgress.total > 0 ? 125.6 * (1 - exportProgress.current / exportProgress.total) : 100}
+              strokeLinecap="round"
+              style={{ transformOrigin: "center", transform: "rotate(-90deg)", transition: "stroke-dashoffset 0.4s ease" }}
+            />
+          </svg>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "white", fontWeight: 700, fontSize: 15, letterSpacing: "0.04em", marginBottom: 6 }}>
+              {exportProgress.total > 1 ? `Rendering page ${exportProgress.current} of ${exportProgress.total}...` : "Building your PDF..."}
+            </div>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>This may take a few seconds</div>
+          </div>
+        </div>
+      )}
       {editingProfile && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
@@ -1580,6 +1607,27 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport }) {
     </div>
   );
 }
+function SaveMenu({ onSave, onExport, showExport }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: "#D7FA06", color: "#111", border: "none", borderRadius: 7, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+        💾 Save
+        <span style={{ fontSize: 9, display: "inline-block", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▾</span>
+      </button>
+      {open && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={() => setOpen(false)} />
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "white", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.18)", minWidth: 170, overflow: "hidden", zIndex: 200 }}>
+            <NavMenuItem onClick={() => { setOpen(false); onSave(); }}>💾 Save Draft</NavMenuItem>
+            {showExport && <NavMenuItem onClick={() => { setOpen(false); onExport(); }}>↓ Export PDF</NavMenuItem>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function NavMenuItem({ onClick, color = "#333", children }) {
   const [hovered, setHovered] = useState(false);
   return (
