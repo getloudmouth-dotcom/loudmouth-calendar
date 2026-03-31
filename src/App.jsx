@@ -645,7 +645,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
   if (!user) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#1a1a2e", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, width: 360, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
-        <div style={{ marginBottom: 28, textAlign: "center" }}>
+      <div style={{ marginBottom: 28 }}>
           <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: "0.08em", color: "#1a1a2e" }}>SMM CALENDAR CREATOR</div>
           <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
         </div>
@@ -671,10 +671,10 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
   if (showProfileSetup) return (
     <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
-      <div style={{ marginBottom: 24, textAlign: "center" }}>
+      <div style={{ marginBottom: 24 }}>
           <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: "0.08em", color: "#1a1a2e" }}>SMM CALENDAR CREATOR</div>
           <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
-          </div>
+        </div>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 6 }}>One quick thing.</h2>
         <p style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>What's your name? This shows up in the calendar footer and on your account.</p>
         <input
@@ -695,30 +695,33 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
   if (showDashboard) return (
     <div style={{ minHeight: "100vh", background: "#f4f4f0", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "#1a1a2e", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
           <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em" }}>SMM CALENDAR CREATOR</div>
           <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 12 }}>{profileName || user.email}</span>
-          <button onClick={() => { setProfileInput(profileName); setEditingProfile(true); }} style={{ background: "rgba(255,255,255,0.08)", color: "#ccc", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>Edit Profile</button>
-          <button onClick={signOut} style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", padding: "7px 14px", borderRadius: 7, fontSize: 12, cursor: "pointer" }}>Sign out</button>
-        </div>
-        {editingProfile && (
-          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-            onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
-            <div style={{ background: "white", borderRadius: 14, width: 360, padding: 28, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
-              <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Edit Profile</div>
-              <div style={{ fontSize: 12, color: "#aaa", marginBottom: 18 }}>This name appears in calendar footers and your account.</div>
-              <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..." style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16 }} />
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
-                <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
-              </div>
+        <NavProfileMenu
+          profileName={profileName}
+          currentCalendarId={null}
+          onMyCalendars={() => {}}
+          onHistory={() => {}}
+          onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
+          onSignOut={signOut}
+        />
+      </div>
+      {editingProfile && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
+          <div style={{ background: "white", borderRadius: 14, width: 360, padding: 28, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Edit Profile</div>
+            <div style={{ fontSize: 12, color: "#aaa", marginBottom: 18 }}>This name appears in calendar footers and your account.</div>
+            <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..." style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16 }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
+              <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       <div style={{ padding: "40px 60px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>My Calendars</h1>
@@ -800,7 +803,21 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
             onSignOut={signOut}
           />
         </div>
-      </nav>
+        </nav>
+      {editingProfile && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
+          <div style={{ background: "white", borderRadius: 14, width: 360, padding: 28, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Edit Profile</div>
+            <div style={{ fontSize: 12, color: "#aaa", marginBottom: 18 }}>This name appears in calendar footers and your account.</div>
+            <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..." style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16 }} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
+              <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showDraftHistory && (
         <div style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "flex-end" }}
           onClick={e => e.target === e.currentTarget && setShowDraftHistory(false)}>
@@ -1563,29 +1580,41 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport }) {
     </div>
   );
 }
+function NavMenuItem({ onClick, color = "#333", children }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ width: "100%", padding: "10px 16px", background: hovered ? "#f7f7f7" : "none", border: "none", textAlign: "left", fontSize: 13, color, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "background 0.12s", boxShadow: hovered ? "inset 0 0 0 1px rgba(0,0,0,0.04)" : "none" }}
+    >{children}</button>
+  );
+}
+
 function NavProfileMenu({ profileName, currentCalendarId, onMyCalendars, onHistory, onEditProfile, onSignOut }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ position: "relative" }}>
-      <button onClick={() => setOpen(o => !o)} style={{ background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 7, padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "white" }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: open ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.1)", border: "none", borderRadius: 7, padding: "6px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, transition: "background 0.15s" }}>
         <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#D7FA06", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#111", flexShrink: 0 }}>
           {profileName ? profileName[0].toUpperCase() : "?"}
         </div>
         <span style={{ fontSize: 12, fontWeight: 600, color: "#ccc", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profileName}</span>
-        <span style={{ fontSize: 9, color: "#666" }}>▾</span>
+        <span style={{ fontSize: 9, color: "#555", transition: "transform 0.15s", display: "inline-block", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}>▾</span>
       </button>
       {open && (
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={() => setOpen(false)} />
-          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "white", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.18)", minWidth: 180, overflow: "hidden", zIndex: 200 }}>
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "white", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.18)", minWidth: 190, overflow: "hidden", zIndex: 200 }}>
             <div style={{ padding: "12px 16px", borderBottom: "1px solid #f0f0f0" }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{profileName}</div>
             </div>
-            <button onClick={() => { setOpen(false); onMyCalendars(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#333", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>🗂 My Calendars</button>
-            {currentCalendarId && <button onClick={() => { setOpen(false); onHistory(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#333", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>🕓 Version History</button>}
-            <button onClick={() => { setOpen(false); onEditProfile(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#333", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>✏️ Edit Profile</button>
+            {currentCalendarId && <NavMenuItem onClick={() => { setOpen(false); onMyCalendars(); }}>🗂 My Calendars</NavMenuItem>}
+            {currentCalendarId && <NavMenuItem onClick={() => { setOpen(false); onHistory(); }}>🕓 Version History</NavMenuItem>}
+            <NavMenuItem onClick={() => { setOpen(false); onEditProfile(); }}>✏️ Edit Profile</NavMenuItem>
             <div style={{ borderTop: "1px solid #f0f0f0" }}>
-              <button onClick={() => { setOpen(false); onSignOut(); }} style={{ width: "100%", padding: "10px 16px", background: "none", border: "none", textAlign: "left", fontSize: 13, color: "#E8001C", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>Sign out</button>
+              <NavMenuItem onClick={() => { setOpen(false); onSignOut(); }} color="#E8001C">Sign out</NavMenuItem>
             </div>
           </div>
         </>
