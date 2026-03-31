@@ -645,9 +645,9 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
   if (!user) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#1a1a2e", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, width: 360, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
-      <div style={{ marginBottom: 28 }}>
-          <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: "0.08em", color: "#1a1a2e" }}>SMM CALENDAR CREATOR</div>
-          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
+      <div style={{ marginBottom: 28, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: "0.08em", color: "#1a1a2e", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</div>
+          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by LOUDMOUTH CREATIVE</div>
         </div>
         <div style={{ display: "flex", gap: 0, marginBottom: 24, border: "1.5px solid #e0e0e0", borderRadius: 8, overflow: "hidden" }}>
           <button onClick={() => setAuthMode("login")} style={{ flex: 1, padding: "9px 0", background: authMode === "login" ? "#1a1a2e" : "white", color: authMode === "login" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Log In</button>
@@ -671,9 +671,9 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
   if (showProfileSetup) return (
     <div style={{ minHeight: "100vh", background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, width: 380, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
-      <div style={{ marginBottom: 24 }}>
-          <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: "0.08em", color: "#1a1a2e" }}>SMM CALENDAR CREATOR</div>
-          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
+      <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: "0.08em", color: "#1a1a2e", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</div>
+          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by LOUDMOUTH CREATIVE</div>
         </div>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", marginBottom: 6 }}>One quick thing.</h2>
         <p style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>What's your name? This shows up in the calendar footer and on your account.</p>
@@ -695,9 +695,9 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
   if (showDashboard) return (
     <div style={{ minHeight: "100vh", background: "#f4f4f0", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "#1a1a2e", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
-          <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em" }}>SMM CALENDAR CREATOR</div>
-          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
+      <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, alignItems: "flex-start" }}>
+          <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</div>
+          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by LOUDMOUTH CREATIVE</div>
         </div>
         <NavProfileMenu
           profileName={profileName}
