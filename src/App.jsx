@@ -716,7 +716,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
           </div>
         )}
       </div>
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "40px 24px" }}>
+      <div style={{ padding: "40px 60px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>My Calendars</h1>
           <button onClick={newCalendar} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ New Calendar</button>
@@ -818,7 +818,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
 
       {/* STEPS 1–3 */}
       {step !== 4 && (
-        <div className="no-print" style={{ maxWidth: "none", margin: "0", padding: "36px 40px", display: "flex", gap: 32, alignItems: "flex-start" }}>
+        <div className="no-print" style={{ maxWidth: "none", margin: "0", padding: "36px 60px", display: "flex", gap: 48, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
 
             {/* STEP 1 */}
@@ -826,7 +826,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
               <div>
                 <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6 }}>Setup</h2>
                 <p style={{ color: "#999", fontSize: 14, marginBottom: 28 }}>Basic info before we build your calendar.</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 520 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 640 }}>
                   <div style={{ gridColumn: "1 / -1" }}>
                   <label style={labelStyle}>Client Name</label>
                     {!addingClient ? (
@@ -1094,7 +1094,7 @@ pdf.addImage(imgData, "PNG", 0, 0, w, h);
           </div>
 
           {/* RIGHT: sticky preview + drive panel */}
-          <div style={{ width: 320, flexShrink: 0, position: "sticky", top: 80, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ width: 420, flexShrink: 0, position: "sticky", top: 80, display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ fontSize: 10, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 10 }}>Live Preview</div>
             <div style={{ background: "white", border: "1px solid #e8e8e8", borderRadius: 12, padding: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #eee", paddingBottom: 10 }}>
