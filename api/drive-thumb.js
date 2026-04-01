@@ -1,10 +1,16 @@
 import sharp from "sharp";
 import { Redis } from "@upstash/redis";
+import { createClient } from "@supabase/supabase-js";
 
 const kv = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
 });
+
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  );
 
 export default async function handler(req, res) {
   const { fileId } = req.query;
@@ -14,23 +20,37 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing fileId or token" });
   }
 
-  const cacheKey = `thumb:${fileId}`;
-
-  // ── 1. Check KV cache ──
+  // ── 1. Check Supabase table (CDN URL) ──
   try {
-    const cached = await kv.get(cacheKey);
+    const { data } = await supabase
+      .from("thumbnail_cache")
+      .select("cdn_url")
+      .eq("file_id", fileId)
+      .single();
+
+    if (data?.cdn_url) {
+      res.setHeader("X-Cache", "CDN-HIT");
+      return res.status(200).json({ cdnUrl: data.cdn_url });
+    }
+  } catch (e) {
+    console.warn("Supabase lookup failed:", e.message);
+  }
+
+  // ── 2. Check Upstash KV (Phase 1 fallback) ──
+  try {
+    const cached = await kv.get(`thumb:${fileId}`);
     if (cached) {
       const buffer = Buffer.from(cached, "base64");
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("X-Cache", "HIT");
+      res.setHeader("X-Cache", "KV-HIT");
       res.setHeader("Cache-Control", "public, max-age=86400");
       return res.send(buffer);
     }
-  } catch (kvErr) {
-    console.warn("KV read failed, falling through:", kvErr.message);
+  } catch (e) {
+    console.warn("KV read failed:", e.message);
   }
 
-  // ── 2. Cache miss — fetch from Drive ──
+  // ── 3. Cache miss — fetch from Drive ──
   try {
     const driveRes = await fetch(
       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
@@ -50,18 +70,47 @@ export default async function handler(req, res) {
       .jpeg({ quality: 78 })
       .toBuffer();
 
-    // ── 3. Store in KV — 7 day TTL ──
+    // ── 4. Upload to Supabase Storage ──
+    let cdnUrl = null;
     try {
-      await kv.set(cacheKey, thumb.toString("base64"), { ex: 604800 });
-    } catch (kvErr) {
-      console.warn("KV write failed:", kvErr.message);
+      const path = `thumbs/${fileId}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("thumbnails")
+        .upload(path, thumb, {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from("thumbnails")
+          .getPublicUrl(path);
+        cdnUrl = urlData.publicUrl;
+
+        // Store mapping in table
+        await supabase.from("thumbnail_cache").upsert({
+          file_id: fileId,
+          cdn_url: cdnUrl,
+        });
+
+        // Also store in KV as base64 fallback
+        await kv.set(`thumb:${fileId}`, thumb.toString("base64"), { ex: 604800 });
+
+        res.setHeader("X-Cache", "MISS");
+        res.setHeader("Content-Type", "application/json");
+        return res.status(200).json({ cdnUrl });
+      }
+    } catch (e) {
+      console.warn("Supabase upload failed:", e.message);
     }
 
+    // ── 5. Supabase upload failed — serve blob directly ──
     res.setHeader("Content-Type", "image/jpeg");
     res.setHeader("X-Cache", "MISS");
     res.setHeader("Cache-Control", "public, max-age=86400");
-    res.send(thumb);
+    return res.send(thumb);
+
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: e.message });
   }
 }

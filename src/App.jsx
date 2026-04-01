@@ -1427,9 +1427,18 @@ function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle }) {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!r.ok) throw new Error("fetch failed");
-        const blob = await r.blob();
-        if (dead) return;
-        const url = await makeThumbnailUrl(blob);
+        const contentType = r.headers.get("content-type") || "";
+        let url;
+        if (contentType.includes("application/json")) {
+          // CDN URL — load directly, no blob conversion needed
+          const { cdnUrl } = await r.json();
+          url = cdnUrl;
+        } else {
+          // Blob fallback
+          const blob = await r.blob();
+          if (dead) return;
+          url = await makeThumbnailUrl(blob);
+        }
         if (dead || !url) return;
         _thumbCache.set(fileId, url);
         setSrc(url);
