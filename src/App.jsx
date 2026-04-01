@@ -573,20 +573,23 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
         setExportProgress({ current: i + 1, total });
-        // Capture link positions BEFORE html2canvas shifts scroll
-        const pageRect = pages[i].getBoundingClientRect();
+        // Compute link positions using offset traversal (viewport-independent)
+        function offsetRelativeTo(el, container) {
+          let x = 0, y = 0;
+          let cur = el;
+          while (cur && cur !== container) {
+            x += cur.offsetLeft;
+            y += cur.offsetTop;
+            cur = cur.offsetParent;
+          }
+          return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+        }
         const linkAnnotations = [];
         pages[i].querySelectorAll("[data-pdf-link]").forEach(el => {
           const href = el.getAttribute("data-pdf-link");
           if (!href || href === "#") return;
-          const r = el.getBoundingClientRect();
-          linkAnnotations.push({
-            x: r.left - pageRect.left,
-            y: r.top - pageRect.top,
-            w: r.width,
-            h: r.height,
-            url: href,
-          });
+          const pos = offsetRelativeTo(el, pages[i]);
+          linkAnnotations.push({ ...pos, url: href });
         });
         const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
         const imgData = canvas.toDataURL("image/jpeg", 0.85);
