@@ -1543,7 +1543,7 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
   useEffect(() => { loadFolder(currentFolder.id); }, [currentFolder.id]);
 
   const folders = files.filter(f => f.mimeType === "application/vnd.google-apps.folder");
-  const images = files.filter(f => f.mimeType.startsWith("image/"));
+  const images = files.filter(f => f.mimeType.startsWith("image/") || (linkPickMode && linkPickMode.active && f.mimeType.startsWith("video/")));
 
   function handleImageClick(e, f, idx) {
     if (linkPickMode && linkPickMode.active && linkPickMode.onPick) {
