@@ -1300,6 +1300,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                   onSwap={swapPostContent}
                   onBatchImport={handleBatchImport}
                   onDriveBatchImport={handleDriveBatchImport}
+                  driveUploadProgress={driveUploadProgress}
                 />
               </div>
             )}
@@ -1330,6 +1331,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
             onSwapPosts={swapPostContent}
             onBatchImport={handleBatchImport}
             onDriveBatchImport={handleDriveBatchImport}
+              driveUploadProgress={driveUploadProgress}
             postsPerPage={postsPerPage}
             exporting={exporting}
             builderName={profileName}
@@ -1898,7 +1900,7 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
   );
 }
 
-function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName }) {
+function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress }) {
   const [notes, setNotes] = useState("");
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
   return (
@@ -1929,7 +1931,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes..." style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "white", borderRadius: 4, padding: "2px 0" }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} />
+          <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} driveUploadProgress={driveUploadProgress} />
           </div>
         </div>
       </div>
@@ -1946,7 +1948,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
 }
 
 // ── Reorderable Feed Grid ──
-function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport }) {
+function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport, driveUploadProgress }) {
   const [dragSrc, setDragSrc] = useState(null); // { day, postIdx }
   const [hoverTarget, setHoverTarget] = useState(null);
   const [dropHighlight, setDropHighlight] = useState(false);
@@ -1960,11 +1962,19 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport }
 
   return (
     <div
-      style={{ border: `1.5px solid ${dropHighlight ? "#1a1a2e" : "#e8e8e8"}`, borderRadius: 10, padding: "12px 14px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box", background: dropHighlight ? "#f4f4ff" : "white", transition: "border-color 0.15s, background 0.15s" }}
+    style={{ border: `1.5px solid ${dropHighlight ? "#1a1a2e" : "#e8e8e8"}`, borderRadius: 10, padding: "12px 14px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box", background: dropHighlight ? "#f4f4ff" : "white", transition: "border-color 0.15s, background 0.15s", position: "relative" }}
       onDragOver={e => { const types = [...e.dataTransfer.types].map(t => t.toLowerCase()); if (types.includes("files") || types.includes("drivefileids")) { e.preventDefault(); setDropHighlight(true); } }}
       onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDropHighlight(false); }}
       onDrop={e => { e.preventDefault(); setDropHighlight(false); const raw = e.dataTransfer.getData("driveFileIds"); if (raw && onDriveBatchImport) { onDriveBatchImport(JSON.parse(raw)); } else if (e.dataTransfer.files.length && onBatchImport) { onBatchImport(e.dataTransfer.files); } }}
     >
+      {driveUploadProgress && driveUploadProgress.active && driveUploadProgress.day === null && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.88)", borderRadius: 10, zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <div style={{ width: 38, height: 38, border: "3.5px solid #e8e8e8", borderTop: "3.5px solid #1a1a2e", borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#888", letterSpacing: "0.06em" }}>
+            {driveUploadProgress.total > 1 ? `${driveUploadProgress.done} / ${driveUploadProgress.total} UPLOADING` : "UPLOADING..."}
+          </span>
+        </div>
+      )}
       <div className="feed-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
       <div className="feed-label" style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>Feed:</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
