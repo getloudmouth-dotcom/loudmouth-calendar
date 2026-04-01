@@ -169,7 +169,10 @@ export default function App() {
   const [selectedDays, setSelectedDays] = useState([]);
   const [posts, setPosts] = useState({});
   const [dragOver, setDragOver] = useState(null);
-  const [driveApiKey, setDriveApiKey] = useState(() => localStorage.getItem("lm_driveKey") || "");
+  const [driveToken, setDriveToken] = useState(null);
+const [driveOpen, setDriveOpen] = useState(false);
+const [drivePanelWidth, setDrivePanelWidth] = useState(300);
+const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0 });
   const [drafts, setDrafts] = useState([]);
   const [showDrafts, setShowDrafts] = useState(false);
   const [user, setUser] = useState(null);
@@ -200,6 +203,17 @@ export default function App() {
     document.body.style.background = "#f4f4f0";
     document.body.style.margin = "0";
   }, []);
+
+  useEffect(() => {
+    if (!driveOpen) return;
+    function handler(e) {
+      if (e.target.closest("[data-drive-panel]")) return;
+      if (e.target.closest("[data-drive-toggle]")) return;
+      setDriveOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [driveOpen]);
 
   useEffect(() => {
     if (isUndoingRef.current) return;
@@ -252,27 +266,89 @@ export default function App() {
     setMonth(today.getMonth()); setYear(today.getFullYear());
     setPostsPerPage(3); setStep(1);
   }
-  const [drivePicker, setDrivePicker] = useState(null); // { day, postIdx }
+  
   const [exporting, setExporting] = useState(false);
   const [editingClients, setEditingClients] = useState(false);
 
-  async function handleDriveFileDrop(day, postIdx, fileId) {
-    try {
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${driveApiKey}`);
-      if (!res.ok) throw new Error("Fetch failed — check API key or file visibility");
+  function connectDrive() {
+    if (!window.google?.accounts?.oauth2) {
+      return alert("Google auth not loaded yet — wait a second and try again.");
+    }
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: "988412963391-j36f4j6or67871i599o17ui2nai59pi9.apps.googleusercontent.com",
+      scope: "https://www.googleapis.com/auth/drive.readonly",
+      callback: (response) => {
+        if (response.access_token) {
+          setDriveToken(response.access_token);
+          setDriveOpen(true);
+        }
+      },
+    });
+    client.requestAccessToken();
+  }
+
+  async function fetchDriveUrls(fileInfos, onProgress) {
+    return Promise.all(fileInfos.map(async fi => {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fi.id}?alt=media`, { headers: { Authorization: `Bearer ${driveToken}` } });
+      if (!res.ok) throw new Error(`Fetch failed for ${fi.id}`);
       const blob = await res.blob();
-      const url = await uploadToCloudinary(blob);
+      const compressed = await compressToBlob(new File([blob], "drive-img.jpg", { type: blob.type }));
+      const url = await uploadToCloudinary(compressed);
+      if (onProgress) onProgress();
+      return url;
+    }));
+  }
+
+  async function handleDriveFileDrop(day, postIdx, fileId, driveLink = "") {
+    await handleMultiDriveFileDrop(day, postIdx, [{ id: fileId, link: driveLink }]);
+  }
+
+  async function handleMultiDriveFileDrop(day, postIdx, fileInfos) {
+    if (!driveToken || !fileInfos.length) return;
+    try {
+      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length });
+      const urls = await fetchDriveUrls(fileInfos, () => setDriveUploadProgress(p => ({ ...p, done: p.done + 1 })));
       setPosts(p => {
         const arr = [...(p[day] || [])];
         const post = { ...arr[postIdx] };
-        post.imageUrls = [...(post.imageUrls || []), url];
+        post.imageUrls = [...(post.imageUrls || []), ...urls];
         if (post.imageUrls.length > 1) post.contentType = "Carousel";
+        if (fileInfos[0].link && !post.url) post.url = fileInfos[0].link;
         arr[postIdx] = post;
         return { ...p, [day]: arr };
       });
-    } catch (e) {
-      alert("Couldn't load from Drive: " + e.message);
-    }
+    } catch (e) { alert("Drive drop failed: " + e.message); }
+    finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
+  }
+
+  async function handleDriveBatchImport(fileInfos) {
+    if (!driveToken || !fileInfos.length) return;
+    try {
+      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length });
+      const urls = await fetchDriveUrls(fileInfos, () => setDriveUploadProgress(p => ({ ...p, done: p.done + 1 })));
+      const newDays = [];
+      setPosts(p => {
+        const next = { ...p };
+        let queue = [...urls];
+        const days = [...selectedDays].sort((a, b) => a - b);
+        for (const day of days) {
+          if (!queue.length) break;
+          const arr = [...(next[day] || [])];
+          if (arr.length === 1 && !arr[0].imageUrls?.length) { arr[0] = { ...arr[0], imageUrls: [queue.shift()] }; next[day] = arr; }
+        }
+        if (queue.length > 0) {
+          const usedDays = new Set([...selectedDays, ...newDays]);
+          const totalDays = getDaysInMonth(year, month);
+          const lastDay = Math.max(...selectedDays, 0);
+          for (let d = lastDay + 1; d <= totalDays && queue.length > 0; d++) {
+            if (!usedDays.has(d)) { usedDays.add(d); newDays.push(d); next[d] = [{ ...newPost(), imageUrls: [queue.shift()] }]; }
+          }
+        }
+        return next;
+      });
+      if (newDays.length > 0) setSelectedDays(prev => [...new Set([...prev, ...newDays])]);
+    } catch (e) { alert("Drive batch import failed: " + e.message); }
+    finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -367,9 +443,12 @@ export default function App() {
     if (imageFiles.length === 0) return;
     const forceCarousel = imageFiles.length > 1;
     try {
+      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length });
       const urls = await Promise.all(imageFiles.map(async file => {
         const blob = await compressToBlob(file);
-        return await uploadToCloudinary(blob);
+        const url = await uploadToCloudinary(blob);
+        setDriveUploadProgress(p => ({ ...p, done: p.done + 1 }));
+        return url;
       }));
       setPosts(p => {
         const arr = [...(p[day] || [])];
@@ -384,6 +463,7 @@ export default function App() {
         return { ...p, [day]: arr };
       });
     } catch(e) { alert("Upload failed: " + e.message); }
+    finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
 
   function removeImageFromPost(day, postIdx, imgIdx) {
@@ -401,11 +481,18 @@ export default function App() {
     if (!imageFiles.length) return;
     let dataUrls;
     try {
+      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length });
       dataUrls = await Promise.all(imageFiles.map(async file => {
         const blob = await compressToBlob(file);
-        return await uploadToCloudinary(blob);
+        const url = await uploadToCloudinary(blob);
+        setDriveUploadProgress(p => ({ ...p, done: p.done + 1 }));
+        return url;
       }));
-    } catch(e) { alert("Upload failed: " + e.message); return; }
+    } catch(e) {
+      alert("Upload failed: " + e.message);
+      setDriveUploadProgress({ active: false, done: 0, total: 0 });
+      return;
+    }
     {
       const newDays = [];
       setPosts(p => {
@@ -442,6 +529,7 @@ export default function App() {
         setSelectedDays(prev => [...new Set([...prev, ...newDays])]);
       }
     }
+    setDriveUploadProgress({ active: false, done: 0, total: 0 });
   }
 
   function addNewClient() {
@@ -798,6 +886,7 @@ export default function App() {
           })}
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+        
         <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
           <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
           <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
@@ -812,6 +901,11 @@ export default function App() {
           />
         </div>
         </nav>
+        {driveUploadProgress.active && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, zIndex: 99998, background: "rgba(215,250,6,0.2)" }}>
+            <div style={{ height: "100%", background: "#D7FA06", width: driveUploadProgress.total > 0 ? `${(driveUploadProgress.done / driveUploadProgress.total) * 100}%` : "5%", transition: "width 0.35s ease", minWidth: "5%" }} />
+          </div>
+        )}
         {exporting && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
           <svg width="48" height="48" viewBox="0 0 48 48">
@@ -870,6 +964,7 @@ export default function App() {
 
       {/* STEPS 1–3 */}
       {step !== 4 && (
+      
         <div className="no-print" style={{ maxWidth: "none", margin: "0", padding: "36px 60px", display: "flex", gap: 48, alignItems: "flex-start" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
 
@@ -1071,7 +1166,7 @@ export default function App() {
                                             }}
                                           />
                                         )}
-                                        <DropZone isDropTarget={isDropTarget} label="Drop more images" onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }} onDragLeave={() => setDragOver(null)} onDrop={e => { e.preventDefault(); setDragOver(null); const did = e.dataTransfer.getData("driveFileId"); did ? handleDriveFileDrop(day, postIdx, did) : handleFiles(day, postIdx, e.dataTransfer.files); }} onFileInput={e => handleFiles(day, postIdx, e.target.files)} compact />
+                                        <DropZone isDropTarget={isDropTarget} label="Drop more images" onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }} onDragLeave={() => setDragOver(null)} onDrop={e => { e.preventDefault(); setDragOver(null); const raw = e.dataTransfer.getData("driveFileIds"); if (raw) { handleMultiDriveFileDrop(day, postIdx, JSON.parse(raw)); } else { const did = e.dataTransfer.getData("driveFileId"); const dlink = e.dataTransfer.getData("driveFileLink"); did ? handleDriveFileDrop(day, postIdx, did, dlink) : handleFiles(day, postIdx, e.dataTransfer.files); } }} onFileInput={e => handleFiles(day, postIdx, e.target.files)} compact />
                                       </div>
                                     ) : (
                                       post.imageUrls?.[0] ? (
@@ -1092,16 +1187,12 @@ export default function App() {
                                           </div>
                                         ) : (
                                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                            <DropZone isDropTarget={isDropTarget} label="Drag & drop or browse" onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }} onDragLeave={() => setDragOver(null)} onDrop={e => { e.preventDefault(); setDragOver(null); const did = e.dataTransfer.getData("driveFileId"); did ? handleDriveFileDrop(day, postIdx, did) : handleFiles(day, postIdx, e.dataTransfer.files); }} onFileInput={e => handleFiles(day, postIdx, e.target.files)} urlValue={post.imageUrls?.[0] || ""} onUrlChange={v => updatePost(day, postIdx, "imageUrls", v ? [v] : [])} />
+                                            <DropZone isDropTarget={isDropTarget} label="Drag & drop or browse" onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }} onDragLeave={() => setDragOver(null)} onDrop={e => { e.preventDefault(); setDragOver(null); const raw = e.dataTransfer.getData("driveFileIds"); if (raw) { handleMultiDriveFileDrop(day, postIdx, JSON.parse(raw)); } else { const did = e.dataTransfer.getData("driveFileId"); const dlink = e.dataTransfer.getData("driveFileLink"); did ? handleDriveFileDrop(day, postIdx, did, dlink) : handleFiles(day, postIdx, e.dataTransfer.files); } }} onFileInput={e => handleFiles(day, postIdx, e.target.files)} urlValue={post.imageUrls?.[0] || ""} onUrlChange={v => updatePost(day, postIdx, "imageUrls", v ? [v] : [])} />
                                             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                                               <button onClick={() => updatePost(day, postIdx, "placeholder", "Pending photo")} style={{ width: "100%", padding: "7px 0", background: "#FFFDE7", border: "1.5px dashed #F0E060", borderRadius: 6, fontSize: 11, color: "#aaa", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
                                                 📝 Add placeholder note
                                               </button>
-                                              {driveApiKey && (
-                                                <button onClick={() => setDrivePicker({ day, postIdx })} style={{ width: "100%", padding: "7px 0", background: "#f0f4ff", border: "1.5px solid #d0d8ff", borderRadius: 6, fontSize: 11, color: "#555", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
-                                                  📁 Pick from Drive
-                                                </button>
-                                              )}
+                                              
                                             </div>
                                           </div>
                                         )}</>
@@ -1189,6 +1280,7 @@ export default function App() {
                   allPosts={allPosts.filter(p => p.contentType !== "Story")}
                   onSwap={swapPostContent}
                   onBatchImport={handleBatchImport}
+                  onDriveBatchImport={handleDriveBatchImport}
                 />
               </div>
             )}
@@ -1218,6 +1310,7 @@ export default function App() {
             onUpdatePost={(day, postIdx, field, val) => updatePost(day, postIdx, field, val)}
             onSwapPosts={swapPostContent}
             onBatchImport={handleBatchImport}
+            onDriveBatchImport={handleDriveBatchImport}
             postsPerPage={postsPerPage}
             exporting={exporting}
             builderName={profileName}
@@ -1225,25 +1318,57 @@ export default function App() {
           ))}
         </div>
       )}
-{drivePicker && (
-        <DrivePickerModal
-          apiKey={driveApiKey}
-          onSelect={dataUrl => {
-            setPosts(p => {
-              const arr = [...(p[drivePicker.day] || [])];
-              const post = { ...arr[drivePicker.postIdx] };
-              post.imageUrls = [...(post.imageUrls || []), dataUrl];
-              if (post.imageUrls.length > 1) post.contentType = "Carousel";
-              arr[drivePicker.postIdx] = post;
-              return { ...p, [drivePicker.day]: arr };
-            });
+
+{step >= 3 && (
+        <button
+          data-drive-toggle
+          onClick={driveToken ? () => setDriveOpen(o => !o) : connectDrive}
+          title={driveToken ? "Toggle Drive panel" : "Connect Google Drive"}
+          className="no-print"
+          style={{
+            position: "fixed",
+            bottom: 28,
+            right: driveOpen ? drivePanelWidth + 14 : 24,
+            zIndex: 498,
+            background: driveOpen ? "#D7FA06" : "#1a1a2e",
+            color: driveOpen ? "#111" : driveToken ? "#D7FA06" : "rgba(255,255,255,0.4)",
+            border: driveToken && !driveOpen ? "1.5px solid rgba(215,250,6,0.25)" : "none",
+            borderRadius: 28,
+            padding: "11px 20px",
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: "0.05em",
+            cursor: "pointer",
+            boxShadow: driveOpen ? "0 4px 20px rgba(215,250,6,0.25)" : "0 4px 24px rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            transition: "right 0.2s ease, background 0.15s, box-shadow 0.15s",
+            userSelect: "none",
           }}
-          onClose={() => setDrivePicker(null)}
+        >
+          <span style={{ fontSize: 13 }}>📁</span>
+          {driveToken ? (driveOpen ? "Close Drive" : "Drive") : "Connect Drive"}
+          {driveToken && !driveOpen && (
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#D7FA06", flexShrink: 0 }} />
+          )}
+        </button>
+      )}
+
+{driveToken && (
+        <DrivePanel
+          token={driveToken}
+          isOpen={driveOpen}
+          onClose={() => setDriveOpen(false)}
+          onTokenExpired={() => { setDriveToken(null); setDriveOpen(false); alert("Drive session expired — click Drive to reconnect."); }}
+          width={drivePanelWidth}
+          onWidthChange={setDrivePanelWidth}
         />
       )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        @keyframes driveShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         input:focus, select:focus, textarea:focus { border-color: #1a1a2e !important; }
         @media print {
           .no-print { display: none !important; }
@@ -1255,6 +1380,214 @@ export default function App() {
   );
 }
 
+
+async function makeThumbnailUrl(blob) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const tempUrl = URL.createObjectURL(blob);
+    img.onload = () => {
+      const MAX = 200;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(tempUrl);
+      c.toBlob(b => resolve(b ? URL.createObjectURL(b) : null), "image/jpeg", 0.7);
+    };
+    img.onerror = () => { URL.revokeObjectURL(tempUrl); resolve(null); };
+    img.src = tempUrl;
+  });
+}
+
+const _thumbCache = new Map(); // persists for entire browser session
+
+function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle }) {
+  const [src, setSrc] = useState(() => _thumbCache.get(fileId) || null);
+  const [visible, setVisible] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) setVisible(true); },
+      { threshold: 0.1, rootMargin: "150px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible || _thumbCache.has(fileId)) return;
+    let dead = false;
+    (async () => {
+      try {
+        const r = await fetch(`/api/drive-thumb?fileId=${fileId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok) throw new Error("fetch failed");
+        const blob = await r.blob();
+        if (dead) return;
+        const url = await makeThumbnailUrl(blob);
+        if (dead || !url) return;
+        _thumbCache.set(fileId, url);
+        setSrc(url);
+      } catch { if (!dead) setSrc("err"); }
+    })();
+    return () => { dead = true; };
+  }, [visible, fileId, token, thumbnailLink]);
+
+  return (
+    <div ref={wrapRef} style={{ width: "100%", height: "100%", position: "relative" }}>
+      {!src && <div style={{ width: "100%", height: "100%", background: "linear-gradient(90deg, #e8e8e8 25%, #f0f0f0 50%, #e8e8e8 75%)", backgroundSize: "200% 100%", animation: "driveShimmer 1.4s infinite" }} />}
+      {src && src !== "err" && <img src={src} alt={name} style={imgStyle} />}
+      {src === "err" && <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: 20 }}>🖼</div>}
+    </div>
+  );
+}
+
+function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChange }) {
+  const [folderStack, setFolderStack] = useState([{ id: "root", name: "My Drive" }]);
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [lastClickedIdx, setLastClickedIdx] = useState(null);
+  const panelRef = useRef(null);
+  const currentFolder = folderStack[folderStack.length - 1];
+
+
+  function startResize(e) {
+    e.preventDefault();
+    const startX = e.clientX, startW = width;
+    function onMove(e) { onWidthChange(Math.min(600, Math.max(200, startW + (startX - e.clientX)))); }
+    function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
+  async function loadFolder(folderId) {
+    setLoading(true); setError(""); setSelectedIds(new Set());
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=%27${folderId}%27+in+parents+and+trashed%3Dfalse&fields=files(id%2Cname%2CmimeType%2CthumbnailLink%2CwebViewLink)&orderBy=folder%2CmodifiedTime+desc&pageSize=100`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.error) { if (data.error.code === 401) { onTokenExpired(); return; } throw new Error(data.error.message); }
+      setFiles(data.files || []);
+    } catch (e) {
+      setError(e.message || "Failed to load — try refreshing Drive");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadFolder(currentFolder.id); }, [currentFolder.id]);
+
+  const folders = files.filter(f => f.mimeType === "application/vnd.google-apps.folder");
+  const images = files.filter(f => f.mimeType.startsWith("image/"));
+
+  function handleImageClick(e, f, idx) {
+    if (e.shiftKey && lastClickedIdx !== null) {
+      const lo = Math.min(lastClickedIdx, idx), hi = Math.max(lastClickedIdx, idx);
+      setSelectedIds(prev => { const next = new Set(prev); for (let i = lo; i <= hi; i++) next.add(images[i].id); return next; });
+    } else {
+      setSelectedIds(prev => { const next = new Set(prev); if (next.has(f.id)) next.delete(f.id); else next.add(f.id); return next; });
+      setLastClickedIdx(idx);
+    }
+  }
+
+  function buildDragData(f) {
+    return (selectedIds.has(f.id) && selectedIds.size > 1)
+      ? images.filter(img => selectedIds.has(img.id)).map(img => ({ id: img.id, link: img.webViewLink || "" }))
+      : [{ id: f.id, link: f.webViewLink || "" }];
+  }
+
+  const cols = width >= 380 ? 3 : 2;
+
+  return (
+    <div ref={panelRef} data-drive-panel style={{ position: "fixed", right: 0, top: 0, height: "100vh", width, background: "white", boxShadow: "-4px 0 24px rgba(0,0,0,0.18)", zIndex: 500, display: isOpen ? "flex" : "none", flexDirection: "column", fontFamily: "'Helvetica Neue', Arial, sans-serif", userSelect: "none" }}>
+      <div onMouseDown={startResize} style={{ position: "absolute", left: 0, top: 0, width: 6, height: "100%", cursor: "ew-resize", zIndex: 10 }} />
+      <div style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", width: 4, height: 48, background: "rgba(0,0,0,0.12)", borderRadius: "0 3px 3px 0", pointerEvents: "none" }} />
+
+      <div style={{ background: "#1a1a2e", padding: "12px 14px", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ color: "#D7FA06", fontWeight: 800, fontSize: 11, letterSpacing: "0.08em", marginBottom: 2 }}>GOOGLE DRIVE</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 3, overflow: "hidden" }}>
+            {folderStack.map((f, i) => (
+              <span key={f.id} style={{ display: "flex", alignItems: "center", gap: 3, minWidth: 0 }}>
+                {i > 0 && <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, flexShrink: 0 }}>›</span>}
+                <button onClick={() => i < folderStack.length - 1 && setFolderStack(prev => prev.slice(0, i + 1))} style={{ background: "none", border: "none", color: i === folderStack.length - 1 ? "white" : "rgba(255,255,255,0.45)", fontSize: 9, cursor: i < folderStack.length - 1 ? "pointer" : "default", padding: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 90, fontFamily: "inherit" }}>{f.name}</button>
+              </span>
+            ))}
+          </div>
+        </div>
+        <button onClick={() => loadFolder(currentFolder.id)} title="Refresh" style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", borderRadius: 6, width: 28, height: 28, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>↻</button>
+        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", border: "none", color: "white", borderRadius: 6, width: 28, height: 28, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>✕</button>
+      </div>
+
+      {folderStack.length > 1 && (
+        <button onClick={() => { setFolderStack(prev => prev.slice(0, -1)); setSelectedIds(new Set()); }} style={{ background: "#f8f8f8", border: "none", borderBottom: "1px solid #eee", padding: "8px 14px", textAlign: "left", fontSize: 12, color: "#555", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, flexShrink: 0, fontFamily: "inherit" }}>← Back</button>
+      )}
+
+      {selectedIds.size > 0 ? (
+        <div style={{ padding: "6px 14px", background: "#1a1a2e", borderBottom: "1px solid #0d0d1a", fontSize: 10, color: "white", fontWeight: 700, letterSpacing: "0.05em", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ color: "#D7FA06" }}>{selectedIds.size} selected — drag to a post card or the feed grid</span>
+          <button onClick={() => setSelectedIds(new Set())} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginLeft: 8 }}>Clear</button>
+        </div>
+      ) : (
+        <div style={{ padding: "7px 14px", background: "#fffde7", borderBottom: "1px solid #f0e060", fontSize: 10, color: "#999", fontWeight: 700, letterSpacing: "0.05em", flexShrink: 0 }}>
+          CLICK TO SELECT · SHIFT+CLICK FOR RANGE · DRAG TO CARD ↓
+        </div>
+      )}
+
+      <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
+        {loading && <div style={{ textAlign: "center", padding: "40px 0", color: "#bbb", fontSize: 12 }}>Loading...</div>}
+        {error && <div style={{ color: "#E8001C", fontSize: 11, padding: "10px 12px", background: "#fff0f0", borderRadius: 8, margin: 4 }}>{error}</div>}
+        {!loading && !error && (
+          <>
+            {folders.map(f => (
+              <div key={f.id} onClick={() => { setFolderStack(prev => [...prev, { id: f.id, name: f.name }]); setSelectedIds(new Set()); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", borderRadius: 7, cursor: "pointer", marginBottom: 1 }} onMouseEnter={e => e.currentTarget.style.background = "#f5f5f5"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <span style={{ fontSize: 15 }}>📁</span>
+                <span style={{ fontSize: 12, color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{f.name}</span>
+                <span style={{ color: "#ccc", fontSize: 12, flexShrink: 0 }}>›</span>
+              </div>
+            ))}
+            {folders.length > 0 && images.length > 0 && <div style={{ borderTop: "1px solid #f0f0f0", margin: "8px 0" }} />}
+            {images.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+                {images.map((f, idx) => {
+                  const isSel = selectedIds.has(f.id);
+                  return (
+                    <div key={f.id} draggable
+                      onClick={e => handleImageClick(e, f, idx)}
+                      onDragStart={e => { const d = buildDragData(f); e.dataTransfer.setData("driveFileIds", JSON.stringify(d)); e.dataTransfer.setData("driveFileId", d[0].id); e.dataTransfer.setData("driveFileLink", d[0].link); e.dataTransfer.effectAllowed = "copy"; }}
+                      title={f.name}
+                      style={{ aspectRatio: "1", borderRadius: 6, overflow: "hidden", background: isSel ? "#1a1a2e" : "#f0f0f0", cursor: "grab", position: "relative", outline: isSel ? "2.5px solid #D7FA06" : "none", outlineOffset: -2 }}
+                    >
+                      <DriveThumb
+                        fileId={f.id}
+                        thumbnailLink={f.thumbnailLink}
+                        token={token}
+                        name={f.name}
+                        imgStyle={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none", opacity: isSel ? 0.7 : 1 }}
+                      />
+                      {isSel && <div style={{ position: "absolute", top: 4, right: 4, background: "#D7FA06", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "#111", pointerEvents: "none" }}>✓</div>}
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.65))", padding: "14px 5px 4px", fontSize: 8, color: "white", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", pointerEvents: "none" }}>{f.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {files.length === 0 && <div style={{ textAlign: "center", padding: "40px 10px", color: "#bbb", fontSize: 12 }}><div style={{ fontSize: 28, marginBottom: 8 }}>📂</div>No images or folders here</div>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function DrivePickerModal({ apiKey, onSelect, onClose }) {
   const [folderUrl, setFolderUrl] = useState(() => localStorage.getItem("lm_driveFolder") || "");
@@ -1482,7 +1815,7 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
   );
 }
 
-function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, postsPerPage, exporting, builderName }) {
+function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName }) {
   const [notes, setNotes] = useState("");
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
   return (
@@ -1513,7 +1846,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes..." style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "white", borderRadius: 4, padding: "2px 0" }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-            <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} />
+          <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} />
           </div>
         </div>
       </div>
@@ -1530,7 +1863,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
 }
 
 // ── Reorderable Feed Grid ──
-function ReorderFeedGrid({ allPosts, onSwap, onBatchImport }) {
+function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport }) {
   const [dragSrc, setDragSrc] = useState(null); // { day, postIdx }
   const [hoverTarget, setHoverTarget] = useState(null);
   const [dropHighlight, setDropHighlight] = useState(false);
@@ -1545,9 +1878,9 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport }) {
   return (
     <div
       style={{ border: `1.5px solid ${dropHighlight ? "#1a1a2e" : "#e8e8e8"}`, borderRadius: 10, padding: "12px 14px", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box", background: dropHighlight ? "#f4f4ff" : "white", transition: "border-color 0.15s, background 0.15s" }}
-      onDragOver={e => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDropHighlight(true); } }}
+      onDragOver={e => { const types = [...e.dataTransfer.types].map(t => t.toLowerCase()); if (types.includes("files") || types.includes("drivefileids")) { e.preventDefault(); setDropHighlight(true); } }}
       onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDropHighlight(false); }}
-      onDrop={e => { e.preventDefault(); setDropHighlight(false); if (onBatchImport && e.dataTransfer.files.length) onBatchImport(e.dataTransfer.files); }}
+      onDrop={e => { e.preventDefault(); setDropHighlight(false); const raw = e.dataTransfer.getData("driveFileIds"); if (raw && onDriveBatchImport) { onDriveBatchImport(JSON.parse(raw)); } else if (e.dataTransfer.files.length && onBatchImport) { onBatchImport(e.dataTransfer.files); } }}
     >
       <div className="feed-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
       <div className="feed-label" style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>Feed:</div>
