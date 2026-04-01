@@ -1599,7 +1599,7 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
           <button onClick={() => setSelectedIds(new Set())} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginLeft: 8 }}>Clear</button>
         </div>
       ) : (
-        {linkPickMode && linkPickMode.active ? (
+        linkPickMode && linkPickMode.active ? (
           <div style={{ padding: "8px 14px", background: "#1a1a2e", borderBottom: "1px solid #0d0d1a", fontSize: 10, color: "#D7FA06", fontWeight: 700, letterSpacing: "0.05em", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span>🎬 CLICK A FILE TO USE ITS LINK</span>
             <button onClick={onExitPickMode} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
@@ -1608,7 +1608,7 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
           <div style={{ padding: "7px 14px", background: "#fffde7", borderBottom: "1px solid #f0e060", fontSize: 10, color: "#999", fontWeight: 700, letterSpacing: "0.05em", flexShrink: 0 }}>
             CLICK TO SELECT · SHIFT+CLICK FOR RANGE · DRAG TO CARD ↓
           </div>
-        )}
+        )
       )}
 
       <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
