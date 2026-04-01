@@ -1468,7 +1468,8 @@ function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle, mimeType }) 
   }, []);
 
   useEffect(() => {
-    if (!visible || _thumbCache.has(fileId)) return;
+    if (!visible) return;
+    if (_thumbCache.has(fileId)) { setSrc(_thumbCache.get(fileId)); return; }
     if (mimeType && mimeType.startsWith("video/")) {
       if (thumbnailLink) { _thumbCache.set(fileId, thumbnailLink); setSrc(thumbnailLink); }
       else setSrc("err");
