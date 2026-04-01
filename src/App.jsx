@@ -312,9 +312,16 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       setPosts(p => {
         const arr = [...(p[day] || [])];
         const post = { ...arr[postIdx] };
+        const wasCarousel = post.contentType === "Carousel";
         post.imageUrls = [...(post.imageUrls || []), ...urls];
-        if (post.imageUrls.length > 1) post.contentType = "Carousel";
-        if (fileInfos[0].link && !post.url) post.url = fileInfos[0].link;
+        if (post.imageUrls.length > 1) {
+          post.contentType = "Carousel";
+          const existingSlideLinks = wasCarousel ? (post.urls || []) : (post.url ? [post.url] : []);
+          const newSlideLinks = fileInfos.map(fi => fi.link || "");
+          post.urls = [...existingSlideLinks, ...newSlideLinks];
+        } else {
+          if (fileInfos[0].link && !post.url) post.url = fileInfos[0].link;
+        }
         arr[postIdx] = post;
         return { ...p, [day]: arr };
       });
@@ -1136,7 +1143,13 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                               <div key={post.id} style={{ background: "white", borderRadius: 12, padding: "16px 18px", boxShadow: "0 1px 8px rgba(0,0,0,0.06)", borderLeft: dayPosts.length > 1 ? "3px solid #D7FA06" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                   {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#aaa", fontWeight: 700, minWidth: 20 }}>#{postIdx + 1}</span>}
-                                  <select value={post.contentType} onChange={e => updatePost(day, postIdx, "contentType", e.target.value)} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
+                                  <select value={post.contentType} onChange={e => {
+  const newType = e.target.value;
+  if (newType === "Carousel" && post.contentType !== "Carousel" && post.url && !(post.urls?.length)) {
+    updatePost(day, postIdx, "urls", [post.url]);
+  }
+  updatePost(day, postIdx, "contentType", newType);
+}} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
                                     {CONTENT_TYPES.map(t => <option key={t}>{t}</option>)}
                                   </select>
                                   {isCarousel && <span style={{ fontSize: 11, background: "#f0f4ff", color: "#555", padding: "3px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{post.imageUrls?.length || 0} image{post.imageUrls?.length !== 1 ? "s" : ""}</span>}
