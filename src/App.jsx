@@ -1348,6 +1348,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
             postsPerPage={postsPerPage}
             exporting={exporting}
             builderName={profileName}
+            onDriveDrop={handleMultiDriveFileDrop}
+            onFilesDrop={handleFiles}
           />
           ))}
         </div>
@@ -1913,7 +1915,7 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
   );
 }
 
-function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress }) {
+function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop }) {
   const [notes, setNotes] = useState("");
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
   return (
@@ -1928,7 +1930,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
       <div style={{ flex: 1, display: "flex", gap: 18, alignItems: "stretch", minHeight: 0 }}>
           {posts.map((post, i) => (
             <div key={i} style={{ flex: "0 0 auto", width: `calc((100% - ${(postsPerPage - 1) * 18}px) / ${postsPerPage})`, display: "flex" }}>
-            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} isExporting={exporting} />
+            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} isExporting={exporting} onDriveDrop={onDriveDrop ? (fileInfos) => onDriveDrop(post.day, post.postIdx ?? i, fileInfos) : undefined} onFilesDrop={onFilesDrop ? (files) => onFilesDrop(post.day, post.postIdx ?? i, files) : undefined} />
           </div>
           ))}
           {/* Ghost spacers so partial pages stay the right size */}
@@ -2109,7 +2111,7 @@ function NavProfileMenu({ profileName, currentCalendarId, onMyCalendars, onHisto
     </div>
   );
 }
-function PostCard({ post, month, year, onUpdate, isExporting }) {
+function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFilesDrop }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [reframing, setReframing] = useState(false);
   const [dropHighlight, setDropHighlight] = useState(false);
@@ -2127,10 +2129,14 @@ function PostCard({ post, month, year, onUpdate, isExporting }) {
   const dateStr = formatDate(month, post.day);
 
   async function handleReplaceFiles(files) {
-    const file = [...files].find(f => f.type.startsWith("image/"));
-    if (!file) return;
+    const imageFiles = [...files].filter(f => f.type.startsWith("image/"));
+    if (!imageFiles.length) return;
+    if (imageFiles.length > 1 && onFilesDrop) {
+      onFilesDrop(imageFiles);
+      return;
+    }
     try {
-      const blob = await compressToBlob(file);
+      const blob = await compressToBlob(imageFiles[0]);
       const url = await uploadToCloudinary(blob);
       if (isCarousel) {
         const newUrls = [...(post.imageUrls || [])];
@@ -2168,7 +2174,16 @@ function PostCard({ post, month, year, onUpdate, isExporting }) {
         onMouseLeave={() => setHovering(false)}
         onDragOver={e => { e.preventDefault(); setDropHighlight(true); }}
         onDragLeave={() => setDropHighlight(false)}
-        onDrop={e => { e.preventDefault(); setDropHighlight(false); handleReplaceFiles(e.dataTransfer.files); }}
+        onDrop={e => {
+          e.preventDefault();
+          setDropHighlight(false);
+          const raw = e.dataTransfer.getData("driveFileIds");
+          if (raw && onDriveDrop) { onDriveDrop(JSON.parse(raw)); return; }
+          const did = e.dataTransfer.getData("driveFileId");
+          const dlink = e.dataTransfer.getData("driveFileLink");
+          if (did && onDriveDrop) { onDriveDrop([{ id: did, link: dlink || "" }]); return; }
+          handleReplaceFiles(e.dataTransfer.files);
+        }}
       >
         <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
           <DraggableImage src={mainImage} cropX={post.cropX ?? 50} cropY={post.cropY ?? 50} scale={post.scale ?? 1} onUpdate={onUpdate} isCarousel={isCarousel} imageUrls={post.imageUrls} isVideo={isReel} placeholder={post.placeholder} />
