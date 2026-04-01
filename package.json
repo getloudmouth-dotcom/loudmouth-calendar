@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "node server.js & vite",
-  "build": "vite build",
-  "preview": "vite preview"
-},
+    "dev": "node server.js & vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.0",
+    "@upstash/redis": "^1.37.0",
     "express": "^5.2.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
