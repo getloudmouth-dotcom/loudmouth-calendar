@@ -170,6 +170,7 @@ export default function App() {
   const [posts, setPosts] = useState({});
   const [dragOver, setDragOver] = useState(null);
   const [driveToken, setDriveToken] = useState(null);
+const [linkPickMode, setLinkPickMode] = useState({ active: false, onPick: null });
 const [driveOpen, setDriveOpen] = useState(false);
 const [drivePanelWidth, setDrivePanelWidth] = useState(300);
 const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0 });
@@ -1200,16 +1201,30 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                                     )}
                                   </div>
                                   {!isCarousel && !post.placeholder && <div>
-                                    <label style={labelStyle}>{isReel ? "Reel Links" : "Content Link (for client)"}</label>
+                                    <label style={labelStyle}>{isReel ? "Video Link" : "Content Link (for client)"}</label>
                                     {isReel ? (
-                                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                        {(post.urls || []).map((u, ui) => (
-                                          <div key={ui} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                            <input value={u} placeholder={`Link ${ui + 1}...`} onChange={e => { const newUrls = [...(post.urls || [])]; newUrls[ui] = e.target.value; updatePost(day, postIdx, "urls", newUrls); }} style={{ ...inputStyle, fontSize: 12, padding: "7px 10px" }} />
-                                            <button onClick={() => { const newUrls = (post.urls || []).filter((_, i) => i !== ui); updatePost(day, postIdx, "urls", newUrls); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 16, flexShrink: 0 }}>✕</button>
-                                          </div>
-                                        ))}
-                                        <button onClick={() => updatePost(day, postIdx, "urls", [...(post.urls || []), ""])} style={{ background: "none", border: "1.5px dashed #d0d0d0", borderRadius: 6, fontSize: 11, color: "#aaa", cursor: "pointer", padding: "6px 0", fontFamily: "inherit" }}>+ Add link</button>
+                                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}
+                                        onDragOver={e => e.preventDefault()}
+                                        onDrop={e => {
+                                          e.preventDefault();
+                                          const link = e.dataTransfer.getData("driveFileLink");
+                                          if (link) updatePost(day, postIdx, "url", link);
+                                        }}
+                                      >
+                                        <input
+                                          value={post.url || ""}
+                                          placeholder="Paste or pick video link from Drive..."
+                                          onChange={e => updatePost(day, postIdx, "url", e.target.value)}
+                                          style={{ ...inputStyle, fontSize: 12, background: post.url ? "white" : "#fffbe6", border: post.url ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }}
+                                        />
+                                        <button
+                                          title="Pick from Drive"
+                                          onClick={() => {
+                                            setDriveOpen(true);
+                                            setLinkPickMode({ active: true, onPick: (link) => updatePost(day, postIdx, "url", link) });
+                                          }}
+                                          style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: 7, width: 34, height: 34, fontSize: 15, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                                        >📁</button>
                                       </div>
                                     ) : (
                                       <input value={post.url || ""} placeholder="https://..." onChange={e => updatePost(day, postIdx, "url", e.target.value)} style={inputStyle} />
@@ -1357,13 +1372,15 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
 
 {driveToken && (
         <DrivePanel
-          token={driveToken}
-          isOpen={driveOpen}
-          onClose={() => setDriveOpen(false)}
-          onTokenExpired={() => { setDriveToken(null); setDriveOpen(false); alert("Drive session expired — click Drive to reconnect."); }}
-          width={drivePanelWidth}
-          onWidthChange={setDrivePanelWidth}
-        />
+        token={driveToken}
+        isOpen={driveOpen}
+        onClose={() => setDriveOpen(false)}
+        onTokenExpired={() => { setDriveToken(null); setDriveOpen(false); alert("Drive session expired — click Drive to reconnect."); }}
+        width={drivePanelWidth}
+        onWidthChange={setDrivePanelWidth}
+        linkPickMode={linkPickMode}
+        onExitPickMode={() => setLinkPickMode({ active: false, onPick: null })}
+      />
       )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&display=swap');
@@ -1483,7 +1500,7 @@ function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle }) {
   );
 }
 
-function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChange }) {
+function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChange, linkPickMode = { active: false }, onExitPickMode }) {
   const [folderStack, setFolderStack] = useState([{ id: "root", name: "My Drive" }]);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -1529,6 +1546,11 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
   const images = files.filter(f => f.mimeType.startsWith("image/"));
 
   function handleImageClick(e, f, idx) {
+    if (linkPickMode?.active && linkPickMode.onPick) {
+      linkPickMode.onPick(f.webViewLink || "");
+      onExitPickMode?.();
+      return;
+    }
     if (e.shiftKey && lastClickedIdx !== null) {
       const lo = Math.min(lastClickedIdx, idx), hi = Math.max(lastClickedIdx, idx);
       setSelectedIds(prev => { const next = new Set(prev); for (let i = lo; i <= hi; i++) next.add(images[i].id); return next; });
@@ -1577,9 +1599,16 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
           <button onClick={() => setSelectedIds(new Set())} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit", flexShrink: 0, marginLeft: 8 }}>Clear</button>
         </div>
       ) : (
-        <div style={{ padding: "7px 14px", background: "#fffde7", borderBottom: "1px solid #f0e060", fontSize: 10, color: "#999", fontWeight: 700, letterSpacing: "0.05em", flexShrink: 0 }}>
-          CLICK TO SELECT · SHIFT+CLICK FOR RANGE · DRAG TO CARD ↓
-        </div>
+        {linkPickMode?.active ? (
+          <div style={{ padding: "8px 14px", background: "#1a1a2e", borderBottom: "1px solid #0d0d1a", fontSize: 10, color: "#D7FA06", fontWeight: 700, letterSpacing: "0.05em", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>🎬 CLICK A FILE TO USE ITS LINK</span>
+            <button onClick={onExitPickMode} style={{ background: "rgba(255,255,255,0.15)", border: "none", color: "white", borderRadius: 4, padding: "2px 8px", fontSize: 10, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+          </div>
+        ) : (
+          <div style={{ padding: "7px 14px", background: "#fffde7", borderBottom: "1px solid #f0e060", fontSize: 10, color: "#999", fontWeight: 700, letterSpacing: "0.05em", flexShrink: 0 }}>
+            CLICK TO SELECT · SHIFT+CLICK FOR RANGE · DRAG TO CARD ↓
+          </div>
+        )}
       )}
 
       <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>
