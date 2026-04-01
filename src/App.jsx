@@ -596,19 +596,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         const imgData = canvas.toDataURL("image/jpeg", 0.85);
         if (i > 0) pdf.addPage([w, h], "landscape");
         pdf.addImage(imgData, "JPEG", 0, 0, w, h);
-        // Draw native PDF link buttons (not annotations — these are real clickable text)
-        linkAnnotations.forEach(({ x, y, w: lw, h: lh, url, label }) => {
-          // Draw the dark pill background
-          pdf.setFillColor(26, 26, 46);
-          pdf.roundedRect(x, y, lw, lh, lh / 2, lh / 2, "F");
-          // Draw centered underlined text with real hyperlink
-          pdf.setTextColor(255, 255, 255);
-          pdf.setFontSize(9);
-          pdf.setFont("helvetica", "bold");
-          const tw = pdf.getTextWidth(label);
-          const tx = x + (lw - tw) / 2;
-          const ty = y + lh / 2 + 3;
-          pdf.textWithLink(label, tx, ty, { url });
+        linkAnnotations.forEach(({ x, y, w: lw, h: lh, url }) => {
+          pdf.link(x, y, lw, lh, { url });
         });
       }
       pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
@@ -2336,7 +2325,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
           <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
         </div>
       )}
-      <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"} target="_blank" rel="noreferrer" className="pdf-native-link" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
+      <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
         {isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"}
       </a>
       <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 8, padding: "14px 16px", flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
