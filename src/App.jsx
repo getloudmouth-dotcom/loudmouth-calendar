@@ -1402,6 +1402,33 @@ async function makeThumbnailUrl(blob) {
 
 const _thumbCache = new Map(); // persists for entire browser session
 
+async function prefetchThumbnails(imageFiles, token) {
+  const toFetch = imageFiles.filter(f => !_thumbCache.has(f.id));
+  if (!toFetch.length) return;
+  const BATCH = 4;
+  for (let i = 0; i < toFetch.length; i += BATCH) {
+    const batch = toFetch.slice(i, i + BATCH);
+    await Promise.all(batch.map(async f => {
+      try {
+        const r = await fetch(`/api/drive-thumb?fileId=${f.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!r.ok) return;
+        const contentType = r.headers.get("content-type") || "";
+        let url;
+        if (contentType.includes("application/json")) {
+          const { cdnUrl } = await r.json();
+          url = cdnUrl;
+        } else {
+          const blob = await r.blob();
+          url = await makeThumbnailUrl(blob);
+        }
+        if (url) _thumbCache.set(f.id, url);
+      } catch { /* silent — prefetch failures are non-critical */ }
+    }));
+  }
+}
+
 function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle }) {
   const [src, setSrc] = useState(() => _thumbCache.get(fileId) || null);
   const [visible, setVisible] = useState(false);
@@ -1485,7 +1512,10 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
       );
       const data = await res.json();
       if (data.error) { if (data.error.code === 401) { onTokenExpired(); return; } throw new Error(data.error.message); }
-      setFiles(data.files || []);
+      const allFiles = data.files || [];
+      setFiles(allFiles);
+      const imageFiles = allFiles.filter(f => f.mimeType.startsWith("image/"));
+      prefetchThumbnails(imageFiles, token);
     } catch (e) {
       setError(e.message || "Failed to load — try refreshing Drive");
     } finally {
