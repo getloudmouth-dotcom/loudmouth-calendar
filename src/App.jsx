@@ -573,20 +573,27 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
         setExportProgress({ current: i + 1, total });
-        const canvas = await html2canvas(pages[i], { scale: 3, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
-        const imgData = canvas.toDataURL("image/png");
-        if (i > 0) pdf.addPage([w, h], "landscape");
-        pdf.addImage(imgData, "PNG", 0, 0, w, h);
-        // Add clickable link annotations on top of the image
+        // Capture link positions BEFORE html2canvas shifts scroll
         const pageRect = pages[i].getBoundingClientRect();
-        const linkEls = pages[i].querySelectorAll("[data-pdf-link]");
-        linkEls.forEach(el => {
+        const linkAnnotations = [];
+        pages[i].querySelectorAll("[data-pdf-link]").forEach(el => {
           const href = el.getAttribute("data-pdf-link");
           if (!href || href === "#") return;
           const r = el.getBoundingClientRect();
-          const x = r.left - pageRect.left;
-          const y = r.top - pageRect.top;
-          pdf.link(x, y, r.width, r.height, { url: href });
+          linkAnnotations.push({
+            x: r.left - pageRect.left,
+            y: r.top - pageRect.top,
+            w: r.width,
+            h: r.height,
+            url: href,
+          });
+        });
+        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
+        const imgData = canvas.toDataURL("image/jpeg", 0.85);
+        if (i > 0) pdf.addPage([w, h], "landscape");
+        pdf.addImage(imgData, "JPEG", 0, 0, w, h);
+        linkAnnotations.forEach(({ x, y, w: lw, h: lh, url }) => {
+          pdf.link(x, y, lw, lh, { url });
         });
       }
       pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
