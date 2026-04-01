@@ -573,24 +573,24 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
       for (let i = 0; i < pages.length; i++) {
         setExportProgress({ current: i + 1, total });
-        // Compute link positions using offset traversal (viewport-independent)
-        function offsetRelativeTo(el, container) {
-          let x = 0, y = 0;
-          let cur = el;
-          while (cur && cur !== container) {
-            x += cur.offsetLeft;
-            y += cur.offsetTop;
-            cur = cur.offsetParent;
-          }
-          return { x, y, w: el.offsetWidth, h: el.offsetHeight };
-        }
+        // Scroll page into view so getBoundingClientRect is accurate
+        pages[i].scrollIntoView({ block: "start" });
+        await new Promise(r => setTimeout(r, 30));
+        const pageRect = pages[i].getBoundingClientRect();
         const linkAnnotations = [];
         pages[i].querySelectorAll("[data-pdf-link]").forEach(el => {
           const href = el.getAttribute("data-pdf-link");
           if (!href || href === "#") return;
-          const pos = offsetRelativeTo(el, pages[i]);
+          const r = el.getBoundingClientRect();
           const label = el.getAttribute("data-pdf-link-text") || "Link";
-          linkAnnotations.push({ ...pos, url: href, label });
+          linkAnnotations.push({
+            x: r.left - pageRect.left,
+            y: r.top - pageRect.top,
+            w: r.width,
+            h: r.height,
+            url: href,
+            label,
+          });
         });
         const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
         const imgData = canvas.toDataURL("image/jpeg", 0.85);
