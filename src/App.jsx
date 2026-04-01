@@ -210,6 +210,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     function handler(e) {
       if (e.target.closest("[data-drive-panel]")) return;
       if (e.target.closest("[data-drive-toggle]")) return;
+      if (e.target.closest("[data-step-nav]")) return;
       setDriveOpen(false);
     }
     document.addEventListener("mousedown", handler);
@@ -884,7 +885,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
           {stepLabels.map((label, i) => {
             const s = i + 1;
             return (
-              <button key={s} onClick={() => setStep(s)} style={{
+              <button key={s} data-step-nav onClick={() => setStep(s)} style={{
                 background: step === s ? "#D7FA06" : "rgba(255,255,255,0.07)",
                 color: step === s ? "#111" : "#aaa",
                 border: "none", padding: "6px 16px", borderRadius: 20,
