@@ -49,9 +49,9 @@ function chunkArray(arr, size) {
   return chunks;
 }
 function newPost() {
-  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], caption: "", cropX: 50, cropY: 50, scale: 1, placeholder: "", postingNotes: "" };
+  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, placeholder: "", postingNotes: "" };
 }
-const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "caption", "cropX", "cropY", "scale", "placeholder", "postingNotes"];
+const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "placeholder", "postingNotes"];
 
 const labelStyle = { fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 };
 const inputStyle = { width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 7, fontSize: 13, outline: "none", fontFamily: "inherit", transition: "border-color 0.15s", background: "white", color: "#111" };
@@ -1140,12 +1140,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                               <div key={post.id} style={{ background: "white", borderRadius: 12, padding: "16px 18px", boxShadow: "0 1px 8px rgba(0,0,0,0.06)", borderLeft: dayPosts.length > 1 ? "3px solid #D7FA06" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                   {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#aaa", fontWeight: 700, minWidth: 20 }}>#{postIdx + 1}</span>}
-                                  <select value={post.contentType} onChange={e => {
-  const newType = e.target.value;
-  updatePost(day, postIdx, "contentType", newType);
-  if (newType === "Reel") updatePost(day, postIdx, "url", "");
-  if (post.contentType === "Reel" && newType !== "Reel") updatePost(day, postIdx, "url", "");
-}} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
+                                  <select value={post.contentType} onChange={e => updatePost(day, postIdx, "contentType", e.target.value)} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
                                     {CONTENT_TYPES.map(t => <option key={t}>{t}</option>)}
                                   </select>
                                   {isCarousel && <span style={{ fontSize: 11, background: "#f0f4ff", color: "#555", padding: "3px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{post.imageUrls?.length || 0} image{post.imageUrls?.length !== 1 ? "s" : ""}</span>}
@@ -1213,20 +1208,20 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                                         onDrop={e => {
                                           e.preventDefault();
                                           const link = e.dataTransfer.getData("driveFileLink");
-                                          if (link) updatePost(day, postIdx, "url", link);
+                                          if (link) updatePost(day, postIdx, "videoUrl", link);
                                         }}
                                       >
                                         <input
-                                          value={post.url || ""}
+                                          value={post.videoUrl || ""}
                                           placeholder="Paste or pick video link from Drive..."
-                                          onChange={e => updatePost(day, postIdx, "url", e.target.value)}
-                                          style={{ ...inputStyle, fontSize: 12, background: post.url ? "white" : "#fffbe6", border: post.url ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }}
+                                          onChange={e => updatePost(day, postIdx, "videoUrl", e.target.value)}
+                                          style={{ ...inputStyle, fontSize: 12, background: post.videoUrl ? "white" : "#fffbe6", border: post.videoUrl ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }}
                                         />
                                         <button
                                           title="Pick from Drive"
                                           onClick={() => {
                                             setDriveOpen(true);
-                                            setLinkPickMode({ active: true, onPick: (link) => updatePost(day, postIdx, "url", link) });
+                                            setLinkPickMode({ active: true, onPick: (link) => updatePost(day, postIdx, "videoUrl", link) });
                                           }}
                                           style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: 7, width: 34, height: 34, fontSize: 15, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                                         >📁</button>
