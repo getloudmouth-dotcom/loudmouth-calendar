@@ -903,9 +903,9 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         </div>
         </nav>
         {driveUploadProgress.active && (
-          <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, zIndex: 99998, background: "rgba(215,250,6,0.2)" }}>
-            <div style={{ height: "100%", background: "#D7FA06", width: driveUploadProgress.total > 0 ? `${(driveUploadProgress.done / driveUploadProgress.total) * 100}%` : "5%", transition: "width 0.35s ease", minWidth: "5%" }} />
-          </div>
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 5, zIndex: 99998, background: "rgba(0,0,0,0.3)" }}>
+          <div style={{ height: "100%", background: "#D7FA06", width: driveUploadProgress.total > 0 ? `${(driveUploadProgress.done / driveUploadProgress.total) * 100}%` : "5%", transition: "width 0.35s ease", minWidth: "5%", boxShadow: "0 0 8px rgba(215,250,6,0.8)" }} />
+        </div>
         )}
         {exporting && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
@@ -1446,8 +1446,8 @@ async function prefetchThumbnails(imageFiles, token) {
   }
 }
 
-function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle }) {
-  const [src, setSrc] = useState(() => _thumbCache.get(fileId) || null);
+function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle, mimeType }) {
+  const [src, setSrc] = useState(() => _thumbCache.get(fileId) || (mimeType && mimeType.startsWith("video/") && thumbnailLink ? thumbnailLink : null));
   const [visible, setVisible] = useState(false);
   const wrapRef = useRef(null);
 
@@ -1464,6 +1464,11 @@ function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle }) {
 
   useEffect(() => {
     if (!visible || _thumbCache.has(fileId)) return;
+    if (mimeType && mimeType.startsWith("video/")) {
+      if (thumbnailLink) { _thumbCache.set(fileId, thumbnailLink); setSrc(thumbnailLink); }
+      else setSrc("err");
+      return;
+    }
     let dead = false;
     (async () => {
       try {
@@ -1495,7 +1500,7 @@ function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle }) {
     <div ref={wrapRef} style={{ width: "100%", height: "100%", position: "relative" }}>
       {!src && <div style={{ width: "100%", height: "100%", background: "linear-gradient(90deg, #e8e8e8 25%, #f0f0f0 50%, #e8e8e8 75%)", backgroundSize: "200% 100%", animation: "driveShimmer 1.4s infinite" }} />}
       {src && src !== "err" && <img src={src} alt={name} style={imgStyle} />}
-      {src === "err" && <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: 20 }}>🖼</div>}
+      {src === "err" && <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: 20 }}>{mimeType && mimeType.startsWith("video/") ? "🎬" : "🖼"}</div>}
     </div>
   );
 }
@@ -1543,12 +1548,15 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
   useEffect(() => { loadFolder(currentFolder.id); }, [currentFolder.id]);
 
   const folders = files.filter(f => f.mimeType === "application/vnd.google-apps.folder");
-  const images = files.filter(f => f.mimeType.startsWith("image/") || (linkPickMode && linkPickMode.active && f.mimeType.startsWith("video/")));
+  const images = linkPickMode && linkPickMode.active
+    ? files.filter(f => f.mimeType.startsWith("video/"))
+    : files.filter(f => f.mimeType.startsWith("image/"));
 
   function handleImageClick(e, f, idx) {
     if (linkPickMode && linkPickMode.active && linkPickMode.onPick) {
       linkPickMode.onPick(f.webViewLink || "");
       onExitPickMode?.();
+      onClose?.();
       return;
     }
     if (e.shiftKey && lastClickedIdx !== null) {
@@ -1640,6 +1648,7 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
                         thumbnailLink={f.thumbnailLink}
                         token={token}
                         name={f.name}
+                        mimeType={f.mimeType}
                         imgStyle={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none", opacity: isSel ? 0.7 : 1 }}
                       />
                       {isSel && <div style={{ position: "absolute", top: 4, right: 4, background: "#D7FA06", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "#111", pointerEvents: "none" }}>✓</div>}
