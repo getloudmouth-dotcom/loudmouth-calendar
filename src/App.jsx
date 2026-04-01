@@ -1930,7 +1930,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
       <div style={{ flex: 1, display: "flex", gap: 18, alignItems: "stretch", minHeight: 0 }}>
           {posts.map((post, i) => (
             <div key={i} style={{ flex: "0 0 auto", width: `calc((100% - ${(postsPerPage - 1) * 18}px) / ${postsPerPage})`, display: "flex" }}>
-            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} isExporting={exporting} onDriveDrop={onDriveDrop ? (fileInfos) => onDriveDrop(post.day, post.postIdx ?? i, fileInfos) : undefined} onFilesDrop={onFilesDrop ? (files) => onFilesDrop(post.day, post.postIdx ?? i, files) : undefined} />
+            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} isExporting={exporting} onDriveDrop={onDriveDrop ? (fileInfos) => onDriveDrop(post.day, post.postIdx ?? i, fileInfos) : undefined} onFilesDrop={onFilesDrop ? (files) => onFilesDrop(post.day, post.postIdx ?? i, files) : undefined} driveUploadProgress={driveUploadProgress} />
           </div>
           ))}
           {/* Ghost spacers so partial pages stay the right size */}
@@ -2111,7 +2111,7 @@ function NavProfileMenu({ profileName, currentCalendarId, onMyCalendars, onHisto
     </div>
   );
 }
-function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFilesDrop }) {
+function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFilesDrop, driveUploadProgress }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [reframing, setReframing] = useState(false);
   const [dropHighlight, setDropHighlight] = useState(false);
@@ -2191,6 +2191,14 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         {dropHighlight && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(26,26,46,0.5)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 15 }}>
             <span style={{ color: "#D7FA06", fontWeight: 700, fontSize: 12 }}>Drop to replace</span>
+          </div>
+        )}
+        {driveUploadProgress && driveUploadProgress.active && driveUploadProgress.day === post.day && driveUploadProgress.postIdx === (post.postIdx ?? 0) && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.88)", borderRadius: 8, zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }}>
+            <div style={{ width: 36, height: 36, border: "3.5px solid #e8e8e8", borderTop: "3.5px solid #1a1a2e", borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#888", letterSpacing: "0.06em" }}>
+              {driveUploadProgress.total > 1 ? `${driveUploadProgress.done} / ${driveUploadProgress.total}` : "UPLOADING..."}
+            </span>
           </div>
         )}
         {reframing && (
