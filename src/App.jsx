@@ -1140,7 +1140,12 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                               <div key={post.id} style={{ background: "white", borderRadius: 12, padding: "16px 18px", boxShadow: "0 1px 8px rgba(0,0,0,0.06)", borderLeft: dayPosts.length > 1 ? "3px solid #D7FA06" : "none" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                   {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#aaa", fontWeight: 700, minWidth: 20 }}>#{postIdx + 1}</span>}
-                                  <select value={post.contentType} onChange={e => updatePost(day, postIdx, "contentType", e.target.value)} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
+                                  <select value={post.contentType} onChange={e => {
+  const newType = e.target.value;
+  updatePost(day, postIdx, "contentType", newType);
+  if (newType === "Reel") updatePost(day, postIdx, "url", "");
+  if (post.contentType === "Reel" && newType !== "Reel") updatePost(day, postIdx, "url", "");
+}} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
                                     {CONTENT_TYPES.map(t => <option key={t}>{t}</option>)}
                                   </select>
                                   {isCarousel && <span style={{ fontSize: 11, background: "#f0f4ff", color: "#555", padding: "3px 8px", borderRadius: 20, whiteSpace: "nowrap" }}>{post.imageUrls?.length || 0} image{post.imageUrls?.length !== 1 ? "s" : ""}</span>}
