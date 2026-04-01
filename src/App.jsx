@@ -325,7 +325,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   async function handleDriveBatchImport(fileInfos) {
     if (!driveToken || !fileInfos.length) return;
     try {
-      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length, day, postIdx });
+      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length, day: null, postIdx: null });
       const urls = await fetchDriveUrls(fileInfos, () => setDriveUploadProgress(p => ({ ...p, done: p.done + 1 })));
       const newDays = [];
       setPosts(p => {
@@ -482,7 +482,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     if (!imageFiles.length) return;
     let dataUrls;
     try {
-      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length, day, postIdx });
+      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length, day: null, postIdx: null });
       const urls = await Promise.all(imageFiles.map(async file => {
         const blob = await compressToBlob(file);
         const url = await uploadToCloudinary(blob);
