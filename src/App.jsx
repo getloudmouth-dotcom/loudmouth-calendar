@@ -173,7 +173,7 @@ export default function App() {
 const [linkPickMode, setLinkPickMode] = useState({ active: false, onPick: null });
 const [driveOpen, setDriveOpen] = useState(false);
 const [drivePanelWidth, setDrivePanelWidth] = useState(300);
-const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0 });
+const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0, day: null, postIdx: null });
   const [drafts, setDrafts] = useState([]);
   const [showDrafts, setShowDrafts] = useState(false);
   const [user, setUser] = useState(null);
@@ -307,7 +307,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   async function handleMultiDriveFileDrop(day, postIdx, fileInfos) {
     if (!driveToken || !fileInfos.length) return;
     try {
-      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length });
+      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length, day, postIdx });
       const urls = await fetchDriveUrls(fileInfos, () => setDriveUploadProgress(p => ({ ...p, done: p.done + 1 })));
       setPosts(p => {
         const arr = [...(p[day] || [])];
@@ -325,7 +325,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   async function handleDriveBatchImport(fileInfos) {
     if (!driveToken || !fileInfos.length) return;
     try {
-      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length });
+      setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length, day, postIdx });
       const urls = await fetchDriveUrls(fileInfos, () => setDriveUploadProgress(p => ({ ...p, done: p.done + 1 })));
       const newDays = [];
       setPosts(p => {
@@ -444,7 +444,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     if (imageFiles.length === 0) return;
     const forceCarousel = imageFiles.length > 1;
     try {
-      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length });
+      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length, day, postIdx });
       const urls = await Promise.all(imageFiles.map(async file => {
         const blob = await compressToBlob(file);
         const url = await uploadToCloudinary(blob);
@@ -482,8 +482,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     if (!imageFiles.length) return;
     let dataUrls;
     try {
-      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length });
-      dataUrls = await Promise.all(imageFiles.map(async file => {
+      setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length, day, postIdx });
+      const urls = await Promise.all(imageFiles.map(async file => {
         const blob = await compressToBlob(file);
         const url = await uploadToCloudinary(blob);
         setDriveUploadProgress(p => ({ ...p, done: p.done + 1 }));
@@ -902,11 +902,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
           />
         </div>
         </nav>
-        {driveUploadProgress.active && (
-          <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 5, zIndex: 99998, background: "rgba(0,0,0,0.3)" }}>
-          <div style={{ height: "100%", background: "#D7FA06", width: driveUploadProgress.total > 0 ? `${(driveUploadProgress.done / driveUploadProgress.total) * 100}%` : "5%", transition: "width 0.35s ease", minWidth: "5%", boxShadow: "0 0 8px rgba(215,250,6,0.8)" }} />
-        </div>
-        )}
+        
         {exporting && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
           <svg width="48" height="48" viewBox="0 0 48 48">
@@ -1147,7 +1143,15 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                                   {dayPosts.length > 1 && <button onClick={() => removePostFromDay(day, postIdx)} style={{ marginLeft: "auto", background: "none", border: "1px solid #eee", color: "#ccc", cursor: "pointer", fontSize: 13, borderRadius: 5, padding: "2px 8px", lineHeight: 1.5 }}>✕ Remove</button>}
                                 </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                                  <div>
+                                  <div style={{ position: "relative" }}>
+                                    {driveUploadProgress.active && driveUploadProgress.day === day && driveUploadProgress.postIdx === postIdx && (
+                                      <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.92)", borderRadius: 8, zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                                        <div style={{ width: 38, height: 38, border: "3.5px solid #e8e8e8", borderTop: "3.5px solid #1a1a2e", borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
+                                        <span style={{ fontSize: 10, fontWeight: 700, color: "#888", letterSpacing: "0.06em" }}>
+                                          {driveUploadProgress.total > 1 ? `${driveUploadProgress.done} / ${driveUploadProgress.total}` : "UPLOADING..."}
+                                        </span>
+                                      </div>
+                                    )}
                                     <label style={labelStyle}>{isCarousel ? "Images (carousel)" : isReel ? "Cover Photo" : "Image"}</label>
                                     {isCarousel ? (
                                       <div>
@@ -1386,6 +1390,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         @keyframes driveShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        @keyframes cardSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         input:focus, select:focus, textarea:focus { border-color: #1a1a2e !important; }
         @media print {
           .no-print { display: none !important; }
