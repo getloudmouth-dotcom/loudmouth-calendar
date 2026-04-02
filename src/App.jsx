@@ -2,6 +2,11 @@ import { useState, useMemo, useRef, useEffect } from "react";
 // PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
 
+function readExportToken() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("exportToken");
+}
+
 const CLOUDINARY_CLOUD = "djaxz6tef";
 const CLOUDINARY_PRESET = "loudmouth_uploads";
 
@@ -148,7 +153,7 @@ function DraggableImage({ src, cropX, cropY, scale, onUpdate, isCarousel, isVide
 
 export default function App() {
   const today = new Date();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => (readExportToken() ? 4 : 1));
   const [clientName, setClientName] = useState("");
   const [clients, setClients] = useState(() => {
     try { const s = localStorage.getItem("lm_clients"); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -183,7 +188,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(() => !readExportToken());
   const [allCalendars, setAllCalendars] = useState([]);
   const [currentCalendarId, setCurrentCalendarId] = useState(null);
   const [draftHistory, setDraftHistory] = useState([]);
@@ -271,7 +276,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   
   const [exporting, setExporting] = useState(false);
   const [exportElapsed, setExportElapsed] = useState(0);
-  const [exportMode, setExportMode] = useState(false);
+  const [exportMode, setExportMode] = useState(() => !!readExportToken());
   const [editingClients, setEditingClients] = useState(false);
 
   function connectDrive() {
@@ -559,13 +564,12 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   async function exportPDF() {
     // Auto-save silently before export so Puppeteer has data to pull from Supabase
     if (!currentCalendarId) {
-      try {
-        await saveDraft("Auto-save before export");
-        await new Promise(r => setTimeout(r, 150)); // let state flush
-      } catch {
+      const saved = await saveDraft("Auto-save before export", { silent: true });
+      if (!saved) {
         alert("Could not save your calendar before exporting. Please save manually and try again.");
         return;
       }
+      await new Promise(r => setTimeout(r, 150)); // let state flush
     }
     if (!currentCalendarId) {
       alert("Save failed. Please save your calendar manually first.");
@@ -581,8 +585,21 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         body: JSON.stringify({ calendarId: currentCalendarId }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Export failed");
+        const text = await res.text();
+        let err = {};
+        try {
+          err = JSON.parse(text);
+        } catch {
+          /* non-JSON body (e.g. HTML 404 page) */
+        }
+        const parts = [err.error, err.detail, err.hint].filter(Boolean);
+        throw new Error(
+          parts.length
+            ? parts.join(" — ")
+            : text.slice(0, 200)
+              ? `HTTP ${res.status}: ${text.slice(0, 200)}`
+              : `HTTP ${res.status}`
+        );
       }
       const data = await res.json();
       const bytes = Uint8Array.from(atob(data.pdf.replace(/[\s\r\n]/g, "")), c => c.charCodeAt(0));
@@ -610,25 +627,44 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     if (!token) return;
 
     setExportMode(true);
-    setExporting(true);
+    setShowDashboard(false);
+    // Do not setExporting(true) here — that overlay is not .no-print and would cover the calendar in headless PDF capture.
+
+    document.documentElement.setAttribute("data-pdf-export", "1");
 
     fetch(`/api/export-data?token=${token}`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || `Export data failed (${r.status})`);
+        return data;
+      })
       .then((payload) => {
         setClientName(payload.clientName);
         setMonth(payload.month);
         setYear(payload.year);
         setPostsPerPage(payload.postsPerPage ?? 3);
         setProfileName(payload.builderName ?? "");
-        setSelectedDays(payload.selectedDays ?? []);
-        setPosts(payload.posts ?? []);
+        setSelectedDays(Array.isArray(payload.selectedDays) ? payload.selectedDays : []);
+        const raw = payload.posts;
+        setPosts(
+          raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
+        );
         setStep(4);
         // Poll until all cal-page images are decoded, then signal Puppeteer
+        const signalReady = () => {
+          setTimeout(() => {
+            window.__EXPORT_READY__ = true;
+          }, 800);
+        };
         const waitForImages = () => {
           const imgs = Array.from(document.querySelectorAll(".cal-page img"));
           const allLoaded = imgs.every(img => img.complete && img.naturalHeight > 0);
           if (allLoaded) {
-            setTimeout(() => { window.__EXPORT_READY__ = true; }, 800);
+            if (document.fonts && document.fonts.ready) {
+              void document.fonts.ready.then(() => signalReady());
+            } else {
+              signalReady();
+            }
           } else {
             setTimeout(waitForImages, 300);
           }
@@ -637,7 +673,6 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       })
       .catch((err) => {
         console.error("Export token fetch failed:", err);
-        window.__EXPORT_READY__ = true; // unblock Puppeteer even on error
       });
   }, []);
 
@@ -742,26 +777,35 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     setDraftHistory(data || []);
   }
 
-  async function saveDraft(label = "") {
-    if (!clientName.trim()) return alert("Please select a client first.");
-    if (!user) return alert("Please log in first.");
+  async function saveDraft(label = "", options = {}) {
+    const silent = options.silent === true;
+    if (!clientName.trim()) {
+      if (!silent) alert("Please select a client first.");
+      return false;
+    }
+    if (!user) {
+      if (!silent) alert("Please log in first.");
+      return false;
+    }
     const lbl = label || savingLabel || "Manual save";
-    // Upsert the calendar record
     const { data: calData, error: calErr } = await supabase.from("calendars").upsert({
       user_id: user.id, client_name: clientName, month, year,
       posts_per_page: postsPerPage, builder_name: profileName,
       selected_days: selectedDays, updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,client_name,month,year" }).select().single();
-    if (calErr) return alert("Save failed: " + calErr.message);
+    if (calErr) {
+      if (!silent) alert("Save failed: " + calErr.message);
+      return false;
+    }
     setCurrentCalendarId(calData.id);
-    // Insert a draft snapshot
     await supabase.from("calendar_drafts").insert({
       calendar_id: calData.id, posts, label: lbl,
     });
     await loadAllCalendars();
     await loadDraftHistory(calData.id);
     setSavingLabel("");
-    alert(`Saved: ${clientName} — ${MONTHS[month]} ${year}`);
+    if (!silent) alert(`Saved: ${clientName} — ${MONTHS[month]} ${year}`);
+    return true;
   }
 
   async function restoreDraft(draft) {
@@ -852,7 +896,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     </div>
   );
 
-  if (showDashboard) return (
+  if (showDashboard && !exportMode) return (
     <div style={{ minHeight: "100vh", background: "#f4f4f0", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "#1a1a2e", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
       <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, alignItems: "flex-start" }}>
@@ -1488,6 +1532,12 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         @keyframes driveShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         @keyframes cardSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         input:focus, select:focus, textarea:focus { border-color: #1a1a2e !important; }
+        /* Headless PDF: Chromium may not apply @media print for page.pdf(); hide chrome like .no-print */
+        html[data-pdf-export="1"] .no-print,
+        html[data-pdf-export="1"] [data-drive-toggle],
+        html[data-pdf-export="1"] [data-drive-panel] {
+          display: none !important;
+        }
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; }
