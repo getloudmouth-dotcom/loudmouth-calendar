@@ -493,7 +493,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     let dataUrls;
     try {
       setDriveUploadProgress({ active: true, done: 0, total: imageFiles.length, day: null, postIdx: null });
-      const urls = await Promise.all(imageFiles.map(async file => {
+      dataUrls = await Promise.all(imageFiles.map(async file => {
         const blob = await compressToBlob(file);
         const url = await uploadToCloudinary(blob);
         setDriveUploadProgress(p => ({ ...p, done: p.done + 1 }));
