@@ -170,6 +170,7 @@ export default function App() {
   const [posts, setPosts] = useState({});
   const [dragOver, setDragOver] = useState(null);
   const [driveToken, setDriveToken] = useState(null);
+const [pinnedCount, setPinnedCount] = useState(0);
 const [linkPickMode, setLinkPickMode] = useState({ active: false, onPick: null });
 const [driveOpen, setDriveOpen] = useState(false);
 const [drivePanelWidth, setDrivePanelWidth] = useState(300);
@@ -1337,6 +1338,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                   onBatchImport={handleBatchImport}
                   onDriveBatchImport={handleDriveBatchImport}
                   driveUploadProgress={driveUploadProgress}
+                  pinnedCount={pinnedCount}
+                  setPinnedCount={setPinnedCount}
                 />
               </div>
             )}
@@ -1366,8 +1369,10 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
             onUpdatePost={(day, postIdx, field, val) => updatePost(day, postIdx, field, val)}
             onSwapPosts={swapPostContent}
             onBatchImport={handleBatchImport}
-            onDriveBatchImport={handleDriveBatchImport}
-              driveUploadProgress={driveUploadProgress}
+                  onDriveBatchImport={handleDriveBatchImport}
+                  driveUploadProgress={driveUploadProgress}
+                  pinnedCount={pinnedCount}
+                  setPinnedCount={setPinnedCount}
             postsPerPage={postsPerPage}
             exporting={exporting}
             builderName={profileName}
@@ -1938,7 +1943,7 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
   );
 }
 
-function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop }) {
+function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount }) {
   const [notes, setNotes] = useState("");
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
   return (
@@ -1969,7 +1974,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes..." style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "white", borderRadius: 4, padding: "2px 0" }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} driveUploadProgress={driveUploadProgress} />
+          <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} driveUploadProgress={driveUploadProgress} pinnedCount={pinnedCount} setPinnedCount={setPinnedCount} />
           </div>
         </div>
       </div>
@@ -1986,12 +1991,10 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
 }
 
 // ── Reorderable Feed Grid ──
-function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport, driveUploadProgress }) {
+function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport, driveUploadProgress, pinnedCount, setPinnedCount }) {
   const [dragSrc, setDragSrc] = useState(null); // { day, postIdx }
   const [hoverTarget, setHoverTarget] = useState(null);
   const [dropHighlight, setDropHighlight] = useState(false);
-
-  const [pinnedCount, setPinnedCount] = useState(0);
   const postsWithImages = allPosts.filter(p => p?.imageUrls?.[0] || p?.placeholder);
   const reversed = [...postsWithImages].reverse();
   const padCount = reversed.length % 3 === 0 ? 0 : 3 - (reversed.length % 3);
