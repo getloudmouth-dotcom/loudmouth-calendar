@@ -1991,12 +1991,16 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport, 
   const [hoverTarget, setHoverTarget] = useState(null);
   const [dropHighlight, setDropHighlight] = useState(false);
 
+  const [pinnedCount, setPinnedCount] = useState(0);
   const postsWithImages = allPosts.filter(p => p?.imageUrls?.[0] || p?.placeholder);
-  // Instagram order: newest top-left, oldest bottom-right
-  // Reverse so newest is first, pad front with nulls to push newest to right of top row
   const reversed = [...postsWithImages].reverse();
   const padCount = reversed.length % 3 === 0 ? 0 : 3 - (reversed.length % 3);
-  const cells = [...Array(padCount).fill(null), ...reversed];
+  // Insert pinned placeholder slots at top-left, pushing real posts right/down
+  const pinnedSlots = Array(pinnedCount).fill({ pinned: true });
+  const allCells = [...pinnedSlots, ...reversed, ...Array(padCount).fill(null)];
+  // Re-pad to keep rows of 3 complete
+  const totalPad = allCells.length % 3 === 0 ? 0 : 3 - (allCells.length % 3);
+  const cells = [...allCells, ...Array(totalPad).fill(null)];
 
   return (
     <div
@@ -2027,42 +2031,73 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport, 
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0, flex: 1, minHeight: 0, overflow: "hidden", alignContent: "start" }}>
         {cells.map((post, i) => {
-          const isTarget = hoverTarget === i && dragSrc !== null && post !== null;
+          const isPinned = post && post.pinned;
+          const isEmpty = !post;
+          const isTarget = hoverTarget === i && dragSrc !== null && post !== null && !isPinned;
+          // Show pin button only on the next available top slot
+          const showPinBtn = i === pinnedCount && pinnedCount < 3 && i < 3;
+          const showUnpinBtn = isPinned && i === pinnedCount - 1;
           return (
             <div
               key={i}
-              draggable={!!post}
-              onDragStart={() => post && setDragSrc({ day: post.day, postIdx: post.postIdx ?? 0, cellIdx: i })}
-              onDragOver={e => { e.preventDefault(); if (post) setHoverTarget(i); }}
+              draggable={!!post && !isPinned}
+              onDragStart={() => post && !isPinned && setDragSrc({ day: post.day, postIdx: post.postIdx ?? 0, cellIdx: i })}
+              onDragOver={e => { e.preventDefault(); if (post && !isPinned) setHoverTarget(i); }}
               onDragLeave={() => setHoverTarget(null)}
               onDrop={e => {
                 e.preventDefault();
                 setHoverTarget(null);
-                if (!dragSrc || !post) return;
+                if (!dragSrc || !post || isPinned) return;
                 if (dragSrc.day === post.day && dragSrc.postIdx === (post.postIdx ?? 0)) return;
                 onSwap(dragSrc.day, dragSrc.postIdx, post.day, post.postIdx ?? 0);
                 setDragSrc(null);
               }}
               onDragEnd={() => { setDragSrc(null); setHoverTarget(null); }}
               style={{
-                aspectRatio: "4 / 5", background: "#eeeeee", borderRadius: 0, overflow: "hidden",
-                cursor: post ? "grab" : "default",
+                aspectRatio: "4 / 5", borderRadius: 0, overflow: "hidden",
+                cursor: isPinned ? "default" : post ? "grab" : "default",
                 outline: isTarget ? "2px solid #1a1a2e" : "none",
                 opacity: dragSrc && dragSrc.cellIdx === i ? 0.5 : 1,
                 transition: "outline 0.1s, opacity 0.1s",
                 position: "relative",
+                background: isPinned ? "#1a1a2e" : "#eeeeee",
               }}
             >
-              {post?.imageUrls?.[0] ? (
+              {isPinned ? (
+                <>
+                  {/* Pinned cell — dark overlay with pin icon */}
+                  <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #1a1a2e 60%, #2a2a4e)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                    <span style={{ fontSize: 14 }}>📌</span>
+                    <span style={{ fontSize: 6, color: "rgba(215,250,6,0.7)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Pinned</span>
+                  </div>
+                  {showUnpinBtn && (
+                    <button
+                      onClick={() => setPinnedCount(c => c - 1)}
+                      title="Unpin"
+                      style={{ position: "absolute", top: 3, right: 3, background: "rgba(232,0,28,0.85)", border: "none", color: "white", borderRadius: "50%", width: 14, height: 14, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, lineHeight: 1 }}
+                    >✕</button>
+                  )}
+                </>
+              ) : post?.imageUrls?.[0] ? (
                 <>
                   <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${post.imageUrls[0]})`, backgroundSize: (post.scale ?? 1) <= 1.05 ? "cover" : `${(post.scale ?? 1) * 100}%`, backgroundPosition: `${post.cropX ?? 50}% ${post.cropY ?? 50}%`, backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
-                  {/* Date label on hover */}
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.55)", color: "white", fontSize: 7, padding: "2px 3px", textAlign: "center", fontWeight: 700, opacity: isTarget ? 1 : 0, transition: "opacity 0.15s" }}>
                     {formatDate(post.day ? new Date().getMonth() : 0, post.day)}
                   </div>
                 </>
               ) : (
                 <div style={{ width: "100%", height: "100%", background: i % 3 === 0 ? "#e5e5e5" : i % 3 === 1 ? "#ebebeb" : "#e8e8e8" }} />
+              )}
+              {/* Pin button — only on next available slot */}
+              {showPinBtn && (
+                <button
+                  onClick={() => setPinnedCount(c => c + 1)}
+                  title="Pin this slot"
+                  className="no-print"
+                  style={{ position: "absolute", top: 3, left: 3, background: "rgba(26,26,46,0.82)", border: "1px solid rgba(215,250,6,0.4)", color: "#D7FA06", borderRadius: 4, fontSize: 8, fontWeight: 800, padding: "2px 5px", cursor: "pointer", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 3, lineHeight: 1.4 }}
+                >
+                  📌 Pin
+                </button>
               )}
             </div>
           );
