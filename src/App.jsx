@@ -584,11 +584,13 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Export failed");
       }
-      const blob = await res.blob();
+      const data = await res.json();
+      const bytes = Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${clientName || "calendar"}-content-calendar.pdf`;
+      a.download = data.filename || `${clientName || "calendar"}-content-calendar.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
