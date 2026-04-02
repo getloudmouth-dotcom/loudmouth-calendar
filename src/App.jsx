@@ -800,9 +800,9 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
 
   const stepLabels = ["Setup", "Pick Days", "Content", "Preview"];
 
-  if (authLoading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "'Helvetica Neue', Arial, sans-serif", background: "#1a1a2e", color: "#D7FA06", fontSize: 16, fontWeight: 700, letterSpacing: "0.08em" }}>LOADING...</div>;
+  if (authLoading && !exportMode) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "'Helvetica Neue', Arial, sans-serif", background: "#1a1a2e", color: "#D7FA06", fontSize: 16, fontWeight: 700, letterSpacing: "0.08em" }}>LOADING...</div>;
 
-  if (!user) return (
+  if (!user && !exportMode) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#1a1a2e", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, width: 360, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
       <div style={{ marginBottom: 28, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
