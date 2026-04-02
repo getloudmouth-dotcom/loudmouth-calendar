@@ -195,13 +195,20 @@ export default async function handler(req, res) {
     });
     await page.emulateMediaType("print");
 
-    const pdfBuffer = await page.pdf({
-      printBackground: true,
-      format: "A4",
-      landscape: true,
-      preferCSSPageSize: true,
-      margin: { top: "0", right: "0", bottom: "0", left: "0" },
-    });
+    const { pageWidth, pageHeight } = await page.evaluate(() => {
+        const el = document.querySelector(".cal-page");
+        if (!el) return { pageWidth: 1440, pageHeight: 1021 };
+        const r = el.getBoundingClientRect();
+        return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
+      });
+  
+      const pdfBuffer = await page.pdf({
+        printBackground: true,
+        width: `${pageWidth}px`,
+        height: `${pageHeight}px`,
+        preferCSSPageSize: false,
+        margin: { top: "0", right: "0", bottom: "0", left: "0" },
+      });
 
     const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
     return res.status(200).json({
