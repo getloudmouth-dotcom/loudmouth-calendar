@@ -1339,20 +1339,19 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                                   {!isCarousel && !post.placeholder && <div>
                                     <label style={labelStyle}>{isReel ? "Video Link" : "Content Link (for client)"}</label>
                                     {isReel ? (
-                                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}
+                                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                      <input
+                                        value={post.videoUrl || ""}
+                                        placeholder="Paste or pick video link from Drive..."
+                                        onChange={e => updatePost(day, postIdx, "videoUrl", e.target.value)}
                                         onDragOver={e => e.preventDefault()}
                                         onDrop={e => {
                                           e.preventDefault();
                                           const link = e.dataTransfer.getData("driveFileLink");
                                           if (link) updatePost(day, postIdx, "videoUrl", link);
                                         }}
-                                      >
-                                        <input
-                                          value={post.videoUrl || ""}
-                                          placeholder="Paste or pick video link from Drive..."
-                                          onChange={e => updatePost(day, postIdx, "videoUrl", e.target.value)}
-                                          style={{ ...inputStyle, fontSize: 12, background: post.videoUrl ? "white" : "#fffbe6", border: post.videoUrl ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }}
-                                        />
+                                        style={{ ...inputStyle, fontSize: 12, background: post.videoUrl ? "white" : "#fffbe6", border: post.videoUrl ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }}
+                                      />
                                         <button
                                           title="Pick from Drive"
                                           onClick={() => {
@@ -1363,15 +1362,19 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                                         >📁</button>
                                       </div>
                                     ) : (
-                                      <div
-                                        onDragOver={e => e.preventDefault()}
-                                        onDrop={e => {
-                                          e.preventDefault();
-                                          const link = e.dataTransfer.getData("driveFileLink");
-                                          if (link) updatePost(day, postIdx, "url", link);
-                                        }}
-                                      >
-                                        <input value={post.url || ""} placeholder="Paste link or drag from Drive..." onChange={e => updatePost(day, postIdx, "url", e.target.value)} style={{ ...inputStyle, background: post.url ? "white" : "#fffbe6", border: post.url ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }} />
+                                      <div>
+                                        <input
+                                          value={post.url || ""}
+                                          placeholder="Paste link or drag from Drive..."
+                                          onChange={e => updatePost(day, postIdx, "url", e.target.value)}
+                                          onDragOver={e => e.preventDefault()}
+                                          onDrop={e => {
+                                            e.preventDefault();
+                                            const link = e.dataTransfer.getData("driveFileLink");
+                                            if (link) updatePost(day, postIdx, "url", link);
+                                          }}
+                                          style={{ ...inputStyle, background: post.url ? "white" : "#fffbe6", border: post.url ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }}
+                                        />
                                       </div>
                                     )}
                                     </div>}
@@ -1737,9 +1740,10 @@ function DrivePanel({ token, isOpen, onClose, onTokenExpired, width, onWidthChan
   }
 
   function buildDragData(f) {
+    const getLink = file => file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`;
     return (selectedIds.has(f.id) && selectedIds.size > 1)
-      ? images.filter(img => selectedIds.has(img.id)).map(img => ({ id: img.id, link: img.webViewLink || "" }))
-      : [{ id: f.id, link: f.webViewLink || "" }];
+      ? images.filter(img => selectedIds.has(img.id)).map(img => ({ id: img.id, link: getLink(img) }))
+      : [{ id: f.id, link: getLink(f) }];
   }
 
   const cols = width >= 380 ? 3 : 2;
