@@ -90,12 +90,11 @@ export default async function handler(req, res) {
       landscape: true,
     });
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${cal.client_name}-content-calendar.pdf"`
-    );
-    return res.status(200).send(pdfBuffer);
+    const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
+    return res.status(200).json({
+      pdf: base64Pdf,
+      filename: `${cal.client_name}-content-calendar.pdf`,
+    });
 
   } catch (err) {
     console.error("PDF export error:", err);

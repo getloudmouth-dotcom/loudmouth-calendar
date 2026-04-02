@@ -585,7 +585,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         throw new Error(err.error || "Export failed");
       }
       const data = await res.json();
-      const bytes = Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0));
+      const bytes = Uint8Array.from(atob(data.pdf.replace(/[\s\r\n]/g, "")), c => c.charCodeAt(0));
       const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
