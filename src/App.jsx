@@ -1467,7 +1467,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-                  <button onClick={() => setStep(2)} style={secondaryBtn}>← Back</button>
+                  <button onClick={() => { setStep(2); setLinkPickMode({ active: false, onPick: null }); }} style={secondaryBtn}>← Back</button>
                   <button onClick={() => { setStep(4); setLinkPickMode({ active: false, onPick: null }); }} style={primaryBtn}>Preview Calendar →</button>
                 </div>
               </div>
