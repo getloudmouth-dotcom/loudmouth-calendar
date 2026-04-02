@@ -1,6 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+// PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
 
 const CLOUDINARY_CLOUD = "djaxz6tef";
@@ -271,6 +270,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   }
   
   const [exporting, setExporting] = useState(false);
+  const [exportElapsed, setExportElapsed] = useState(0);
+  const [exportMode, setExportMode] = useState(false);
   const [editingClients, setEditingClients] = useState(false);
 
   function connectDrive() {
@@ -556,61 +557,93 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   }
 
   async function exportPDF() {
-    // Inject CSS to hide UI-only elements and inject exporting class
-    const style = document.createElement("style");
-    style.id = "pdf-export-style";
-    style.textContent = `.no-print { display: none !important; } .no-export { display: none !important; } .pdf-native-link { visibility: hidden !important; } .feed-header { justify-content: center !important; } .feed-label { font-size: 11px !important; } @keyframes spin { from { stroke-dashoffset: 34.5; transform: rotate(0deg); } to { stroke-dashoffset: 0; transform: rotate(360deg); } }`;
-    document.head.appendChild(style);
-    setExporting(true);
-    // Wait for React to re-render with exporting=true
-    await new Promise(r => setTimeout(r, 80));
-    try {
-      const pages = document.querySelectorAll(".cal-page");
-      if (!pages.length) return;
-      const total = pages.length;
-      setExportProgress({ current: 0, total });
-      const w = pages[0].offsetWidth;
-      const h = pages[0].offsetHeight;
-      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [w, h] });
-      for (let i = 0; i < pages.length; i++) {
-        setExportProgress({ current: i + 1, total });
-        // Scroll page into view so getBoundingClientRect is accurate
-        pages[i].scrollIntoView({ block: "start" });
-        await new Promise(r => setTimeout(r, 30));
-        const pageRect = pages[i].getBoundingClientRect();
-        const linkAnnotations = [];
-        pages[i].querySelectorAll("[data-pdf-link]").forEach(el => {
-          const href = el.getAttribute("data-pdf-link");
-          if (!href || href === "#") return;
-          const r = el.getBoundingClientRect();
-          const label = el.getAttribute("data-pdf-link-text") || "Link";
-          linkAnnotations.push({
-            x: r.left - pageRect.left,
-            y: r.top - pageRect.top,
-            w: r.width,
-            h: r.height,
-            url: href,
-            label,
-          });
-        });
-        const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, allowTaint: true, backgroundColor: "#ffffff" });
-        const imgData = canvas.toDataURL("image/jpeg", 0.85);
-        if (i > 0) pdf.addPage([w, h], "landscape");
-        pdf.addImage(imgData, "JPEG", 0, 0, w, h);
-        linkAnnotations.forEach(({ x, y, w: lw, h: lh, url }) => {
-          pdf.link(x, y, lw, lh, { url });
-        });
+    // Auto-save silently before export so Puppeteer has data to pull from Supabase
+    if (!currentCalendarId) {
+      try {
+        await saveDraft("Auto-save before export");
+        await new Promise(r => setTimeout(r, 150)); // let state flush
+      } catch {
+        alert("Could not save your calendar before exporting. Please save manually and try again.");
+        return;
       }
-      pdf.save(`${clientName || "calendar"}-content-calendar.pdf`);
+    }
+    if (!currentCalendarId) {
+      alert("Save failed. Please save your calendar manually first.");
+      return;
+    }
+    setExporting(true);
+    setExportElapsed(0);
+    const _exportTimer = setInterval(() => setExportElapsed(s => s + 1), 1000);
+    try {
+      const res = await fetch("/api/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ calendarId: currentCalendarId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${clientName || "calendar"}-content-calendar.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Export error: " + err.message);
     } finally {
+      clearInterval(_exportTimer);
       setExporting(false);
       setExportProgress({ current: 0, total: 0 });
-      document.head.removeChild(style);
+      setExportElapsed(0);
     }
   }
 
+  // ── Export token detection (headless Puppeteer mode) ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("exportToken");
+    if (!token) return;
+
+    setExportMode(true);
+    setExporting(true);
+
+    fetch(`/api/export-data?token=${token}`)
+      .then((r) => r.json())
+      .then((payload) => {
+        setClientName(payload.clientName);
+        setMonth(payload.month);
+        setYear(payload.year);
+        setPostsPerPage(payload.postsPerPage ?? 3);
+        setProfileName(payload.builderName ?? "");
+        setSelectedDays(payload.selectedDays ?? []);
+        setPosts(payload.posts ?? []);
+        setStep(4);
+        // Poll until all cal-page images are decoded, then signal Puppeteer
+        const waitForImages = () => {
+          const imgs = Array.from(document.querySelectorAll(".cal-page img"));
+          const allLoaded = imgs.every(img => img.complete && img.naturalHeight > 0);
+          if (allLoaded) {
+            setTimeout(() => { window.__EXPORT_READY__ = true; }, 800);
+          } else {
+            setTimeout(waitForImages, 300);
+          }
+        };
+        setTimeout(waitForImages, 1000);
+      })
+      .catch((err) => {
+        console.error("Export token fetch failed:", err);
+        window.__EXPORT_READY__ = true; // unblock Puppeteer even on error
+      });
+  }, []);
+
   // ── Auth ──
   useEffect(() => {
+    // Warm up export function to reduce cold start latency
+    fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
@@ -845,10 +878,18 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
             />
           </svg>
           <div style={{ textAlign: "center" }}>
-            <div style={{ color: "white", fontWeight: 700, fontSize: 15, letterSpacing: "0.04em", marginBottom: 6 }}>
-              {exportProgress.total > 1 ? `Rendering page ${exportProgress.current} of ${exportProgress.total}...` : "Building your PDF..."}
+          <div style={{ color: "white", fontWeight: 700, fontSize: 15, letterSpacing: "0.04em", marginBottom: 6 }}>
+              {exportProgress.total > 1
+                ? `Rendering page ${exportProgress.current} of ${exportProgress.total}...`
+                : exportElapsed < 5
+                ? "Building your PDF..."
+                : exportElapsed < 15
+                ? `Rendering your calendar... (${exportElapsed}s)`
+                : `Almost there... (${exportElapsed}s)`}
             </div>
-            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>This may take a few seconds</div>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>
+              {exportElapsed < 8 ? "This may take a few seconds" : "Hang tight — loading all images"}
+            </div>
           </div>
         </div>
       )}
@@ -946,10 +987,18 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
             />
           </svg>
           <div style={{ textAlign: "center" }}>
-            <div style={{ color: "white", fontWeight: 700, fontSize: 15, letterSpacing: "0.04em", marginBottom: 6 }}>
-              {exportProgress.total > 1 ? `Rendering page ${exportProgress.current} of ${exportProgress.total}...` : "Building your PDF..."}
+          <div style={{ color: "white", fontWeight: 700, fontSize: 15, letterSpacing: "0.04em", marginBottom: 6 }}>
+              {exportProgress.total > 1
+                ? `Rendering page ${exportProgress.current} of ${exportProgress.total}...`
+                : exportElapsed < 5
+                ? "Building your PDF..."
+                : exportElapsed < 15
+                ? `Rendering your calendar... (${exportElapsed}s)`
+                : `Almost there... (${exportElapsed}s)`}
             </div>
-            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>This may take a few seconds</div>
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>
+              {exportElapsed < 8 ? "This may take a few seconds" : "Hang tight — loading all images"}
+            </div>
           </div>
         </div>
       )}
