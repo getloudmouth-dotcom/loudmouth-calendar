@@ -7,10 +7,6 @@
       "api/export-data.js": {
         "memory": 128,
         "maxDuration": 10
-      },
-      "api/drive-thumb.js": {
-        "memory": 512,
-        "maxDuration": 15
       }
     }
   }

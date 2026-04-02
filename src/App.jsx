@@ -14,6 +14,7 @@ async function compressToBlob(file) {
   return new Promise(resolve => {
     const img = new Image();
     const url = URL.createObjectURL(file);
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
     img.onload = () => {
       const MAX = 3000;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
@@ -29,6 +30,7 @@ async function compressToBlob(file) {
 }
 
 async function uploadToCloudinary(fileOrBlob) {
+  if (!fileOrBlob) throw new Error("Image failed to process — file may be corrupt or unsupported.");
   const form = new FormData();
   form.append("file", fileOrBlob);
   form.append("upload_preset", CLOUDINARY_PRESET);
@@ -40,8 +42,6 @@ async function uploadToCloudinary(fileOrBlob) {
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const CONTENT_TYPES = ["Photo", "Reel", "Carousel", "Story"];
-const DEFAULT_CLIENTS = [];
-const DEFAULT_BUILDERS = [];
 
 function getDaysInMonth(year, month) { return new Date(year, month + 1, 0).getDate(); }
 function getFirstDayOfMonth(year, month) { return new Date(year, month, 1).getDay(); }
@@ -2427,12 +2427,17 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         {isCarousel && hovering && (
           <label title="Add photo to carousel" onClick={e => e.stopPropagation()} style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.55)", color: "white", borderRadius: "50%", width: 26, height: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
             <span style={{ fontSize: 18, fontWeight: 300, lineHeight: 1, marginTop: -1, pointerEvents: "none" }}>+</span>
-            <input type="file" accept="image/*" multiple onChange={e => {
+            <input type="file" accept="image/*" multiple onChange={async e => {
               const files = [...e.target.files].filter(f => f.type.startsWith("image/"));
-              Promise.all(files.map(f => new Promise(res => { const r = new FileReader(); r.onload = ev => res(ev.target.result); r.readAsDataURL(f); }))).then(urls => {
-                onUpdate("imageUrls", [...(post.imageUrls || []), ...urls]);
-              });
               e.target.value = "";
+              if (!files.length) return;
+              try {
+                const urls = await Promise.all(files.map(async f => {
+                  const blob = await compressToBlob(f);
+                  return uploadToCloudinary(blob);
+                }));
+                onUpdate("imageUrls", [...(post.imageUrls || []), ...urls]);
+              } catch(err) { alert("Upload failed: " + err.message); }
             }} style={{ display: "none" }} />
           </label>
         )}
