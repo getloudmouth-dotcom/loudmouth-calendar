@@ -995,7 +995,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
           {stepLabels.map((label, i) => {
             const s = i + 1;
             return (
-              <button key={s} data-step-nav onClick={() => setStep(s)} style={{
+              <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); }} style={{
                 background: step === s ? "#D7FA06" : "rgba(255,255,255,0.07)",
                 color: step === s ? "#111" : "#aaa",
                 border: "none", padding: "6px 16px", borderRadius: 20,
@@ -1390,7 +1390,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
                   <button onClick={() => setStep(2)} style={secondaryBtn}>← Back</button>
-                  <button onClick={() => setStep(4)} style={primaryBtn}>Preview Calendar →</button>
+                  <button onClick={() => { setStep(4); setLinkPickMode({ active: false, onPick: null }); }} style={primaryBtn}>Preview Calendar →</button>
                 </div>
               </div>
             )}
@@ -1482,6 +1482,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
             builderName={profileName}
             onDriveDrop={handleMultiDriveFileDrop}
             onFilesDrop={handleFiles}
+            onPickReelLink={(day, postIdx) => { setDriveOpen(true); setLinkPickMode({ active: true, onPick: (link) => updatePost(day, postIdx, "videoUrl", link) }); }}
           />
           ))}
         </div>
@@ -1523,7 +1524,13 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         </button>
       )}
 
-{driveToken && (
+{linkPickMode.active && (
+        <div onClick={() => { setLinkPickMode({ active: false, onPick: null }); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 450, cursor: "pointer" }} />
+      )}
+      {linkPickMode.active && (
+        <div onClick={() => { setLinkPickMode({ active: false, onPick: null }); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 450, cursor: "pointer" }} />
+      )}
+      {driveToken && (
         <DrivePanel
         token={driveToken}
         isOpen={driveOpen}
@@ -2053,7 +2060,7 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
   );
 }
 
-function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount }) {
+function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount, onPickReelLink }) {
   const [notes, setNotes] = useState("");
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
   return (
@@ -2068,7 +2075,7 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
       <div style={{ flex: 1, display: "flex", gap: 18, alignItems: "stretch", minHeight: 0 }}>
           {posts.map((post, i) => (
             <div key={i} style={{ flex: "0 0 auto", width: `calc((100% - ${(postsPerPage - 1) * 18}px) / ${postsPerPage})`, display: "flex" }}>
-            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} isExporting={exporting} onDriveDrop={onDriveDrop ? (fileInfos) => onDriveDrop(post.day, post.postIdx ?? i, fileInfos) : undefined} onFilesDrop={onFilesDrop ? (files) => onFilesDrop(post.day, post.postIdx ?? i, files) : undefined} driveUploadProgress={driveUploadProgress} />
+            <PostCard post={post} month={month} year={year} onUpdate={(field, val) => onUpdatePost(post.day, post.postIdx ?? i, field, val)} isExporting={exporting} onDriveDrop={onDriveDrop ? (fileInfos) => onDriveDrop(post.day, post.postIdx ?? i, fileInfos) : undefined} onFilesDrop={onFilesDrop ? (files) => onFilesDrop(post.day, post.postIdx ?? i, files) : undefined} driveUploadProgress={driveUploadProgress} onPickReelLink={onPickReelLink ? () => onPickReelLink(post.day, post.postIdx ?? i) : undefined} />
           </div>
           ))}
           {/* Ghost spacers so partial pages stay the right size */}
@@ -2281,7 +2288,7 @@ function NavProfileMenu({ profileName, currentCalendarId, onMyCalendars, onHisto
     </div>
   );
 }
-function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFilesDrop, driveUploadProgress }) {
+function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFilesDrop, driveUploadProgress, onPickReelLink }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [reframing, setReframing] = useState(false);
   const [dropHighlight, setDropHighlight] = useState(false);
@@ -2327,10 +2334,11 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
       setSlideIdx(Math.max(0, currentSlide - 1));
     } else {
       onUpdate("imageUrls", []);
+      onUpdate("url", "");
     }
   }
 
-  const linkHref = isCarousel ? (post.urls?.[currentSlide] || post.url) : isReel ? (post.urls?.[0] || post.url) : post.url;
+  const linkHref = isCarousel ? (post.urls?.[currentSlide] || post.url) : isReel ? (post.videoUrl || post.urls?.[0] || post.url) : post.url;
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
@@ -2398,7 +2406,12 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
             {showTypeMenu && (
               <div style={{ position: "absolute", top: "110%", left: 0, background: "white", border: "1.5px solid #e0e0e0", borderRadius: 8, boxShadow: "0 6px 20px rgba(0,0,0,0.15)", overflow: "hidden", minWidth: 110 }}>
                 {CONTENT_TYPES.map(t => (
-                  <div key={t} onClick={() => { onUpdate("contentType", t); setShowTypeMenu(false); }} style={{ padding: "7px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: t === post.contentType ? "#f0f4ff" : "white", color: t === post.contentType ? "#1a1a2e" : "#444" }}>{t}</div>
+                  <div key={t} onClick={() => {
+                    if (post.contentType === "Reel" && t !== "Reel") onUpdate("videoUrl", "");
+                    if (post.contentType !== "Reel" && t === "Reel") onUpdate("url", "");
+                    onUpdate("contentType", t);
+                    setShowTypeMenu(false);
+                  }} style={{ padding: "7px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: t === post.contentType ? "#f0f4ff" : "white", color: t === post.contentType ? "#1a1a2e" : "#444" }}>{t}</div>
                 ))}
               </div>
             )}
@@ -2472,9 +2485,18 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
           <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
         </div>
       )}
-      <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
-        {isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"}
-      </a>
+      {isReel && !isExporting && onPickReelLink ? (
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text="Reel Link" target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer", flex: 1 }}>
+            Reel Link
+          </a>
+          <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
+        </div>
+      ) : (
+        <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
+          {isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"}
+        </a>
+      )}
       <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 8, padding: "14px 16px", flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "#333", marginBottom: 10 }}>Caption:</div>
         <textarea value={post.caption || ""} onChange={e => onUpdate("caption", e.target.value)} placeholder="Caption..." rows={4} style={{ fontSize: 13, color: "#444", lineHeight: 1.7, width: "100%", border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0, flex: 1 }} />
