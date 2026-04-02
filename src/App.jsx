@@ -197,6 +197,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const historyRef = useRef([]);
   const historyIdxRef = useRef(-1);
   const isUndoingRef = useRef(false);
+  const autoSaveTimerRef = useRef(null);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
@@ -204,10 +205,20 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [profileInput, setProfileInput] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  const [wasOffline, setWasOffline] = useState(false);
 
   useEffect(() => {
     document.body.style.background = "#f4f4f0";
     document.body.style.margin = "0";
+  }, []);
+
+  useEffect(() => {
+    function handleOnline() { setIsOnline(true); setWasOffline(true); setTimeout(() => setWasOffline(false), 3000); }
+    function handleOffline() { setIsOnline(false); setWasOffline(false); }
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => { window.removeEventListener("online", handleOnline); window.removeEventListener("offline", handleOffline); };
   }, []);
 
   useEffect(() => {
@@ -237,6 +248,26 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
     }, 600);
     return () => clearTimeout(timer);
   }, [posts, selectedDays, clientName, month, year, postsPerPage]);
+
+  useEffect(() => {
+    if (!clientName.trim() || !user || isUndoingRef.current) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      saveDraft("Autosave", { silent: true });
+    }, 12000);
+    return () => clearTimeout(autoSaveTimerRef.current);
+  }, [posts, selectedDays]);
+
+  useEffect(() => {
+    function onKeyDown(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        if (clientName.trim() && user) saveDraft();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [clientName, user, posts, selectedDays, month, year, postsPerPage, profileName]);
 
   function restoreSnap(snap) {
     isUndoingRef.current = true;
@@ -278,6 +309,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [exportElapsed, setExportElapsed] = useState(0);
   const [exportMode, setExportMode] = useState(() => !!readExportToken());
   const [editingClients, setEditingClients] = useState(false);
+  const [hoveredPostCard, setHoveredPostCard] = useState(null);
 
   function connectDrive() {
     if (!window.google?.accounts?.oauth2) {
@@ -343,21 +375,30 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length, day: null, postIdx: null });
       const urls = await fetchDriveUrls(fileInfos, () => setDriveUploadProgress(p => ({ ...p, done: p.done + 1 })));
       const newDays = [];
+      const queue = urls.map((imgUrl, i) => ({ imgUrl, link: fileInfos[i]?.link || "" }));
       setPosts(p => {
         const next = { ...p };
-        let queue = [...urls];
+        let q = [...queue];
         const days = [...selectedDays].sort((a, b) => a - b);
         for (const day of days) {
-          if (!queue.length) break;
+          if (!q.length) break;
           const arr = [...(next[day] || [])];
-          if (arr.length === 1 && !arr[0].imageUrls?.length) { arr[0] = { ...arr[0], imageUrls: [queue.shift()] }; next[day] = arr; }
+          if (arr.length === 1 && !arr[0].imageUrls?.length) {
+            const { imgUrl, link } = q.shift();
+            arr[0] = { ...arr[0], imageUrls: [imgUrl], url: link || arr[0].url || "" };
+            next[day] = arr;
+          }
         }
-        if (queue.length > 0) {
+        if (q.length > 0) {
           const usedDays = new Set([...selectedDays, ...newDays]);
           const totalDays = getDaysInMonth(year, month);
           const lastDay = Math.max(...selectedDays, 0);
-          for (let d = lastDay + 1; d <= totalDays && queue.length > 0; d++) {
-            if (!usedDays.has(d)) { usedDays.add(d); newDays.push(d); next[d] = [{ ...newPost(), imageUrls: [queue.shift()] }]; }
+          for (let d = lastDay + 1; d <= totalDays && q.length > 0; d++) {
+            if (!usedDays.has(d)) {
+              const { imgUrl, link } = q.shift();
+              usedDays.add(d); newDays.push(d);
+              next[d] = [{ ...newPost(), imageUrls: [imgUrl], url: link || "" }];
+            }
           }
         }
         return next;
@@ -487,6 +528,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       const arr = [...(p[day] || [])];
       const post = { ...arr[postIdx] };
       post.imageUrls = post.imageUrls.filter((_, i) => i !== imgIdx);
+      if (post.imageUrls.length <= 1 && post.contentType === "Carousel") post.contentType = "Photo";
       arr[postIdx] = post;
       return { ...p, [day]: arr };
     });
@@ -652,24 +694,36 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         setStep(4);
         // Poll until all cal-page images are decoded, then signal Puppeteer
         const signalReady = () => {
-          setTimeout(() => {
-            window.__EXPORT_READY__ = true;
-          }, 800);
+          const after = () => setTimeout(() => { window.__EXPORT_READY__ = true; }, 400);
+          if (document.fonts?.ready) document.fonts.ready.then(after); else after();
         };
+
         const waitForImages = () => {
+          // Wait for .cal-page to be in the DOM first
+          if (!document.querySelector(".cal-page")) { setTimeout(waitForImages, 200); return; }
+
+          // <img> tags (if any)
           const imgs = Array.from(document.querySelectorAll(".cal-page img"));
-          const allLoaded = imgs.every(img => img.complete && img.naturalHeight > 0);
-          if (allLoaded) {
-            if (document.fonts && document.fonts.ready) {
-              void document.fonts.ready.then(() => signalReady());
-            } else {
-              signalReady();
-            }
-          } else {
-            setTimeout(waitForImages, 300);
-          }
+          // Inline background-image URLs — what DraggableImage uses instead of <img>
+          const bgUrls = [...new Set(
+            Array.from(document.querySelectorAll(".cal-page *"))
+              .map(el => el.style.backgroundImage?.match(/url\(["']?([^"')]+)["']?\)/)?.[1])
+              .filter(url => url && url.startsWith("http"))
+          )];
+
+          const pending = [
+            ...imgs.filter(i => !i.complete || !i.naturalHeight).map(img =>
+              new Promise(r => { img.onload = img.onerror = r; })
+            ),
+            ...bgUrls.map(url =>
+              new Promise(r => { const p = new Image(); p.onload = p.onerror = r; p.src = url; })
+            ),
+          ];
+
+          if (pending.length === 0) signalReady();
+          else Promise.all(pending).then(signalReady);
         };
-        setTimeout(waitForImages, 1000);
+        setTimeout(waitForImages, 500);
       })
       .catch((err) => {
         console.error("Export token fetch failed:", err);
@@ -678,8 +732,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
 
   // ── Auth ──
   useEffect(() => {
-    // Warm up export function to reduce cold start latency
-    fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
+    // Warm up export function (skip inside headless export to avoid recursive call)
+    if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -1021,6 +1075,21 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         </div>
         </nav>
         
+        {(!isOnline || wasOffline) && (
+          <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 99998, display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", backdropFilter: "blur(8px)", background: isOnline ? "rgba(20, 160, 80, 0.92)" : "rgba(20,20,40,0.95)", border: isOnline ? "1px solid rgba(100,220,140,0.4)" : "1px solid rgba(232,0,28,0.4)", transition: "background 0.4s, border 0.4s", whiteSpace: "nowrap" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#6fec9f" : "#E8001C", boxShadow: isOnline ? "0 0 8px #6fec9f" : "0 0 8px #E8001C", flexShrink: 0, animation: isOnline ? "none" : "offlinePulse 1.4s ease-in-out infinite" }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "0.02em" }}>
+                {isOnline ? "Back online" : "No internet connection"}
+              </div>
+              <div style={{ fontSize: 11, color: isOnline ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.55)", marginTop: 1 }}>
+                {isOnline ? "All good — your work is safe." : "Changes won't save until you reconnect."}
+              </div>
+            </div>
+            {isOnline && <span style={{ fontSize: 16, marginLeft: 2 }}>✓</span>}
+          </div>
+        )}
+
         {exporting && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
           <svg width="48" height="48" viewBox="0 0 48 48">
@@ -1259,13 +1328,19 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                             const isCarousel = post.contentType === "Carousel";
                             const isReel = post.contentType === "Reel";
                             return (
-                              <div key={post.id} style={{ background: "white", borderRadius: 12, padding: "16px 18px", boxShadow: "0 1px 8px rgba(0,0,0,0.06)", borderLeft: dayPosts.length > 1 ? "3px solid #D7FA06" : "none" }}>
+                              <div key={post.id} onMouseEnter={() => setHoveredPostCard(`${day}-${postIdx}`)} onMouseLeave={() => setHoveredPostCard(null)} style={{ background: "white", borderRadius: 12, padding: "16px 18px", boxShadow: "0 1px 8px rgba(0,0,0,0.06)", borderLeft: dayPosts.length > 1 ? "3px solid #D7FA06" : "none", position: "relative" }}>
+                                {hoveredPostCard === `${day}-${postIdx}` && (
+                                  <button title="Remove this day" onClick={() => { setSelectedDays(prev => prev.filter(d => d !== day)); setPosts(p => { const c = { ...p }; delete c[day]; return c; }); }} style={{ position: "absolute", top: 8, right: 8, background: "#E8001C", border: "none", color: "white", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, zIndex: 5, lineHeight: 1 }}>✕</button>
+                                )}
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                   {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#aaa", fontWeight: 700, minWidth: 20 }}>#{postIdx + 1}</span>}
                                   <select value={post.contentType} onChange={e => {
   const newType = e.target.value;
   if (newType === "Carousel" && post.contentType !== "Carousel" && post.url && !(post.urls?.length)) {
     updatePost(day, postIdx, "urls", [post.url]);
+  }
+  if (post.contentType === "Reel" && newType !== "Reel") {
+    updatePost(day, postIdx, "videoUrl", "");
   }
   updatePost(day, postIdx, "contentType", newType);
 }} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
@@ -1313,7 +1388,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                                             <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>Image uploaded ✓</div>
                                             <div style={{ fontSize: 10, color: "#aaa" }}>Drop to replace</div>
                                           </div>
-                                          <button onClick={() => updatePost(day, postIdx, "imageUrls", [])} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18, padding: 0 }}>✕</button>
+                                          <button onClick={() => { updatePost(day, postIdx, "imageUrls", []); updatePost(day, postIdx, "url", ""); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18, padding: 0 }}>✕</button>
                                         </div>
                                       ) : (
                                         <>{post.placeholder ? (
@@ -1481,7 +1556,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                   pinnedCount={pinnedCount}
                   setPinnedCount={setPinnedCount}
             postsPerPage={postsPerPage}
-            exporting={exporting}
+            exporting={exporting || exportMode}
             builderName={profileName}
             onDriveDrop={handleMultiDriveFileDrop}
             onFilesDrop={handleFiles}
@@ -1530,9 +1605,6 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
 {linkPickMode.active && (
         <div onClick={() => { setLinkPickMode({ active: false, onPick: null }); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 450, cursor: "pointer" }} />
       )}
-      {linkPickMode.active && (
-        <div onClick={() => { setLinkPickMode({ active: false, onPick: null }); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 450, cursor: "pointer" }} />
-      )}
       {driveToken && (
         <DrivePanel
         token={driveToken}
@@ -1550,6 +1622,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         @keyframes driveShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         @keyframes cardSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes offlinePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         input:focus, select:focus, textarea:focus { border-color: #1a1a2e !important; }
         /* Headless PDF: Chromium may not apply @media print for page.pdf(); hide chrome like .no-print */
         html[data-pdf-export="1"] .no-print,
@@ -1670,8 +1743,17 @@ function DriveThumb({ fileId, thumbnailLink, token, name, imgStyle, mimeType }) 
   return (
     <div ref={wrapRef} style={{ width: "100%", height: "100%", position: "relative" }}>
       {!src && <div style={{ width: "100%", height: "100%", background: "linear-gradient(90deg, #e8e8e8 25%, #f0f0f0 50%, #e8e8e8 75%)", backgroundSize: "200% 100%", animation: "driveShimmer 1.4s infinite" }} />}
-      {src && src !== "err" && <img src={src} alt={name} style={imgStyle} />}
-      {src === "err" && <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: 20 }}>{mimeType && mimeType.startsWith("video/") ? "🎬" : "🖼"}</div>}
+      {src && src !== "err" && <img src={src} alt={name} style={imgStyle} onError={() => { _thumbCache.delete(fileId); setSrc("err"); }} />}
+      {src === "err" && (
+        mimeType && mimeType.startsWith("video/") ? (
+          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "#1a1a2e", padding: "4px 6px" }}>
+            <span style={{ fontSize: 18 }}>🎬</span>
+            <span style={{ fontSize: 7, color: "rgba(215,250,6,0.8)", fontWeight: 700, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "90%", display: "block" }}>{(name || "").replace(/\.[^.]+$/, "").slice(0, 20)}</span>
+          </div>
+        ) : (
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: 20 }}>🖼</div>
+        )
+      )}
     </div>
   );
 }
@@ -2066,7 +2148,18 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
 
 function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount, onPickReelLink }) {
   const [notes, setNotes] = useState("");
+  const [notesImage, setNotesImage] = useState("");
+  const [notesDragOver, setNotesDragOver] = useState(false);
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
+
+  async function handleNotesImageDrop(file) {
+    if (!file || !file.type.startsWith("image/")) return;
+    try {
+      const blob = await compressToBlob(file);
+      const url = await uploadToCloudinary(blob);
+      setNotesImage(url);
+    } catch { /* silent */ }
+  }
   return (
     <div className="cal-page" style={{ background: "white", borderRadius: 0, boxShadow: "none", padding: `${postsPerPage > 2 ? 28 : 40}px ${postsPerPage > 2 ? 40 : 56}px`, marginBottom: 0, border: "1px solid #e8e8e8", aspectRatio: "1.41 / 1", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, borderBottom: "1px solid #eee", paddingBottom: 8, flexShrink: 0 }}>
@@ -2090,9 +2183,18 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
           ))}
         </div>
         <div style={{ width: 270, flexShrink: 0, display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
-          <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "10px 12px", flexShrink: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#333", marginBottom: 6 }}>Notes:</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes..." style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "white", borderRadius: 4, padding: "2px 0" }} />
+        <div
+            style={{ border: `1.5px solid ${notesDragOver ? "#1a1a2e" : "#e8e8e8"}`, borderRadius: 10, padding: "10px 12px", flexShrink: 0, background: notesDragOver ? "#f4f4ff" : "white", transition: "border-color 0.15s, background 0.15s" }}
+            onDragOver={e => { e.preventDefault(); setNotesDragOver(true); }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setNotesDragOver(false); }}
+            onDrop={e => { e.preventDefault(); setNotesDragOver(false); const file = e.dataTransfer.files?.[0]; if (file) handleNotesImageDrop(file); }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#333" }}>Notes:</div>
+              {notesImage && <button onClick={() => setNotesImage("")} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 10, padding: 0 }}>✕ photo</button>}
+            </div>
+            {notesImage && <img src={notesImage} alt="note" style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 6, display: "block", marginBottom: 6 }} />}
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={notesImage ? 2 : 3} placeholder={notesDragOver ? "Drop image here..." : "Add notes or drop a photo..."} style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "transparent", borderRadius: 4, padding: "2px 0" }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
           <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} driveUploadProgress={driveUploadProgress} pinnedCount={pinnedCount} setPinnedCount={setPinnedCount} />
@@ -2334,7 +2436,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
     if (isCarousel) {
       const newUrls = post.imageUrls.filter((_, i) => i !== currentSlide);
       onUpdate("imageUrls", newUrls);
-      if (newUrls.length === 0) onUpdate("contentType", "Photo");
+      if (newUrls.length <= 1) onUpdate("contentType", "Photo");
       setSlideIdx(Math.max(0, currentSlide - 1));
     } else {
       onUpdate("imageUrls", []);
@@ -2412,7 +2514,6 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
                 {CONTENT_TYPES.map(t => (
                   <div key={t} onClick={() => {
                     if (post.contentType === "Reel" && t !== "Reel") onUpdate("videoUrl", "");
-                    if (post.contentType !== "Reel" && t === "Reel") onUpdate("url", "");
                     onUpdate("contentType", t);
                     setShowTypeMenu(false);
                   }} style={{ padding: "7px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: t === post.contentType ? "#f0f4ff" : "white", color: t === post.contentType ? "#1a1a2e" : "#444" }}>{t}</div>
@@ -2488,17 +2589,13 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         </div>
         )}
       </div>
-      {isCarousel && totalSlides > 1 && (
-        <div className="no-print" style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-          <button onClick={() => setCarouselView("gallery")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderRadius: "6px 0 0 6px", background: carouselView === "gallery" ? "#1a1a2e" : "white", color: carouselView === "gallery" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>▶ Gallery</button>
-          <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
-        </div>
-      )}
-      {isReel && !isExporting && onPickReelLink ? (
+      <div className="no-print" style={{ display: "flex", gap: 4, justifyContent: "center", visibility: (isCarousel && totalSlides > 1) ? "visible" : "hidden" }}>
+        <button onClick={() => setCarouselView("gallery")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderRadius: "6px 0 0 6px", background: carouselView === "gallery" ? "#1a1a2e" : "white", color: carouselView === "gallery" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>▶ Gallery</button>
+        <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
+      </div>
+      {isReel && !isExporting && onPickReelLink && !linkHref ? (
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-          <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text="Reel Link" target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer", flex: 1 }}>
-            Reel Link
-          </a>
+          <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#aaa" }}>Reel Link</div>
           <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
         </div>
       ) : (
