@@ -167,6 +167,13 @@ export default async function handler(req, res) {
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
 
+    // Pipe headless browser logs into Vercel function logs for debugging
+    page.on("console", msg => console.log(`[headless:${msg.type()}]`, msg.text()));
+    page.on("pageerror", err => console.error("[headless:pageerror]", err.message));
+    page.on("requestfailed", req =>
+      console.error("[headless:reqfailed]", req.url(), req.failure()?.errorText)
+    );
+
     // Navigate to the app in export mode
     await page.goto(`${APP_URL}/?exportToken=${token}`, {
       waitUntil: "domcontentloaded",
