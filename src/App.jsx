@@ -727,6 +727,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       })
       .catch((err) => {
         console.error("Export token fetch failed:", err);
+        window.__EXPORT_ERROR__ = true;
       });
   }, []);
 
@@ -852,9 +853,13 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       return false;
     }
     setCurrentCalendarId(calData.id);
-    await supabase.from("calendar_drafts").insert({
+    const { error: draftErr } = await supabase.from("calendar_drafts").insert({
       calendar_id: calData.id, posts, label: lbl,
     });
+    if (draftErr) {
+      if (!silent) alert("Save failed: " + draftErr.message);
+      return false;
+    }
     await loadAllCalendars();
     await loadDraftHistory(calData.id);
     setSavingLabel("");

@@ -180,11 +180,13 @@ export default async function handler(req, res) {
       timeout: 15000,
     });
 
-    // Wait for app to signal all images loaded + fonts settled
-    await page.waitForFunction("window.__EXPORT_READY__ === true", {
-      timeout: 22000,
-      polling: 300,
-    });
+    // Wait for app to signal all images loaded + fonts settled (or a fetch error)
+    await page.waitForFunction(
+      "window.__EXPORT_READY__ === true || window.__EXPORT_ERROR__ === true",
+      { timeout: 22000, polling: 300 }
+    );
+    const exportError = await page.evaluate(() => !!window.__EXPORT_ERROR__);
+    if (exportError) throw new Error("Export data failed to load in headless browser");
 
     await page.evaluate(async () => {
       try {
