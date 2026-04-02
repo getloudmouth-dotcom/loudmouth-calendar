@@ -2593,7 +2593,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         <button onClick={() => setCarouselView("gallery")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderRadius: "6px 0 0 6px", background: carouselView === "gallery" ? "#1a1a2e" : "white", color: carouselView === "gallery" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>▶ Gallery</button>
         <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
       </div>
-      {isReel && !isExporting && onPickReelLink && !linkHref ? (
+      {isReel && !isExporting && onPickReelLink && !post.videoUrl ? (
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
           <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#aaa" }}>Reel Link</div>
           <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
