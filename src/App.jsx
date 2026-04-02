@@ -1363,7 +1363,16 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                                         >📁</button>
                                       </div>
                                     ) : (
-                                      <input value={post.url || ""} placeholder="https://..." onChange={e => updatePost(day, postIdx, "url", e.target.value)} style={inputStyle} />
+                                      <div
+                                        onDragOver={e => e.preventDefault()}
+                                        onDrop={e => {
+                                          e.preventDefault();
+                                          const link = e.dataTransfer.getData("driveFileLink");
+                                          if (link) updatePost(day, postIdx, "url", link);
+                                        }}
+                                      >
+                                        <input value={post.url || ""} placeholder="Paste link or drag from Drive..." onChange={e => updatePost(day, postIdx, "url", e.target.value)} style={{ ...inputStyle, background: post.url ? "white" : "#fffbe6", border: post.url ? "1.5px solid #e0e0e0" : "1.5px dashed #f0c040" }} />
+                                      </div>
                                     )}
                                     </div>}
                                   <div style={{ gridColumn: "1 / -1" }}>
