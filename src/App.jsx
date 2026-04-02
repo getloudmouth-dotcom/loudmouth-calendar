@@ -98,7 +98,7 @@ function DatePicker({ day, month, year, daysInMonth, selectedDays, onChangeDay }
 }
 
 // ── Draggable Image ──
-function DraggableImage({ src, cropX, cropY, scale, onUpdate, isCarousel, imageUrls, isVideo, placeholder }) {
+function DraggableImage({ src, cropX, cropY, scale, onUpdate, isCarousel, isVideo, placeholder }) {
   const [dragging, setDragging] = useState(false);
   const [start, setStart] = useState(null);
   const [startCrop, setStartCrop] = useState(null);
@@ -153,13 +153,13 @@ export default function App() {
   const [clients, setClients] = useState(() => {
     try { const s = localStorage.getItem("lm_clients"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
-  const [builders, setBuilders] = useState(() => {
+  const [_builders, _setBuilders] = useState(() => {
     try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
-  const [builderName, setBuilderName] = useState("");
-  const [addingBuilder, setAddingBuilder] = useState(false);
-  const [newBuilderInput, setNewBuilderInput] = useState("");
-  const [editingBuilders, setEditingBuilders] = useState(false);
+  const [_builderName, setBuilderName] = useState("");
+  const [_addingBuilder, _setAddingBuilder] = useState(false);
+  const [_newBuilderInput, _setNewBuilderInput] = useState("");
+  const [_editingBuilders, _setEditingBuilders] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
   const [newClientInput, setNewClientInput] = useState("");
   const [month, setMonth] = useState(today.getMonth());
@@ -174,8 +174,8 @@ const [linkPickMode, setLinkPickMode] = useState({ active: false, onPick: null }
 const [driveOpen, setDriveOpen] = useState(false);
 const [drivePanelWidth, setDrivePanelWidth] = useState(300);
 const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0, day: null, postIdx: null });
-  const [drafts, setDrafts] = useState([]);
-  const [showDrafts, setShowDrafts] = useState(false);
+  const [_drafts, _setDrafts] = useState([]);
+  const [_showDrafts, _setShowDrafts] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState("login"); // "login" | "signup"
@@ -2086,7 +2086,6 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport, 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0, flex: 1, minHeight: 0, overflow: "hidden", alignContent: "start" }}>
         {cells.map((post, i) => {
           const isPinned = post && post.pinned;
-          const isEmpty = !post;
           const isTarget = hoverTarget === i && dragSrc !== null && post !== null && !isPinned;
           // Show pin button only on the next available top slot
           const showPinBtn = i === pinnedCount && pinnedCount < 3 && i < 3;
@@ -2298,7 +2297,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         }}
       >
         <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
-          <DraggableImage src={mainImage} cropX={post.cropX ?? 50} cropY={post.cropY ?? 50} scale={post.scale ?? 1} onUpdate={onUpdate} isCarousel={isCarousel} imageUrls={post.imageUrls} isVideo={isReel} placeholder={post.placeholder} />
+          <DraggableImage src={mainImage} cropX={post.cropX ?? 50} cropY={post.cropY ?? 50} scale={post.scale ?? 1} onUpdate={onUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(26,26,46,0.5)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 15 }}>
