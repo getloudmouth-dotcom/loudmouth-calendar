@@ -2582,6 +2582,10 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
               const spread = total > 1 ? (100 - cardW) / (total - 1) : 0;
               const leftPct = stackIdx * spread;
               const topPct = stackIdx * spread;
+              const slotCrop = post.crops?.[url] ?? {};
+              const slotCropX = slotCrop.cropX ?? post.cropX ?? 50;
+              const slotCropY = slotCrop.cropY ?? post.cropY ?? 50;
+              const slotScale = slotCrop.scale ?? post.scale ?? 1;
               return (
                 <div key={i} style={{
                   position: "absolute",
@@ -2590,8 +2594,8 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
                   width: `${cardW}%`,
                   aspectRatio: "4/5",
                   backgroundImage: `url(${url})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
+                  backgroundSize: slotScale <= 1.05 ? "cover" : `${slotScale * 100}%`,
+                  backgroundPosition: `${slotCropX}% ${slotCropY}%`,
                   borderRadius: 4,
                   boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   zIndex: total - stackIdx,
