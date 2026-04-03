@@ -2542,8 +2542,6 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", minWidth: 28 }}>zoom</span>
               <input type="range" min="1" max="3" step="0.05"
-                value={effectiveScale}
-                onChange={e => handleCropUpdate("scale", parseFloat(e.target.value))}
                 value={isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)}
                 onChange={e => {
                   const val = parseFloat(e.target.value);
