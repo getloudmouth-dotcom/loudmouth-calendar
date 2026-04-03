@@ -53,9 +53,14 @@ function chunkArray(arr, size) {
   return chunks;
 }
 function newPost() {
-  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, crops: {}, placeholder: "", postingNotes: "" };
+  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, crops: {}, cropXs: [], cropYs: [], scales: [], placeholder: "", postingNotes: "" };
 }
-const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "crops", "placeholder", "postingNotes"];
+const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "crops", "cropXs", "cropYs", "scales", "placeholder", "postingNotes"];
+
+// Per-slide crop/scale helpers for carousels
+function getSlideCropX(post, slideIdx) { return post.cropXs?.[slideIdx] ?? post.cropX ?? 50; }
+function getSlideCropY(post, slideIdx) { return post.cropYs?.[slideIdx] ?? post.cropY ?? 50; }
+function getSlideScale(post, slideIdx) { return post.scales?.[slideIdx] ?? post.scale ?? 1; }
 
 const labelStyle = { fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 };
 const inputStyle = { width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 7, fontSize: 13, outline: "none", fontFamily: "inherit", transition: "border-color 0.15s", background: "white", color: "#111" };
@@ -2310,7 +2315,7 @@ function ReorderFeedGrid({ allPosts, onSwap, onBatchImport, onDriveBatchImport, 
                 </>
               ) : post?.imageUrls?.[0] ? (
                 <>
-                  <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${post.imageUrls[0]})`, backgroundSize: (post.scale ?? 1) <= 1.05 ? "cover" : `${(post.scale ?? 1) * 100}%`, backgroundPosition: `${post.cropX ?? 50}% ${post.cropY ?? 50}%`, backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
+                  <div style={{ position: "absolute", inset: 0, backgroundImage: `url(${post.imageUrls[0]})`, backgroundSize: getSlideScale(post, 0) <= 1.05 ? "cover" : `${getSlideScale(post, 0) * 100}%`, backgroundPosition: `${getSlideCropX(post, 0)}% ${getSlideCropY(post, 0)}%`, backgroundRepeat: "no-repeat", pointerEvents: "none" }} />
                   <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.55)", color: "white", fontSize: 7, padding: "2px 3px", textAlign: "center", fontWeight: 700, opacity: isTarget ? 1 : 0, transition: "opacity 0.15s" }}>
                     {formatDate(post.day ? new Date().getMonth() : 0, post.day)}
                   </div>
@@ -2502,6 +2507,17 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         }}
       >
         <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
+          <DraggableImage src={mainImage} cropX={isCarousel ? getSlideCropX(post, currentSlide) : (post.cropX ?? 50)} cropY={isCarousel ? getSlideCropY(post, currentSlide) : (post.cropY ?? 50)} scale={isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)} onUpdate={(field, val) => {
+            if (isCarousel && (field === "cropX" || field === "cropY" || field === "scale")) {
+              const arrayField = field === "cropX" ? "cropXs" : field === "cropY" ? "cropYs" : "scales";
+              const arr = [...(post[arrayField] || [])];
+              while (arr.length <= currentSlide) arr.push(field === "scale" ? 1 : 50);
+              arr[currentSlide] = val;
+              onUpdate(arrayField, arr);
+            } else {
+              onUpdate(field, val);
+            }
+          }} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
           <DraggableImage src={mainImage} cropX={effectiveCropX} cropY={effectiveCropY} scale={effectiveScale} onUpdate={handleCropUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
@@ -2528,8 +2544,21 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
               <input type="range" min="1" max="3" step="0.05"
                 value={effectiveScale}
                 onChange={e => handleCropUpdate("scale", parseFloat(e.target.value))}
+                value={isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)}
+                onChange={e => {
+                  const val = parseFloat(e.target.value);
+                  if (isCarousel) {
+                    const arr = [...(post.scales || [])];
+                    while (arr.length <= currentSlide) arr.push(1);
+                    arr[currentSlide] = val;
+                    onUpdate("scales", arr);
+                  } else {
+                    onUpdate("scale", val);
+                  }
+                }}
                 style={{ flex: 1, accentColor: "#D7FA06", cursor: "pointer", height: 3 }}
               />
+              <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round((isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)) * 100)}%</span>
               <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round(effectiveScale * 100)}%</span>
             </div>
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>drag to reposition · dbl-click to exit</div>
@@ -2601,6 +2630,9 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
               const spread = total > 1 ? (100 - cardW) / (total - 1) : 0;
               const leftPct = stackIdx * spread;
               const topPct = stackIdx * spread;
+              const sCropX = getSlideCropX(post, stackIdx);
+              const sCropY = getSlideCropY(post, stackIdx);
+              const sScale = getSlideScale(post, stackIdx);
               const slotCrop = post.crops?.[url] || {};
               const slotCropX = slotCrop.cropX ?? post.cropX ?? 50;
               const slotCropY = slotCrop.cropY ?? post.cropY ?? 50;
@@ -2613,6 +2645,8 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
                   width: `${cardW}%`,
                   aspectRatio: "4/5",
                   backgroundImage: `url(${url})`,
+                  backgroundSize: sScale <= 1.05 ? "cover" : `${sScale * 100}%`,
+                  backgroundPosition: `${sCropX}% ${sCropY}%`,
                   backgroundSize: (post.scale ?? 1) <= 1.05 ? "cover" : `${(post.scale ?? 1) * 100}%`,
                   backgroundPosition: `${post.cropX ?? 50}% ${post.cropY ?? 50}%`,
                   borderRadius: 4,
