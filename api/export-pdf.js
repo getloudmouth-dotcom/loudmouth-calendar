@@ -206,9 +206,8 @@ export default async function handler(req, res) {
   
       const pdfBuffer = await page.pdf({
         printBackground: true,
-        width: `${pageWidth}px`,
-        height: `${pageHeight}px`,
-        preferCSSPageSize: false,
+        width: `${(pageWidth / 96).toFixed(4)}in`,
+        height: `${(pageHeight / 96).toFixed(4)}in`,
         margin: { top: "0", right: "0", bottom: "0", left: "0" },
         timeout: 30000,
       });
