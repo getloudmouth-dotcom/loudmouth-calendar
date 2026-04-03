@@ -2507,17 +2507,6 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         }}
       >
         <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
-          <DraggableImage src={mainImage} cropX={isCarousel ? getSlideCropX(post, currentSlide) : (post.cropX ?? 50)} cropY={isCarousel ? getSlideCropY(post, currentSlide) : (post.cropY ?? 50)} scale={isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)} onUpdate={(field, val) => {
-            if (isCarousel && (field === "cropX" || field === "cropY" || field === "scale")) {
-              const arrayField = field === "cropX" ? "cropXs" : field === "cropY" ? "cropYs" : "scales";
-              const arr = [...(post[arrayField] || [])];
-              while (arr.length <= currentSlide) arr.push(field === "scale" ? 1 : 50);
-              arr[currentSlide] = val;
-              onUpdate(arrayField, arr);
-            } else {
-              onUpdate(field, val);
-            }
-          }} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
           <DraggableImage src={mainImage} cropX={effectiveCropX} cropY={effectiveCropY} scale={effectiveScale} onUpdate={handleCropUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
