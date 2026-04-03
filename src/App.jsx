@@ -2411,8 +2411,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
   const [hovering, setHovering] = useState(false);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [showPostingNotes, setShowPostingNotes] = useState(false);
-  const [carouselView, setCarouselView] = useState("gallery"); // "gallery" | "stacked"
-  const effectiveView = isExporting ? "stacked" : carouselView;
+
   const isReel = post.contentType === "Reel";
   const isCarousel = post.contentType === "Carousel";
   const totalSlides = post.imageUrls?.length || 0;
@@ -2506,7 +2505,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
           handleReplaceFiles(e.dataTransfer.files);
         }}
       >
-        <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
+        <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: isCarousel ? "hidden" : "visible" }}>
           <DraggableImage src={mainImage} cropX={effectiveCropX} cropY={effectiveCropY} scale={effectiveScale} onUpdate={handleCropUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
@@ -2529,6 +2528,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
             onMouseDown={e => e.stopPropagation()}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {isCarousel && <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28 }}>#{currentSlide + 1}</span>}
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", minWidth: 28 }}>zoom</span>
               <input type="range" min="1" max="3" step="0.05"
                 value={isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)}
@@ -2546,7 +2546,6 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
                 style={{ flex: 1, accentColor: "#D7FA06", cursor: "pointer", height: 3 }}
               />
               <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round((isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)) * 100)}%</span>
-              <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round(effectiveScale * 100)}%</span>
             </div>
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>drag to reposition · dbl-click to exit</div>
           </div>
@@ -2594,25 +2593,11 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
             }} style={{ display: "none" }} />
           </label>
         )}
-        {isCarousel && totalSlides > 1 && effectiveView === "gallery" && (
-          <>
-            <button onClick={() => setSlideIdx(i => Math.max(0, i - 1))} disabled={currentSlide === 0} style={{ position: "absolute", left: -13, top: "50%", transform: "translateY(-50%)", background: currentSlide === 0 ? "#e8e8e8" : "#1a1a2e", color: currentSlide === 0 ? "#bbb" : "white", border: "none", borderRadius: "50%", width: 26, height: 26, fontSize: 14, cursor: currentSlide === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", zIndex: 10 }}>‹</button>
-            <button onClick={() => setSlideIdx(i => Math.min(totalSlides - 1, i + 1))} disabled={currentSlide === totalSlides - 1} style={{ position: "absolute", right: -13, top: "50%", transform: "translateY(-50%)", background: currentSlide === totalSlides - 1 ? "#e8e8e8" : "#1a1a2e", color: currentSlide === totalSlides - 1 ? "#bbb" : "white", border: "none", borderRadius: "50%", width: 26, height: 26, fontSize: 14, cursor: currentSlide === totalSlides - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.15)", zIndex: 10 }}>›</button>
-            <div style={{ position: "absolute", bottom: 10, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 5, zIndex: 10 }}>
-              {post.imageUrls.map((_, i) => (
-                <div key={i} onClick={() => setSlideIdx(i)} style={{ width: i === currentSlide ? 16 : 6, height: 6, borderRadius: 3, background: i === currentSlide ? "white" : "rgba(255,255,255,0.5)", transition: "all 0.2s", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }} />
-              ))}
-            </div>
-          </>
-        )}
-        {isCarousel && totalSlides > 1 && effectiveView === "stacked" && (
-          <div style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none", zIndex: 5 }}>
+        {isCarousel && totalSlides > 1 && (
+          <div style={{ position: "absolute", inset: 0, overflow: "visible", zIndex: 5 }}>
           {[...post.imageUrls].reverse().map((url, i) => {
             const total = post.imageUrls.length;
-            const stackIdx = total - 1 - i; // 0 = top-left/front, total-1 = bottom-right/back
-            // cardW sized so 40% is hidden (60% visible) and stack spans corner to corner
-              // Derived: (1 - spread/cardW)² = 0.40 → spread = 0.3675*cardW
-              // Corner-to-corner: (N-1)*spread = 100-cardW → cardW = 100/(0.3675*(N-1)+1)
+            const stackIdx = total - 1 - i;
               const cardW = total > 1 ? 100 / (0.3675 * (total - 1) + 1) : 70;
               const spread = total > 1 ? (100 - cardW) / (total - 1) : 0;
               const leftPct = stackIdx * spread;
@@ -2620,12 +2605,11 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
               const sCropX = getSlideCropX(post, stackIdx);
               const sCropY = getSlideCropY(post, stackIdx);
               const sScale = getSlideScale(post, stackIdx);
-              const slotCrop = post.crops?.[url] || {};
-              const slotCropX = slotCrop.cropX ?? post.cropX ?? 50;
-              const slotCropY = slotCrop.cropY ?? post.cropY ?? 50;
-              const slotScale = slotCrop.scale ?? post.scale ?? 1;
+              const isSelected = stackIdx === currentSlide && reframing;
               return (
-                <div key={i} style={{
+                <div key={i}
+                  onDoubleClick={e => { e.stopPropagation(); if (isSelected) { setReframing(false); } else { setSlideIdx(stackIdx); setReframing(true); } }}
+                  style={{
                   position: "absolute",
                   top: `${topPct}%`,
                   left: `${leftPct}%`,
@@ -2634,22 +2618,17 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
                   backgroundImage: `url(${url})`,
                   backgroundSize: sScale <= 1.05 ? "cover" : `${sScale * 100}%`,
                   backgroundPosition: `${sCropX}% ${sCropY}%`,
-                  backgroundSize: (post.scale ?? 1) <= 1.05 ? "cover" : `${(post.scale ?? 1) * 100}%`,
-                  backgroundPosition: `${post.cropX ?? 50}% ${post.cropY ?? 50}%`,
                   borderRadius: 4,
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                  boxShadow: isSelected ? "0 0 0 2px #D7FA06, 0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.2)",
                   zIndex: total - stackIdx,
-                  pointerEvents: "none",
+                  cursor: "pointer",
                 }} />
             );
           })}
         </div>
         )}
       </div>
-      <div className="no-print" style={{ display: "flex", gap: 4, justifyContent: "center", visibility: (isCarousel && totalSlides > 1) ? "visible" : "hidden" }}>
-        <button onClick={() => setCarouselView("gallery")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderRadius: "6px 0 0 6px", background: carouselView === "gallery" ? "#1a1a2e" : "white", color: carouselView === "gallery" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>▶ Gallery</button>
-        <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
-      </div>
+
       {isReel && !isExporting && onPickReelLink && !post.videoUrl ? (
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
           <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#aaa" }}>Reel Link</div>
