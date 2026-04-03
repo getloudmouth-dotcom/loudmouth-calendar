@@ -76,13 +76,12 @@ async function launchBrowser() {
   if (chrome) {
     return puppeteer.launch({
       executablePath: chrome,
-      headless: true,
-      defaultViewport: chromium.defaultViewport,
+      headless: "new",
+      defaultViewport: { width: 1440, height: 900 },
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
-        "--disable-gpu",
       ],
     });
   }
@@ -196,6 +195,7 @@ export default async function handler(req, res) {
       }
     });
     await page.emulateMediaType("print");
+    await new Promise(r => setTimeout(r, 500));
 
     const { pageWidth, pageHeight } = await page.evaluate(() => {
         const el = document.querySelector(".cal-page");
@@ -210,6 +210,7 @@ export default async function handler(req, res) {
         height: `${pageHeight}px`,
         preferCSSPageSize: false,
         margin: { top: "0", right: "0", bottom: "0", left: "0" },
+        timeout: 30000,
       });
 
     const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
