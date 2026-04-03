@@ -2464,6 +2464,20 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
 
   const linkHref = isCarousel ? (post.urls?.[currentSlide] || post.url) : isReel ? (post.videoUrl || post.urls?.[0] || post.url) : post.url;
 
+  function getSlideSettings(idx) {
+    const s = post.slideSettings?.[idx];
+    return {
+      cropX: s?.cropX ?? post.cropX ?? 50,
+      cropY: s?.cropY ?? post.cropY ?? 50,
+      scale: s?.scale ?? post.scale ?? 1,
+    };
+  }
+  function updateSlideSettings(idx, key, value) {
+    const settings = [...(post.slideSettings || [])];
+    settings[idx] = { ...getSlideSettings(idx), [key]: value };
+    onUpdate("slideSettings", settings);
+  }
+
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
       <div style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 12, fontWeight: 700 }}>
