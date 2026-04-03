@@ -728,7 +728,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
           if (pending.length === 0) signalReady();
           else Promise.all(pending).then(signalReady);
         };
-        setTimeout(waitForImages, 500);
+        setTimeout(waitForImages, 150);
       })
       .catch((err) => {
         console.error("Export token fetch failed:", err);
@@ -1059,7 +1059,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
           {stepLabels.map((label, i) => {
             const s = i + 1;
             return (
-              <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); }} style={{
+              <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); if (s === 4) { fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {}); if (clientName.trim() && user) saveDraft("Auto-save on preview", { silent: true }); } }} style={{
                 background: step === s ? "#D7FA06" : "rgba(255,255,255,0.07)",
                 color: step === s ? "#111" : "#aaa",
                 border: "none", padding: "6px 16px", borderRadius: 20,
@@ -2608,20 +2608,45 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
               const isSelected = stackIdx === currentSlide && reframing;
               return (
                 <div key={i}
+                onMouseDown={e => {
+                  if (!isSelected) return;
+                  e.preventDefault();
+                  const startX = e.clientX, startY = e.clientY;
+                  const startCropX = sCropX, startCropY = sCropY;
+                  function onMove(ev) {
+                    const dx = ((ev.clientX - startX) / 200) * -100;
+                    const dy = ((ev.clientY - startY) / 200) * -100;
+                    const arrX = [...(post.cropXs || [])];
+                    const arrY = [...(post.cropYs || [])];
+                    while (arrX.length <= stackIdx) arrX.push(50);
+                    while (arrY.length <= stackIdx) arrY.push(50);
+                    arrX[stackIdx] = Math.min(100, Math.max(0, startCropX + dx));
+                    arrY[stackIdx] = Math.min(100, Math.max(0, startCropY + dy));
+                    onUpdate("cropXs", arrX);
+                    onUpdate("cropYs", arrY);
+                  }
+                  function onUp() {
+                    document.removeEventListener("mousemove", onMove);
+                    document.removeEventListener("mouseup", onUp);
+                  }
+                  document.addEventListener("mousemove", onMove);
+                  document.addEventListener("mouseup", onUp);
+                }}
                   onDoubleClick={e => { e.stopPropagation(); if (isSelected) { setReframing(false); } else { setSlideIdx(stackIdx); setReframing(true); } }}
                   style={{
-                  position: "absolute",
-                  top: `${topPct}%`,
-                  left: `${leftPct}%`,
-                  width: `${cardW}%`,
-                  aspectRatio: "4/5",
+                    position: "absolute",
+                    top: isSelected ? 0 : `${topPct}%`,
+                    left: isSelected ? 0 : `${leftPct}%`,
+                    width: isSelected ? "100%" : `${cardW}%`,
+                    aspectRatio: "4/5",
                   backgroundImage: `url(${url})`,
                   backgroundSize: sScale <= 1.05 ? "cover" : `${sScale * 100}%`,
                   backgroundPosition: `${sCropX}% ${sCropY}%`,
                   borderRadius: 4,
                   boxShadow: isSelected ? "0 0 0 2px #D7FA06, 0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.2)",
-                  zIndex: total - stackIdx,
-                  cursor: "pointer",
+                  zIndex: isSelected ? 50 : total - stackIdx,
+                  cursor: isSelected ? "grab" : "pointer",
+                  
                 }} />
             );
           })}

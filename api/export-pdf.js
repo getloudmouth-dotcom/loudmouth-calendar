@@ -165,7 +165,7 @@ export default async function handler(req, res) {
     browser = await launchBrowser();
 
     const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 2 });
+    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
 
     // Pipe headless browser logs into Vercel function logs for debugging
     page.on("console", msg => console.log(`[headless:${msg.type()}]`, msg.text()));
