@@ -53,9 +53,9 @@ function chunkArray(arr, size) {
   return chunks;
 }
 function newPost() {
-  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, placeholder: "", postingNotes: "" };
+  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, crops: {}, placeholder: "", postingNotes: "" };
 }
-const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "placeholder", "postingNotes"];
+const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "crops", "placeholder", "postingNotes"];
 
 const labelStyle = { fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 };
 const inputStyle = { width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 7, fontSize: 13, outline: "none", fontFamily: "inherit", transition: "border-color 0.15s", background: "white", color: "#111" };
@@ -2408,6 +2408,19 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
   const totalSlides = post.imageUrls?.length || 0;
   const currentSlide = Math.min(slideIdx, Math.max(0, totalSlides - 1));
   const mainImage = isCarousel ? post.imageUrls?.[currentSlide] : post.imageUrls?.[0];
+  const photoCrop = (isCarousel && mainImage) ? (post.crops?.[mainImage] ?? {}) : {};
+  const effectiveCropX = photoCrop.cropX ?? post.cropX ?? 50;
+  const effectiveCropY = photoCrop.cropY ?? post.cropY ?? 50;
+  const effectiveScale = photoCrop.scale ?? post.scale ?? 1;
+  function handleCropUpdate(field, value) {
+    if (isCarousel && mainImage && (field === "cropX" || field === "cropY" || field === "scale")) {
+      const newCrops = { ...(post.crops || {}) };
+      newCrops[mainImage] = { ...(newCrops[mainImage] || { cropX: 50, cropY: 50, scale: 1 }), [field]: value };
+      onUpdate("crops", newCrops);
+    } else {
+      onUpdate(field, value);
+    }
+  }
   const dayName = getDayName(year, month, post.day);
   const dateStr = formatDate(month, post.day);
 
@@ -2470,7 +2483,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         }}
       >
         <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
-          <DraggableImage src={mainImage} cropX={post.cropX ?? 50} cropY={post.cropY ?? 50} scale={post.scale ?? 1} onUpdate={onUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
+          <DraggableImage src={mainImage} cropX={effectiveCropX} cropY={effectiveCropY} scale={effectiveScale} onUpdate={handleCropUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(26,26,46,0.5)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 15 }}>
@@ -2494,11 +2507,11 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", minWidth: 28 }}>zoom</span>
               <input type="range" min="1" max="3" step="0.05"
-                value={post.scale ?? 1}
-                onChange={e => onUpdate("scale", parseFloat(e.target.value))}
+                value={effectiveScale}
+                onChange={e => handleCropUpdate("scale", parseFloat(e.target.value))}
                 style={{ flex: 1, accentColor: "#D7FA06", cursor: "pointer", height: 3 }}
               />
-              <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round((post.scale ?? 1) * 100)}%</span>
+              <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round(effectiveScale * 100)}%</span>
             </div>
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>drag to reposition · dbl-click to exit</div>
           </div>
