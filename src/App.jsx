@@ -53,9 +53,9 @@ function chunkArray(arr, size) {
   return chunks;
 }
 function newPost() {
-  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, slideSettings: [], placeholder: "", postingNotes: "" };
+  return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, crops: {}, placeholder: "", postingNotes: "" };
 }
-const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "slideSettings", "placeholder", "postingNotes"];
+const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "crops", "placeholder", "postingNotes"];
 
 const labelStyle = { fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 };
 const inputStyle = { width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 7, fontSize: 13, outline: "none", fontFamily: "inherit", transition: "border-color 0.15s", background: "white", color: "#111" };
@@ -727,6 +727,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       })
       .catch((err) => {
         console.error("Export token fetch failed:", err);
+        window.__EXPORT_ERROR__ = true;
       });
   }, []);
 
@@ -852,9 +853,13 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
       return false;
     }
     setCurrentCalendarId(calData.id);
-    await supabase.from("calendar_drafts").insert({
+    const { error: draftErr } = await supabase.from("calendar_drafts").insert({
       calendar_id: calData.id, posts, label: lbl,
     });
+    if (draftErr) {
+      if (!silent) alert("Save failed: " + draftErr.message);
+      return false;
+    }
     await loadAllCalendars();
     await loadDraftHistory(calData.id);
     setSavingLabel("");
@@ -1467,7 +1472,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-                  <button onClick={() => setStep(2)} style={secondaryBtn}>← Back</button>
+                  <button onClick={() => { setStep(2); setLinkPickMode({ active: false, onPick: null }); }} style={secondaryBtn}>← Back</button>
                   <button onClick={() => { setStep(4); setLinkPickMode({ active: false, onPick: null }); }} style={primaryBtn}>Preview Calendar →</button>
                 </div>
               </div>
@@ -2408,6 +2413,19 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
   const totalSlides = post.imageUrls?.length || 0;
   const currentSlide = Math.min(slideIdx, Math.max(0, totalSlides - 1));
   const mainImage = isCarousel ? post.imageUrls?.[currentSlide] : post.imageUrls?.[0];
+  const photoCrop = (isCarousel && mainImage) ? (post.crops?.[mainImage] ?? {}) : {};
+  const effectiveCropX = photoCrop.cropX ?? post.cropX ?? 50;
+  const effectiveCropY = photoCrop.cropY ?? post.cropY ?? 50;
+  const effectiveScale = photoCrop.scale ?? post.scale ?? 1;
+  function handleCropUpdate(field, value) {
+    if (isCarousel && mainImage && (field === "cropX" || field === "cropY" || field === "scale")) {
+      const newCrops = { ...(post.crops || {}) };
+      newCrops[mainImage] = { ...(newCrops[mainImage] || { cropX: 50, cropY: 50, scale: 1 }), [field]: value };
+      onUpdate("crops", newCrops);
+    } else {
+      onUpdate(field, value);
+    }
+  }
   const dayName = getDayName(year, month, post.day);
   const dateStr = formatDate(month, post.day);
 
@@ -2484,7 +2502,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         }}
       >
         <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: (isCarousel && effectiveView === "stacked") ? "hidden" : "visible" }}>
-          <DraggableImage src={mainImage} cropX={isCarousel ? getSlideSettings(currentSlide).cropX : (post.cropX ?? 50)} cropY={isCarousel ? getSlideSettings(currentSlide).cropY : (post.cropY ?? 50)} scale={isCarousel ? getSlideSettings(currentSlide).scale : (post.scale ?? 1)} onUpdate={isCarousel ? (key, value) => updateSlideSettings(currentSlide, key, value) : onUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
+          <DraggableImage src={mainImage} cropX={effectiveCropX} cropY={effectiveCropY} scale={effectiveScale} onUpdate={handleCropUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(26,26,46,0.5)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 15 }}>
@@ -2508,11 +2526,11 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", minWidth: 28 }}>zoom</span>
               <input type="range" min="1" max="3" step="0.05"
-                value={isCarousel ? getSlideSettings(currentSlide).scale : (post.scale ?? 1)}
-                onChange={e => isCarousel ? updateSlideSettings(currentSlide, "scale", parseFloat(e.target.value)) : onUpdate("scale", parseFloat(e.target.value))}
+                value={effectiveScale}
+                onChange={e => handleCropUpdate("scale", parseFloat(e.target.value))}
                 style={{ flex: 1, accentColor: "#D7FA06", cursor: "pointer", height: 3 }}
               />
-              <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round((isCarousel ? getSlideSettings(currentSlide).scale : (post.scale ?? 1)) * 100)}%</span>
+              <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round(effectiveScale * 100)}%</span>
             </div>
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>drag to reposition · dbl-click to exit</div>
           </div>
@@ -2583,7 +2601,10 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
               const spread = total > 1 ? (100 - cardW) / (total - 1) : 0;
               const leftPct = stackIdx * spread;
               const topPct = stackIdx * spread;
-              const { cropX: cx, cropY: cy, scale: sc } = getSlideSettings(stackIdx);
+              const slotCrop = post.crops?.[url] || {};
+              const slotCropX = slotCrop.cropX ?? post.cropX ?? 50;
+              const slotCropY = slotCrop.cropY ?? post.cropY ?? 50;
+              const slotScale = slotCrop.scale ?? post.scale ?? 1;
               return (
                 <div key={i} style={{
                   position: "absolute",
@@ -2592,8 +2613,8 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
                   width: `${cardW}%`,
                   aspectRatio: "4/5",
                   backgroundImage: `url(${url})`,
-                  backgroundSize: sc <= 1.05 ? "cover" : `${sc * 100}%`,
-                  backgroundPosition: `${cx}% ${cy}%`,
+                  backgroundSize: (post.scale ?? 1) <= 1.05 ? "cover" : `${(post.scale ?? 1) * 100}%`,
+                  backgroundPosition: `${post.cropX ?? 50}% ${post.cropY ?? 50}%`,
                   borderRadius: 4,
                   boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                   zIndex: total - stackIdx,
@@ -2608,7 +2629,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         <button onClick={() => setCarouselView("gallery")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderRadius: "6px 0 0 6px", background: carouselView === "gallery" ? "#1a1a2e" : "white", color: carouselView === "gallery" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>▶ Gallery</button>
         <button onClick={() => setCarouselView("stacked")} style={{ flex: 1, padding: "4px 0", fontSize: 10, fontWeight: 700, border: "1.5px solid #e0e0e0", borderLeft: "none", borderRadius: "0 6px 6px 0", background: carouselView === "stacked" ? "#1a1a2e" : "white", color: carouselView === "stacked" ? "#D7FA06" : "#aaa", cursor: "pointer" }}>⧉ PDF View</button>
       </div>
-      {isReel && !isExporting && onPickReelLink && !linkHref ? (
+      {isReel && !isExporting && onPickReelLink && !post.videoUrl ? (
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
           <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#aaa" }}>Reel Link</div>
           <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
