@@ -2593,8 +2593,13 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
             }} style={{ display: "none" }} />
           </label>
         )}
-        {isCarousel && totalSlides > 1 && (
+        {isCarousel && totalSlides >= 1 && (
           <div style={{ position: "absolute", inset: 0, overflow: "visible", zIndex: 5 }}>
+          {totalSlides === 1 && (
+            <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, zIndex: 20, background: "rgba(26,26,46,0.82)", border: "1.5px dashed rgba(215,250,6,0.5)", borderRadius: 7, padding: "8px 10px", textAlign: "center", pointerEvents: "none" }}>
+              <div style={{ fontSize: 10, color: "#D7FA06", fontWeight: 700, letterSpacing: "0.04em" }}>🎠 Drop more photos to build carousel</div>
+            </div>
+          )}
           {[...post.imageUrls].reverse().map((url, i) => {
             const total = post.imageUrls.length;
             const stackIdx = total - 1 - i;
