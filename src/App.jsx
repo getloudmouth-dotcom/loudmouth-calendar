@@ -214,7 +214,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [wasOffline, setWasOffline] = useState(false);
 // Warm up the PDF export function on load to reduce cold start lag
 useEffect(() => {
-  fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
+  if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
 }, []);
 
   useEffect(() => {

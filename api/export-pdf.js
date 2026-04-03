@@ -86,10 +86,14 @@ async function launchBrowser() {
     });
   }
   return puppeteer.launch({
-    args: chromium.args,
+    args: [
+      ...chromium.args.filter(arg => arg !== "--no-zygote"),
+      "--font-render-hinting=none",
+      "--run-all-compositor-stages-before-draw",
+    ],
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    headless: true,
   });
 }
 
