@@ -4,6 +4,7 @@
 import fs from "fs";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
+import { PDFDocument } from "pdf-lib";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { randomUUID } from "crypto";
@@ -200,20 +201,43 @@ export default async function handler(req, res) {
     await page.emulateMediaType("print");
     await new Promise(r => setTimeout(r, 500));
 
-    const { pageWidth, pageHeight } = await page.evaluate(() => {
+    const { pageX, pageY, pageWidth, pageHeight } = await page.evaluate(() => {
         const el = document.querySelector(".cal-page");
-        if (!el) return { pageWidth: 1440, pageHeight: 1021 };
+        if (!el) return { pageX: 0, pageY: 0, pageWidth: 1440, pageHeight: 1021 };
         const r = el.getBoundingClientRect();
-        return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
+        return {
+          pageX: Math.round(r.x),
+          pageY: Math.round(r.y),
+          pageWidth: Math.round(r.width),
+          pageHeight: Math.round(r.height),
+        };
       });
-  
-      const pdfBuffer = await page.pdf({
-        printBackground: true,
-        width: `${(pageWidth / 96).toFixed(4)}in`,
-        height: `${(pageHeight / 96).toFixed(4)}in`,
-        margin: { top: "0", right: "0", bottom: "0", left: "0" },
-        timeout: 30000,
+
+      // Resize viewport to exactly match the calendar page so the screenshot
+      // captures the full height without clipping.
+      await page.setViewport({ width: pageWidth, height: pageHeight, deviceScaleFactor: 1 });
+      await new Promise(r => setTimeout(r, 200));
+
+      // Use screenshot + pdf-lib instead of page.pdf() (Page.printToPDF) to avoid
+      // the "Printing failed" / "Target closed" CDP errors in serverless Chromium.
+      const screenshotBuffer = await page.screenshot({
+        type: "png",
+        clip: { x: pageX, y: pageY, width: pageWidth, height: pageHeight },
+        omitBackground: false,
       });
+
+      const pdfDoc = await PDFDocument.create();
+      const pngImage = await pdfDoc.embedPng(screenshotBuffer);
+      // 1 CSS pixel at 96 DPI = 72/96 = 0.75 PDF points
+      const PTS_PER_PX = 72 / 96;
+      const pdfPage = pdfDoc.addPage([pageWidth * PTS_PER_PX, pageHeight * PTS_PER_PX]);
+      pdfPage.drawImage(pngImage, {
+        x: 0,
+        y: 0,
+        width: pageWidth * PTS_PER_PX,
+        height: pageHeight * PTS_PER_PX,
+      });
+      const pdfBuffer = Buffer.from(await pdfDoc.save());
 
     const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
     return res.status(200).json({
