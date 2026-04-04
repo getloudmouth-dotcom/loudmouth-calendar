@@ -88,9 +88,8 @@ async function launchBrowser() {
   }
   return puppeteer.launch({
     args: [
-      ...chromium.args.filter(arg => arg !== "--no-zygote"),
+      ...chromium.args,
       "--font-render-hinting=none",
-      "--run-all-compositor-stages-before-draw",
     ],
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
@@ -202,42 +201,59 @@ export default async function handler(req, res) {
     await page.emulateMediaType("print");
     await new Promise(r => setTimeout(r, 500));
 
-    const { pageX, pageY, pageWidth, pageHeight } = await page.evaluate(() => {
+    // First pass: get dimensions from the first .cal-page element.
+      const { pageWidth, pageHeight } = await page.evaluate(() => {
         const el = document.querySelector(".cal-page");
-        if (!el) return { pageX: 0, pageY: 0, pageWidth: 1440, pageHeight: 1021 };
+        if (!el) return { pageWidth: 1440, pageHeight: 1021 };
         const r = el.getBoundingClientRect();
-        return {
-          pageX: Math.round(r.x),
-          pageY: Math.round(r.y),
-          pageWidth: Math.round(r.width),
-          pageHeight: Math.round(r.height),
-        };
+        return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
       });
 
-      // Resize viewport to exactly match the calendar page so the screenshot
-      // captures the full height without clipping.
+      // Resize viewport to exactly one page so the screenshot clip fits.
       await page.setViewport({ width: pageWidth, height: pageHeight, deviceScaleFactor: 1 });
       await new Promise(r => setTimeout(r, 200));
 
-      // Use screenshot + pdf-lib instead of page.pdf() (Page.printToPDF) to avoid
-      // the "Printing failed" / "Target closed" CDP errors in serverless Chromium.
-      const screenshotBuffer = await page.screenshot({
-        type: "png",
-        clip: { x: pageX, y: pageY, width: pageWidth, height: pageHeight },
-        omitBackground: false,
+      // Second pass: collect all .cal-page elements with their document-level
+      // top position (getBoundingClientRect().top + scrollY).  After the viewport
+      // resize the layout may have settled, so we measure again here.
+      const calPages = await page.evaluate(() => {
+        const scrollY = window.scrollY;
+        const els = Array.from(document.querySelectorAll(".cal-page"));
+        if (!els.length) return [{ docTop: 0, x: 0, width: 1440, height: 1021 }];
+        return els.map(el => {
+          const r = el.getBoundingClientRect();
+          return {
+            docTop: Math.round(r.top + scrollY),
+            x: Math.round(r.left),
+            width: Math.round(r.width),
+            height: Math.round(r.height),
+          };
+        });
       });
 
+      // Use screenshot + pdf-lib instead of page.pdf() (Page.printToPDF) to avoid
+      // "Printing failed" / "Target closed" CDP errors in serverless Chromium.
+      // One screenshot per .cal-page → one PDF page.
       const pdfDoc = await PDFDocument.create();
-      const pngImage = await pdfDoc.embedPng(screenshotBuffer);
       // 1 CSS pixel at 96 DPI = 72/96 = 0.75 PDF points
       const PTS_PER_PX = 72 / 96;
-      const pdfPage = pdfDoc.addPage([pageWidth * PTS_PER_PX, pageHeight * PTS_PER_PX]);
-      pdfPage.drawImage(pngImage, {
-        x: 0,
-        y: 0,
-        width: pageWidth * PTS_PER_PX,
-        height: pageHeight * PTS_PER_PX,
-      });
+
+      for (const { docTop, x, width, height } of calPages) {
+        // Scroll so this page sits at y=0 in the viewport.
+        await page.evaluate((top) => window.scrollTo(0, top), docTop);
+        await new Promise(r => setTimeout(r, 150));
+
+        const screenshot = await page.screenshot({
+          type: "png",
+          clip: { x, y: 0, width, height },
+          omitBackground: false,
+        });
+
+        const pdfPage = pdfDoc.addPage([width * PTS_PER_PX, height * PTS_PER_PX]);
+        const img = await pdfDoc.embedPng(screenshot);
+        pdfPage.drawImage(img, { x: 0, y: 0, width: width * PTS_PER_PX, height: height * PTS_PER_PX });
+      }
+
       const pdfBuffer = Buffer.from(await pdfDoc.save());
 
     const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
