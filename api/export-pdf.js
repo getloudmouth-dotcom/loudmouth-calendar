@@ -168,7 +168,9 @@ export default async function handler(req, res) {
     browser = await launchBrowser();
 
     const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+    // 1200px height fits any single cal-page (aspect ratio 1.41:1 → ~1021px at 1440w)
+    // without needing a resize after rendering, which spikes Chrome memory.
+    await page.setViewport({ width: 1440, height: 1200, deviceScaleFactor: 1 });
 
     // Pipe headless browser logs into Vercel function logs for debugging
     page.on("console", msg => console.log(`[headless:${msg.type()}]`, msg.text()));
@@ -208,10 +210,6 @@ export default async function handler(req, res) {
         const r = el.getBoundingClientRect();
         return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
       });
-
-      // Resize viewport to exactly one page so the screenshot clip fits.
-      await page.setViewport({ width: pageWidth, height: pageHeight, deviceScaleFactor: 1 });
-      await new Promise(r => setTimeout(r, 200));
 
       // Second pass: collect all .cal-page elements with their document-level
       // top position (getBoundingClientRect().top + scrollY).  After the viewport
