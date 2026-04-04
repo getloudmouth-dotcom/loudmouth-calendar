@@ -90,6 +90,9 @@ async function launchBrowser() {
     args: [
       ...chromium.args,
       "--font-render-hinting=none",
+      // Collapse browser/renderer/GPU into one process to save ~200-400 MB in
+      // the serverless environment, preventing OOM crashes on image-heavy pages.
+      "--single-process",
     ],
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
