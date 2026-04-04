@@ -2408,6 +2408,8 @@ function NavProfileMenu({ profileName, currentCalendarId, onMyCalendars, onHisto
     </div>
   );
 }
+const CAPTION_EMOJIS = ["❤️","🔥","✨","🙌","👏","💯","🎉","😍","😂","🤣","😊","🥰","🙏","👀","💪","🌟","⭐","🚀","💫","🌈","🎯","💡","📸","🎶","🌺","🌸","💎","👑","🦋","🌙","☀️","🌊","🍀","🌿","💚","💙","💜","🖤","🤍","❤️‍🔥"];
+
 function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFilesDrop, driveUploadProgress, onPickReelLink }) {
   const [slideIdx, setSlideIdx] = useState(0);
   const [reframing, setReframing] = useState(false);
@@ -2415,6 +2417,45 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
   const [hovering, setHovering] = useState(false);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [showPostingNotes, setShowPostingNotes] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const captionRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
+  useEffect(() => {
+    const el = captionRef.current;
+    if (!el) return;
+    let size = 13;
+    el.style.fontSize = size + "px";
+    while (el.scrollHeight > el.clientHeight && size > 7.5) {
+      size -= 0.5;
+      el.style.fontSize = size + "px";
+    }
+  }, [post.caption]);
+
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    function handleClick(e) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showEmojiPicker]);
+
+  function insertEmoji(emoji) {
+    const el = captionRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const current = post.caption || "";
+    onUpdate("caption", current.slice(0, start) + emoji + current.slice(end));
+    setTimeout(() => {
+      el.selectionStart = start + emoji.length;
+      el.selectionEnd = start + emoji.length;
+      el.focus();
+    }, 0);
+  }
 
   const isReel = post.contentType === "Reel";
   const isCarousel = post.contentType === "Carousel";
@@ -2674,8 +2715,22 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         </a>
       )}
       <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 8, padding: "14px 16px", flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: "#333", marginBottom: 10 }}>Caption:</div>
-        <textarea value={post.caption || ""} onChange={e => onUpdate("caption", e.target.value)} placeholder="Caption..." rows={4} style={{ fontSize: 13, color: "#444", lineHeight: 1.7, width: "100%", border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0, flex: 1 }} />
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#333", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          Caption:
+          {!isExporting && (
+            <div ref={emojiPickerRef} style={{ position: "relative" }}>
+              <button onClick={() => setShowEmojiPicker(p => !p)} title="Insert emoji" style={{ background: "none", border: "none", fontSize: 13, cursor: "pointer", padding: "0 2px", opacity: 0.55, lineHeight: 1, fontFamily: "inherit" }}>😊</button>
+              {showEmojiPicker && (
+                <div style={{ position: "absolute", right: 0, top: "100%", zIndex: 200, background: "#fff", border: "1.5px solid #e8e8e8", borderRadius: 10, padding: 8, boxShadow: "0 4px 18px rgba(0,0,0,0.12)", display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 2, width: 226 }}>
+                  {CAPTION_EMOJIS.map(e => (
+                    <button key={e} onClick={() => { insertEmoji(e); setShowEmojiPicker(false); }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", padding: 3, borderRadius: 5, lineHeight: 1 }}>{e}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <textarea ref={captionRef} value={post.caption || ""} onChange={e => onUpdate("caption", e.target.value)} placeholder="Caption..." rows={4} style={{ fontSize: 13, color: "#444", lineHeight: 1.7, width: "100%", border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0, flex: 1, overflow: "hidden" }} />
         <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 10, paddingTop: 8 }}>
           {showPostingNotes || post.postingNotes ? (
             <div style={{ position: "relative" }}>
