@@ -4,7 +4,6 @@
 import fs from "fs";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
-import { PDFDocument } from "pdf-lib";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { randomUUID } from "crypto";
@@ -92,9 +91,6 @@ async function launchBrowser() {
       // using its normal zygote-based process model.
       ...chromium.args.filter(arg => arg !== "--no-zygote"),
       "--font-render-hinting=none",
-      // Needed to prevent the renderer from crashing mid-composite when
-      // captureScreenshot is called without a prior full paint flush.
-      "--run-all-compositor-stages-before-draw",
     ],
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
@@ -222,60 +218,20 @@ export default async function handler(req, res) {
     // Wait for print styles to repaint before measuring.
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-    // First pass: get dimensions from the first .cal-page element.
-      const { pageWidth, pageHeight } = await page.evaluate(() => {
-        const el = document.querySelector(".cal-page");
-        if (!el) return { pageWidth: 1440, pageHeight: 1021 };
-        const r = el.getBoundingClientRect();
-        return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
-      });
+    // Measure the first .cal-page to set PDF page dimensions.
+    const { pageWidth, pageHeight } = await page.evaluate(() => {
+      const el = document.querySelector(".cal-page");
+      if (!el) return { pageWidth: 1440, pageHeight: 1021 };
+      const r = el.getBoundingClientRect();
+      return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
+    });
 
-      // Second pass: collect all .cal-page elements with their document-level
-      // top position (getBoundingClientRect().top + scrollY).  After the viewport
-      // resize the layout may have settled, so we measure again here.
-      const calPages = await page.evaluate(() => {
-        const scrollY = window.scrollY;
-        const els = Array.from(document.querySelectorAll(".cal-page"));
-        if (!els.length) return [{ docTop: 0, x: 0, width: 1440, height: 1021 }];
-        return els.map(el => {
-          const r = el.getBoundingClientRect();
-          return {
-            docTop: Math.round(r.top + scrollY),
-            x: Math.round(r.left),
-            width: Math.round(r.width),
-            height: Math.round(r.height),
-          };
-        });
-      });
-
-      // Use screenshot + pdf-lib instead of page.pdf() (Page.printToPDF) to avoid
-      // "Printing failed" / "Target closed" CDP errors in serverless Chromium.
-      // One screenshot per .cal-page → one PDF page.
-      const pdfDoc = await PDFDocument.create();
-      // 1 CSS pixel at 96 DPI = 72/96 = 0.75 PDF points
-      const PTS_PER_PX = 72 / 96;
-
-      for (const { docTop, x, width, height } of calPages) {
-        // Scroll so this page sits at y=0 in the viewport, then wait for
-        // Chrome to finish painting before capturing — double rAF is the
-        // standard "next paint" guarantee without a fixed timeout.
-        await page.evaluate((top) => {
-          window.scrollTo(0, top);
-          return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        }, docTop);
-
-        const screenshot = await page.screenshot({
-          type: "png",
-          clip: { x, y: 0, width, height },
-          omitBackground: false,
-        });
-
-        const pdfPage = pdfDoc.addPage([width * PTS_PER_PX, height * PTS_PER_PX]);
-        const img = await pdfDoc.embedPng(screenshot);
-        pdfPage.drawImage(img, { x: 0, y: 0, width: width * PTS_PER_PX, height: height * PTS_PER_PX });
-      }
-
-      const pdfBuffer = Buffer.from(await pdfDoc.save());
+    const pdfBuffer = await page.pdf({
+      width: `${pageWidth}px`,
+      height: `${pageHeight}px`,
+      printBackground: true,
+      preferCSSPageSize: false,
+    });
 
     const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
     return res.status(200).json({
