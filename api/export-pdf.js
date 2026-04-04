@@ -92,7 +92,6 @@ async function launchBrowser() {
       // using its normal zygote-based process model.
       ...chromium.args.filter(arg => arg !== "--no-zygote"),
       "--font-render-hinting=none",
-      "--run-all-compositor-stages-before-draw",
     ],
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
@@ -217,7 +216,7 @@ export default async function handler(req, res) {
       }
     });
     await page.emulateMediaType("print");
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 200));
 
     // First pass: get dimensions from the first .cal-page element.
       const { pageWidth, pageHeight } = await page.evaluate(() => {
@@ -255,7 +254,7 @@ export default async function handler(req, res) {
       for (const { docTop, x, width, height } of calPages) {
         // Scroll so this page sits at y=0 in the viewport.
         await page.evaluate((top) => window.scrollTo(0, top), docTop);
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise(r => setTimeout(r, 50));
 
         const screenshot = await page.screenshot({
           type: "png",
