@@ -182,6 +182,19 @@ export default async function handler(req, res) {
       console.error("[headless:reqfailed]", req.url(), req.failure()?.errorText)
     );
 
+    // Cap Cloudinary images at 1440px wide so Chrome never decodes full-resolution
+    // originals. A 4000×3000 image = ~48 MB raw; capping at 1440px = ~6 MB — critical
+    // when 20-30 images load simultaneously in the serverless environment.
+    await page.setRequestInterception(true);
+    page.on("request", req => {
+      const url = req.url();
+      if (url.includes("res.cloudinary.com") && url.includes("/upload/")) {
+        req.continue({ url: url.replace("/upload/", "/upload/w_1440,c_limit,q_auto/") });
+      } else {
+        req.continue();
+      }
+    });
+
     // Navigate to the app in export mode
     await page.goto(`${APP_URL}/?exportToken=${token}`, {
       waitUntil: "domcontentloaded",
