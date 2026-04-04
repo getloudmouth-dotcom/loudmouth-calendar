@@ -92,6 +92,9 @@ async function launchBrowser() {
       // using its normal zygote-based process model.
       ...chromium.args.filter(arg => arg !== "--no-zygote"),
       "--font-render-hinting=none",
+      // Needed to prevent the renderer from crashing mid-composite when
+      // captureScreenshot is called without a prior full paint flush.
+      "--run-all-compositor-stages-before-draw",
     ],
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
@@ -216,7 +219,8 @@ export default async function handler(req, res) {
       }
     });
     await page.emulateMediaType("print");
-    await new Promise(r => setTimeout(r, 200));
+    // Wait for print styles to repaint before measuring.
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
     // First pass: get dimensions from the first .cal-page element.
       const { pageWidth, pageHeight } = await page.evaluate(() => {
@@ -252,9 +256,13 @@ export default async function handler(req, res) {
       const PTS_PER_PX = 72 / 96;
 
       for (const { docTop, x, width, height } of calPages) {
-        // Scroll so this page sits at y=0 in the viewport.
-        await page.evaluate((top) => window.scrollTo(0, top), docTop);
-        await new Promise(r => setTimeout(r, 50));
+        // Scroll so this page sits at y=0 in the viewport, then wait for
+        // Chrome to finish painting before capturing — double rAF is the
+        // standard "next paint" guarantee without a fixed timeout.
+        await page.evaluate((top) => {
+          window.scrollTo(0, top);
+          return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        }, docTop);
 
         const screenshot = await page.screenshot({
           type: "png",
