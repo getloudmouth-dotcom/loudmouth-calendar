@@ -88,15 +88,15 @@ async function launchBrowser() {
   }
   return puppeteer.launch({
     args: [
-      ...chromium.args,
+      // Exclude --no-zygote: in Vercel's environment Chrome is more stable
+      // using its normal zygote-based process model.
+      ...chromium.args.filter(arg => arg !== "--no-zygote"),
       "--font-render-hinting=none",
-      // Collapse browser/renderer/GPU into one process to save ~200-400 MB in
-      // the serverless environment, preventing OOM crashes on image-heavy pages.
-      "--single-process",
+      "--run-all-compositor-stages-before-draw",
     ],
     defaultViewport: chromium.defaultViewport,
     executablePath: await chromium.executablePath(),
-    headless: chromium.headless,
+    headless: true,
   });
 }
 
