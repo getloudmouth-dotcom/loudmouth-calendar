@@ -160,6 +160,8 @@ export default async function handler(req, res) {
     postsPerPage: cal.posts_per_page,
     builderName: cal.builder_name,
     selectedDays: cal.selected_days,
+    notes: cal.notes ?? "",
+    notesImage: cal.notes_image ?? "",
   };
   await getRedis().set(`export:${token}`, JSON.stringify(payload), { ex: 120 });
 

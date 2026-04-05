@@ -55,7 +55,7 @@ function chunkArray(arr, size) {
 function newPost() {
   return { id: Date.now() + Math.random(), contentType: "Photo", imageUrls: [], url: "", urls: [], videoUrl: "", caption: "", cropX: 50, cropY: 50, scale: 1, crops: {}, cropXs: [], cropYs: [], scales: [], placeholder: "", postingNotes: "" };
 }
-const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "crops", "cropXs", "cropYs", "scales", "placeholder", "postingNotes"];
+const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "videoUrl", "caption", "cropX", "cropY", "scale", "crops", "cropXs", "cropYs", "scales", "placeholder", "postingNotes", "carouselCardScale"];
 
 // Per-slide crop/scale helpers for carousels
 function getSlideCropX(post, slideIdx) { return post.cropXs?.[slideIdx] ?? post.cropX ?? 50; }
@@ -177,6 +177,8 @@ export default function App() {
   const [postsPerPage, setPostsPerPage] = useState(3);
   const [selectedDays, setSelectedDays] = useState([]);
   const [posts, setPosts] = useState({});
+  const [calendarNotes, setCalendarNotes] = useState("");
+  const [calendarNotesImage, setCalendarNotesImage] = useState("");
   const [dragOver, setDragOver] = useState(null);
   const [driveToken, setDriveToken] = useState(null);
 const [pinnedCount, setPinnedCount] = useState(0);
@@ -604,7 +606,7 @@ useEffect(() => {
     if (!name) return;
     setClients(prev => {
       const next = [...prev, name];
-      localStorage.setItem("lm_clients", JSON.stringify(next));
+      saveClients(next);
       return next;
     });
     setClientName(name);
@@ -696,6 +698,8 @@ useEffect(() => {
         setPostsPerPage(payload.postsPerPage ?? 3);
         setProfileName(payload.builderName ?? "");
         setSelectedDays(Array.isArray(payload.selectedDays) ? payload.selectedDays : []);
+        setCalendarNotes(payload.notes ?? "");
+        setCalendarNotesImage(payload.notesImage ?? "");
         const raw = payload.posts;
         setPosts(
           raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
@@ -753,6 +757,7 @@ useEffect(() => {
         setProfileName(name);
         if (!name) setShowProfileSetup(true);
         loadAllCalendars();
+        loadClients(session.user.id);
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -762,6 +767,7 @@ useEffect(() => {
         setProfileName(name);
         if (!name) setShowProfileSetup(true);
         loadAllCalendars();
+        loadClients(session.user.id);
       }
     });
     return () => subscription.unsubscribe();
@@ -816,6 +822,31 @@ useEffect(() => {
     setAllCalendars(data || []);
   }
 
+  async function loadClients(userId) {
+    const { data } = await supabase.from("user_settings").select("clients").eq("user_id", userId).single();
+    if (data?.clients?.length) {
+      setClients(data.clients);
+    } else {
+      // One-time migration: seed from localStorage if Supabase is empty
+      try {
+        const local = localStorage.getItem("lm_clients");
+        if (local) {
+          const parsed = JSON.parse(local);
+          if (parsed.length) {
+            setClients(parsed);
+            await supabase.from("user_settings").upsert({ user_id: userId, clients: parsed, updated_at: new Date().toISOString() });
+          }
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
+  async function saveClients(next, userId) {
+    const uid = userId || (await supabase.auth.getUser()).data.user?.id;
+    if (!uid) return;
+    await supabase.from("user_settings").upsert({ user_id: uid, clients: next, updated_at: new Date().toISOString() });
+  }
+
   async function openCalendar(cal) {
     setCurrentCalendarId(cal.id);
     setClientName(cal.client_name);
@@ -824,6 +855,8 @@ useEffect(() => {
     setPostsPerPage(cal.posts_per_page);
     setBuilderName(cal.builder_name || "");
     setSelectedDays(cal.selected_days || []);
+    setCalendarNotes(cal.notes || "");
+    setCalendarNotesImage(cal.notes_image || "");
     // Load most recent draft
     const { data } = await supabase.from("calendar_drafts")
       .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
@@ -855,7 +888,8 @@ useEffect(() => {
     const { data: calData, error: calErr } = await supabase.from("calendars").upsert({
       user_id: user.id, client_name: clientName, month, year,
       posts_per_page: postsPerPage, builder_name: profileName,
-      selected_days: selectedDays, updated_at: new Date().toISOString(),
+      selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+      updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,client_name,month,year" }).select().single();
     if (calErr) {
       if (!silent) alert("Save failed: " + calErr.message);
@@ -1213,12 +1247,12 @@ useEffect(() => {
                                 <button onClick={() => {
                                   const newName = prompt("Rename:", c);
                                   if (!newName || newName.trim() === c) return;
-                                  setClients(prev => { const next = prev.map(x => x === c ? newName.trim() : x); localStorage.setItem("lm_clients", JSON.stringify(next)); return next; });
+                                  setClients(prev => { const next = prev.map(x => x === c ? newName.trim() : x); saveClients(next); return next; });
                                   if (clientName === c) setClientName(newName.trim());
                                 }} style={{ background: "#f0f0f0", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#555", fontWeight: 600 }}>Rename</button>
                                 <button onClick={() => {
                                   if (!window.confirm(`Delete "${c}"?`)) return;
-                                  setClients(prev => { const next = prev.filter(x => x !== c); localStorage.setItem("lm_clients", JSON.stringify(next)); return next; });
+                                  setClients(prev => { const next = prev.filter(x => x !== c); saveClients(next); return next; });
                                   if (clientName === c) setClientName("");
                                 }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", color: "#ccc" }}>✕</button>
                               </div>
@@ -1352,9 +1386,6 @@ useEffect(() => {
   const newType = e.target.value;
   if (newType === "Carousel" && post.contentType !== "Carousel" && post.url && !(post.urls?.length)) {
     updatePost(day, postIdx, "urls", [post.url]);
-  }
-  if (post.contentType === "Reel" && newType !== "Reel") {
-    updatePost(day, postIdx, "videoUrl", "");
   }
   updatePost(day, postIdx, "contentType", newType);
 }} style={{ ...inputStyle, width: "auto", padding: "5px 10px", fontSize: 12 }}>
@@ -1575,6 +1606,11 @@ useEffect(() => {
             onDriveDrop={handleMultiDriveFileDrop}
             onFilesDrop={handleFiles}
             onPickReelLink={(day, postIdx) => { setDriveOpen(true); setLinkPickMode({ active: true, onPick: (link) => updatePost(day, postIdx, "videoUrl", link) }); }}
+            notes={calendarNotes}
+            onNotesChange={setCalendarNotes}
+            notesImage={calendarNotesImage}
+            onNotesImageChange={setCalendarNotesImage}
+            driveToken={driveToken}
           />
           ))}
         </div>
@@ -2160,9 +2196,7 @@ function DropZone({ isDropTarget, label, onDragOver, onDragLeave, onDrop, onFile
   );
 }
 
-function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount, onPickReelLink }) {
-  const [notes, setNotes] = useState("");
-  const [notesImage, setNotesImage] = useState("");
+function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount, onPickReelLink, notes = "", onNotesChange, notesImage = "", onNotesImageChange, driveToken = "" }) {
   const [notesDragOver, setNotesDragOver] = useState(false);
   const feedPosts = allPosts.filter(p => p.contentType !== "Story");
 
@@ -2171,7 +2205,19 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
     try {
       const blob = await compressToBlob(file);
       const url = await uploadToCloudinary(blob);
-      setNotesImage(url);
+      onNotesImageChange(url);
+    } catch { /* silent */ }
+  }
+
+  async function handleNotesDriveDrop(fileId) {
+    if (!driveToken || !fileId) return;
+    try {
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${driveToken}` } });
+      if (!res.ok) throw new Error("Drive fetch failed");
+      const blob = await res.blob();
+      const compressed = await compressToBlob(new File([blob], "drive-img.jpg", { type: blob.type }));
+      const url = await uploadToCloudinary(compressed);
+      onNotesImageChange(url);
     } catch { /* silent */ }
   }
   return (
@@ -2201,14 +2247,28 @@ function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, 
             style={{ border: `1.5px solid ${notesDragOver ? "#1a1a2e" : "#e8e8e8"}`, borderRadius: 10, padding: "10px 12px", flexShrink: 0, background: notesDragOver ? "#f4f4ff" : "white", transition: "border-color 0.15s, background 0.15s" }}
             onDragOver={e => { e.preventDefault(); setNotesDragOver(true); }}
             onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setNotesDragOver(false); }}
-            onDrop={e => { e.preventDefault(); setNotesDragOver(false); const file = e.dataTransfer.files?.[0]; if (file) handleNotesImageDrop(file); }}
+            onDrop={e => {
+              e.preventDefault();
+              setNotesDragOver(false);
+              const driveRaw = e.dataTransfer.getData("driveFileIds");
+              if (driveRaw) {
+                try {
+                  const driveFiles = JSON.parse(driveRaw);
+                  if (driveFiles?.[0]?.id) { handleNotesDriveDrop(driveFiles[0].id); return; }
+                } catch {}
+              }
+              const driveFileId = e.dataTransfer.getData("driveFileId");
+              if (driveFileId) { handleNotesDriveDrop(driveFileId); return; }
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleNotesImageDrop(file);
+            }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#333" }}>Notes:</div>
-              {notesImage && <button onClick={() => setNotesImage("")} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 10, padding: 0 }}>✕ photo</button>}
+              {notesImage && <button onClick={() => onNotesImageChange("")} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 10, padding: 0 }}>✕ photo</button>}
             </div>
             {notesImage && <img src={notesImage} alt="note" style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 6, display: "block", marginBottom: 6 }} />}
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={notesImage ? 2 : 3} placeholder={notesDragOver ? "Drop image here..." : "Add notes or drop a photo..."} style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "transparent", borderRadius: 4, padding: "2px 0" }} />
+            <textarea value={notes} onChange={e => onNotesChange(e.target.value)} rows={notesImage ? 2 : 3} placeholder={notesDragOver ? "Drop image here..." : "Add notes or drop a photo..."} style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "transparent", borderRadius: 4, padding: "2px 0" }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
           <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} driveUploadProgress={driveUploadProgress} pinnedCount={pinnedCount} setPinnedCount={setPinnedCount} />
@@ -2416,10 +2476,11 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
   const [dropHighlight, setDropHighlight] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
-  const [showPostingNotes, setShowPostingNotes] = useState(false);
+  const [showPostingNotes, setShowPostingNotes] = useState(!!post.postingNotes);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const captionRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const postingNotesRef = useRef(null);
 
   useEffect(() => {
     const el = captionRef.current;
@@ -2431,6 +2492,17 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
       el.style.fontSize = size + "px";
     }
   }, [post.caption]);
+
+  useEffect(() => {
+    const el = postingNotesRef.current;
+    if (!el) return;
+    let size = 10;
+    el.style.fontSize = size + "px";
+    while ((el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) && size > 6) {
+      size -= 0.5;
+      el.style.fontSize = size + "px";
+    }
+  }, [post.postingNotes, showPostingNotes]);
 
   useEffect(() => {
     if (!showEmojiPicker) return;
@@ -2534,7 +2606,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
       </div>
       <div
         style={{ position: "relative" }}
-        onDoubleClick={() => mainImage && setReframing(r => !r)}
+        onDoubleClick={() => !isCarousel && mainImage && setReframing(r => !r)}
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
         onDragOver={e => { e.preventDefault(); setDropHighlight(true); }}
@@ -2568,7 +2640,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
         )}
         {reframing && (
           <div
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.78)", borderBottomLeftRadius: 8, borderBottomRightRadius: 8, padding: "8px 12px", zIndex: 20, display: "flex", flexDirection: "column", gap: 5 }}
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, overflow: "hidden", background: "rgba(0,0,0,0.78)", borderBottomLeftRadius: 8, borderBottomRightRadius: 8, padding: "8px 12px", zIndex: 20, display: "flex", flexDirection: "column", gap: 5 }}
             onClick={e => e.stopPropagation()}
             onMouseDown={e => e.stopPropagation()}
           >
@@ -2588,7 +2660,7 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
                     onUpdate("scale", val);
                   }
                 }}
-                style={{ flex: 1, accentColor: "#D7FA06", cursor: "pointer", height: 3 }}
+                style={{ flex: 1, minWidth: 0, accentColor: "#D7FA06", cursor: "pointer", height: 3 }}
               />
               <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round((isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)) * 100)}%</span>
             </div>
@@ -2615,28 +2687,43 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
           </div>
         )}
         {mainImage && hovering && (
-          <button
-            onClick={e => { e.stopPropagation(); handleDelete(); }}
-            title="Delete photo"
-            style={{ position: "absolute", top: 6, right: 6, background: "transparent", color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, lineHeight: 1, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
-          >✕</button>
+          <div style={{ position: "absolute", top: 6, right: 6, zIndex: 10, display: "flex", alignItems: "center", gap: 3 }} onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+            {isCarousel && (
+              <div style={{ display: "flex", alignItems: "center", background: "rgba(0,0,0,0.52)", borderRadius: 20, overflow: "hidden" }}>
+                <button
+                  onClick={() => onUpdate("carouselCardScale", Math.max(0.3, parseFloat(((post.carouselCardScale ?? 1) - 0.1).toFixed(2))))}
+                  title="Shrink stack cards"
+                  style={{ background: "none", color: "white", border: "none", width: 20, height: 20, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}
+                >−</button>
+                <button
+                  onClick={() => onUpdate("carouselCardScale", Math.min(1.5, parseFloat(((post.carouselCardScale ?? 1) + 0.1).toFixed(2))))}
+                  title="Grow stack cards"
+                  style={{ background: "none", color: "white", border: "none", width: 20, height: 20, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, padding: 0 }}
+                >+</button>
+              </div>
+            )}
+            <button
+              onClick={() => handleDelete()}
+              title="Delete photo"
+              style={{ background: "transparent", color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, fontSize: 14, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", lineHeight: 1, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+            >✕</button>
+          </div>
         )}
-        {isCarousel && hovering && (
-          <label title="Add photo to carousel" onClick={e => e.stopPropagation()} style={{ position: "absolute", bottom: 8, right: 8, background: "rgba(0,0,0,0.55)", color: "white", borderRadius: "50%", width: 26, height: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10 }}>
-            <span style={{ fontSize: 18, fontWeight: 300, lineHeight: 1, marginTop: -1, pointerEvents: "none" }}>+</span>
-            <input type="file" accept="image/*" multiple onChange={async e => {
-              const files = [...e.target.files].filter(f => f.type.startsWith("image/"));
-              e.target.value = "";
-              if (!files.length) return;
-              try {
-                const urls = await Promise.all(files.map(async f => {
-                  const blob = await compressToBlob(f);
-                  return uploadToCloudinary(blob);
-                }));
-                onUpdate("imageUrls", [...(post.imageUrls || []), ...urls]);
-              } catch(err) { alert("Upload failed: " + err.message); }
-            }} style={{ display: "none" }} />
-          </label>
+        {(showPostingNotes || post.postingNotes) && (
+          <div
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "22%", background: "rgba(255, 237, 80, 0.38)", borderBottomLeftRadius: 8, borderBottomRightRadius: 8, zIndex: 30, padding: "5px 7px", display: "flex", backdropFilter: "none" }}
+            onClick={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+          >
+            <textarea
+              ref={postingNotesRef}
+              value={post.postingNotes || ""}
+              onChange={e => onUpdate("postingNotes", e.target.value)}
+              placeholder="Posting notes..."
+              readOnly={isExporting}
+              style={{ width: "100%", height: "100%", background: "transparent", border: "none", outline: "none", resize: "none", fontFamily: "inherit", fontSize: 10, color: "rgba(50, 40, 0, 0.82)", lineHeight: 1.35, padding: 0, overflow: "hidden" }}
+            />
+          </div>
         )}
         {isCarousel && totalSlides >= 1 && (
           <div style={{ position: "absolute", inset: 0, overflow: "visible", zIndex: 5 }}>
@@ -2648,7 +2735,9 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
           {[...post.imageUrls].reverse().map((url, i) => {
             const total = post.imageUrls.length;
             const stackIdx = total - 1 - i;
-              const cardW = total > 1 ? 100 / (0.3675 * (total - 1) + 1) : 70;
+              const baseCardW = total > 1 ? 100 / (0.3675 * (total - 1) + 1) : 70;
+              const stackScale = post.carouselCardScale ?? 1;
+              const cardW = baseCardW * stackScale;
               const spread = total > 1 ? (100 - cardW) / (total - 1) : 0;
               const leftPct = stackIdx * spread;
               const topPct = stackIdx * spread;
@@ -2709,39 +2798,49 @@ function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFil
           <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#aaa" }}>Reel Link</div>
           <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
         </div>
+      ) : isCarousel && totalSlides > 0 ? (
+        <div style={{ background: "#1a1a2e", borderRadius: 24, padding: "6px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: Math.max(2, 10 - Math.max(0, totalSlides - 5)), overflow: "hidden" }}>
+          {Array.from({ length: totalSlides }, (_, i) => {
+            const slideUrl = post.urls?.[i] || "";
+            const fontSize = Math.max(7, 11 - Math.max(0, totalSlides - 10));
+            return (
+              <a key={i} href={slideUrl || "#"} data-pdf-link={slideUrl || ""} data-pdf-link-text={`Slide ${i + 1} Link`} target="_blank" rel="noreferrer"
+                style={{ color: slideUrl ? "white" : "rgba(255,255,255,0.3)", fontSize, fontWeight: 700, textDecoration: slideUrl ? "underline" : "none", cursor: slideUrl ? "pointer" : "default" }}>
+                {i + 1}
+              </a>
+            );
+          })}
+        </div>
       ) : (
-        <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
-          {isReel ? "Reel Link" : isCarousel ? `Slide ${currentSlide + 1} Link` : "Photo Link"}
+        <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : "Photo Link"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
+          {isReel ? "Reel Link" : "Photo Link"}
         </a>
       )}
       <div style={{ border: "1.5px solid #e8e8e8", borderRadius: 8, padding: "14px 16px", flex: 1, minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: "#333", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           Caption:
           {!isExporting && (
-            <div ref={emojiPickerRef} style={{ position: "relative" }}>
-              <button onClick={() => setShowEmojiPicker(p => !p)} title="Insert emoji" style={{ background: "none", border: "none", fontSize: 13, cursor: "pointer", padding: "0 2px", opacity: 0.55, lineHeight: 1, fontFamily: "inherit" }}>😊</button>
-              {showEmojiPicker && (
-                <div style={{ position: "absolute", right: 0, top: "100%", zIndex: 200, background: "#fff", border: "1.5px solid #e8e8e8", borderRadius: 10, padding: 8, boxShadow: "0 4px 18px rgba(0,0,0,0.12)", display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 2, width: 226 }}>
-                  {CAPTION_EMOJIS.map(e => (
-                    <button key={e} onClick={() => { insertEmoji(e); setShowEmojiPicker(false); }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", padding: 3, borderRadius: 5, lineHeight: 1 }}>{e}</button>
-                  ))}
-                </div>
-              )}
+            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <button onClick={() => setShowPostingNotes(p => !p)} title="Posting notes" style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1, opacity: showPostingNotes || post.postingNotes ? 1 : 0.4 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ display: "block", color: showPostingNotes || post.postingNotes ? "#c8a800" : "#888" }}>
+                  <path d="M3 3h13l5 5v13H3V3zm12 0v5h5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                  <path d="M15 3v5h5" fill="rgba(0,0,0,0.15)"/>
+                </svg>
+              </button>
+              <div ref={emojiPickerRef} style={{ position: "relative" }}>
+                <button onClick={() => setShowEmojiPicker(p => !p)} title="Insert emoji" style={{ background: "none", border: "none", fontSize: 13, cursor: "pointer", padding: "0 2px", opacity: 0.55, lineHeight: 1, fontFamily: "inherit" }}>😊</button>
+                {showEmojiPicker && (
+                  <div style={{ position: "absolute", right: 0, top: "100%", zIndex: 200, background: "#fff", border: "1.5px solid #e8e8e8", borderRadius: 10, padding: 8, boxShadow: "0 4px 18px rgba(0,0,0,0.12)", display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 2, width: 226 }}>
+                    {CAPTION_EMOJIS.map(e => (
+                      <button key={e} onClick={() => { insertEmoji(e); setShowEmojiPicker(false); }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", padding: 3, borderRadius: 5, lineHeight: 1 }}>{e}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
         <textarea ref={captionRef} value={post.caption || ""} onChange={e => onUpdate("caption", e.target.value)} placeholder="Caption..." rows={4} style={{ fontSize: 13, color: "#444", lineHeight: 1.7, width: "100%", border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0, flex: 1, overflow: "hidden" }} />
-        <div style={{ borderTop: "1px solid #f0f0f0", marginTop: 10, paddingTop: 8 }}>
-          {showPostingNotes || post.postingNotes ? (
-            <div style={{ position: "relative" }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#aaa", marginBottom: 4, letterSpacing: "0.04em", textTransform: "uppercase" }}>Posting Notes</div>
-              <textarea value={post.postingNotes || ""} onChange={e => onUpdate("postingNotes", e.target.value)} placeholder="e.g. Post Tuesday 6pm · tag @partner · add location..." rows={2} style={{ width: "100%", fontSize: 11, color: "#666", lineHeight: 1.5, border: "none", outline: "none", resize: "none", fontFamily: "inherit", background: "transparent", padding: 0 }} />
-              {!post.postingNotes && <button onClick={() => setShowPostingNotes(false)} style={{ position: "absolute", top: 0, right: 0, background: "none", border: "none", fontSize: 11, color: "#ccc", cursor: "pointer" }}>✕</button>}
-            </div>
-          ) : (
-            <button onClick={() => setShowPostingNotes(true)} className="no-export" style={{ background: "none", border: "none", fontSize: 10, color: "#ccc", cursor: "pointer", padding: 0, fontFamily: "inherit", letterSpacing: "0.04em" }}>+ posting notes</button>
-          )}
-        </div>
       </div>
     </div>
   );
