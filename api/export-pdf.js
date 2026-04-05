@@ -6,7 +6,20 @@ import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
+import { Ratelimit } from "@upstash/ratelimit";
 import { randomUUID } from "crypto";
+
+let _ratelimiter = null;
+function getRatelimiter(redis) {
+  if (!_ratelimiter) {
+    _ratelimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, "5 m"),
+      prefix: "rl:export",
+    });
+  }
+  return _ratelimiter;
+}
 
 let _redisCache = { url: "", token: "", client: null };
 function getRedis() {
@@ -110,6 +123,11 @@ export default async function handler(req, res) {
     typeof raw === "string" ? raw.trim() : raw != null ? String(raw) : "";
   if (!calendarId) return res.status(400).json({ error: "Missing calendarId" });
 
+  // Verify the caller's Supabase JWT before touching any data
+  const authHeader = req.headers.authorization;
+  const accessToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!accessToken) return res.status(401).json({ error: "Unauthorized" });
+
   try {
     getSupabaseAdmin();
     getRedis();
@@ -118,6 +136,16 @@ export default async function handler(req, res) {
   }
   const supabase = getSupabaseAdmin();
 
+  const { data: { user }, error: authErr } = await supabase.auth.getUser(accessToken);
+  if (authErr || !user) return res.status(401).json({ error: "Unauthorized" });
+
+  // Rate-limit: 10 exports per 5 minutes per user
+  const { success, reset } = await getRatelimiter(getRedis()).limit(user.id);
+  if (!success) {
+    res.setHeader("Retry-After", Math.ceil((reset - Date.now()) / 1000));
+    return res.status(429).json({ error: "Too many export requests. Please wait a moment." });
+  }
+
   // 1. Fetch the calendar record
   const { data: cal, error: calErr } = await supabase
     .from("calendars")
@@ -125,14 +153,9 @@ export default async function handler(req, res) {
     .eq("id", calendarId)
     .single();
   if (calErr || !cal) {
-    return res.status(404).json({
-      error: "Calendar not found",
-      detail: calErr?.message || null,
-      code: calErr?.code || null,
-      hint:
-        "Use the same Supabase project as the app: set VITE_SUPABASE_URL and a matching service role key (SUPABASE_SERVICE_KEY).",
-    });
+    return res.status(404).json({ error: "Calendar not found" });
   }
+  if (cal.user_id !== user.id) return res.status(403).json({ error: "Forbidden" });
 
   // 2. Fetch the most recent draft snapshot
   const { data: draft, error: draftErr } = await supabase
@@ -143,11 +166,7 @@ export default async function handler(req, res) {
     .limit(1)
     .single();
   if (draftErr || !draft) {
-    return res.status(404).json({
-      error: "No draft found",
-      detail: draftErr?.message || null,
-      code: draftErr?.code || null,
-    });
+    return res.status(404).json({ error: "No draft found" });
   }
 
   // 3. Store payload in Redis with 120s TTL

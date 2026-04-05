@@ -41,6 +41,11 @@ export default async function handler(req, res) {
   // Single-use: delete immediately after retrieval
   await redis.del(`export:${token}`);
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const origin = process.env.APP_URL
+    ? process.env.APP_URL.replace(/\/$/, "")
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:5173";
+  res.setHeader("Access-Control-Allow-Origin", origin);
   return res.status(200).json(payload);
 }

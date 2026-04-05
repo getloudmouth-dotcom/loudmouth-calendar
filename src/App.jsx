@@ -632,9 +632,13 @@ useEffect(() => {
     setExportElapsed(0);
     const _exportTimer = setInterval(() => setExportElapsed(s => s + 1), 1000);
     try {
+      const { data: { session: exportSession } } = await supabase.auth.getSession();
       const res = await fetch("/api/export-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${exportSession?.access_token}`,
+        },
         body: JSON.stringify({ calendarId: currentCalendarId }),
       });
       if (!res.ok) {

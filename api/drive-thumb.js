@@ -1,10 +1,17 @@
 import sharp from "sharp";
 import { Redis } from "@upstash/redis";
+import { Ratelimit } from "@upstash/ratelimit";
 import { createClient } from "@supabase/supabase-js";
 
 const kv = new Redis({
   url: process.env.KV_REST_API_URL,
   token: process.env.KV_REST_API_TOKEN,
+});
+
+const ratelimit = new Ratelimit({
+  redis: kv,
+  limiter: Ratelimit.slidingWindow(60, "1 m"),
+  prefix: "rl:thumb",
 });
 
 const supabase = createClient(
@@ -18,6 +25,13 @@ export default async function handler(req, res) {
 
   if (!fileId || !auth) {
     return res.status(400).json({ error: "Missing fileId or token" });
+  }
+
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() ?? req.socket.remoteAddress ?? "unknown";
+  const { success, reset } = await ratelimit.limit(ip);
+  if (!success) {
+    res.setHeader("Retry-After", Math.ceil((reset - Date.now()) / 1000));
+    return res.status(429).json({ error: "Too many requests." });
   }
 
   // ── 1. Check Supabase table (CDN URL) ──
