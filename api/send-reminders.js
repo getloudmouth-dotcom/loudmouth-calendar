@@ -182,7 +182,7 @@ export default async function handler(req, res) {
 
     try {
       await sendEmail({
-        to: email,
+        to: "delivered@resend.dev", // TODO: change back to `email` after domain is verified
         subject: `Posting reminder: ${userRows.length} client${userRows.length > 1 ? "s" : ""} today`,
         html: buildEmailHtml(dateStr, userRows),
       });
