@@ -156,6 +156,43 @@ function DraggableImage({ src, cropX, cropY, scale, onUpdate, isCarousel, isVide
   );
 }
 
+// ── Schedule Row ──
+function ScheduleRow({ row, onRemove }) {
+  const [removing, setRemoving] = useState(false);
+  const dateStr = new Date(row.post_date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const types = (row.content_types || []).join(", ") || "—";
+  const links = (row.drive_links || []).filter(Boolean);
+
+  async function handleRemove() {
+    setRemoving(true);
+    await onRemove(row.id);
+  }
+
+  return (
+    <div style={{ background: "white", borderRadius: 10, padding: "14px 16px", border: "1.5px solid #e8e8e8", display: "flex", alignItems: "flex-start", gap: 12 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+          <span style={{ fontWeight: 800, fontSize: 14, color: "#1a1a2e" }}>{row.client_name}</span>
+          {row.email_sent_at && <span style={{ fontSize: 10, background: "#e8f8e8", color: "#3a8a3a", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>Sent</span>}
+        </div>
+        <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{dateStr} · {types}</div>
+        {links.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {links.map((l, i) => (
+              <a key={i} href={l} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#555", textDecoration: "none", wordBreak: "break-all" }} onMouseEnter={e => e.currentTarget.style.color = "#1a1a2e"} onMouseLeave={e => e.currentTarget.style.color = "#555"}>
+                {l.length > 60 ? l.slice(0, 60) + "…" : l}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+      <button onClick={handleRemove} disabled={removing} style={{ flexShrink: 0, background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "5px 10px", fontSize: 12, cursor: removing ? "default" : "pointer" }}>
+        {removing ? "…" : "Remove"}
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const today = new Date();
   const [step, setStep] = useState(() => (readExportToken() ? 4 : 1));
@@ -214,6 +251,9 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [editingProfile, setEditingProfile] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [wasOffline, setWasOffline] = useState(false);
+  const [scheduledPosts, setScheduledPosts] = useState([]);
+  const [showScheduleView, setShowScheduleView] = useState(false);
+  const [schedulingCalId, setSchedulingCalId] = useState(null);
 // Warm up the PDF export function on load to reduce cold start lag
 useEffect(() => {
   if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
@@ -762,6 +802,7 @@ useEffect(() => {
         if (!name) setShowProfileSetup(true);
         loadAllCalendars();
         loadClients(session.user.id);
+        loadScheduledPosts();
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -772,6 +813,7 @@ useEffect(() => {
         if (!name) setShowProfileSetup(true);
         loadAllCalendars();
         loadClients(session.user.id);
+        loadScheduledPosts();
       }
     });
     return () => subscription.unsubscribe();
@@ -929,6 +971,79 @@ useEffect(() => {
     }
   }
 
+  // ── Schedule ──
+  async function loadScheduledPosts() {
+    const { data } = await supabase
+      .from("scheduled_posts")
+      .select("*")
+      .order("post_date", { ascending: true });
+    setScheduledPosts(data || []);
+  }
+
+  async function addToSchedule(cal) {
+    if (!user) return;
+    setSchedulingCalId(cal.id);
+    try {
+      // Load latest draft posts for this calendar
+      const { data: drafts } = await supabase
+        .from("calendar_drafts")
+        .select("posts")
+        .eq("calendar_id", cal.id)
+        .order("saved_at", { ascending: false })
+        .limit(1);
+      const draftPosts = drafts?.[0]?.posts ?? {};
+
+      // Build one row per selected day
+      const rows = (cal.selected_days || []).map(day => {
+        const dayPosts = draftPosts[day] || [];
+        const contentTypes = [...new Set(dayPosts.map(p => p.contentType).filter(Boolean))];
+        const driveLinks = dayPosts.flatMap(p => {
+          const links = [];
+          if (p.url) links.push(p.url);
+          if (p.videoUrl) links.push(p.videoUrl);
+          if (Array.isArray(p.urls)) links.push(...p.urls.filter(Boolean));
+          return links;
+        }).filter(Boolean);
+
+        // Build ISO date string: YYYY-MM-DD
+        const date = new Date(cal.year, cal.month, day);
+        const postDate = date.toISOString().slice(0, 10);
+
+        return {
+          user_id: user.id,
+          calendar_id: cal.id,
+          client_name: cal.client_name,
+          post_date: postDate,
+          content_types: contentTypes,
+          drive_links: driveLinks,
+          email_sent_at: null,
+        };
+      });
+
+      if (rows.length === 0) {
+        alert("This calendar has no selected days to schedule.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("scheduled_posts")
+        .upsert(rows, { onConflict: "user_id,calendar_id,post_date", ignoreDuplicates: false });
+
+      if (error) throw error;
+      await loadScheduledPosts();
+      alert(`Scheduled ${rows.length} posting day${rows.length > 1 ? "s" : ""} for ${cal.client_name}.`);
+    } catch (e) {
+      alert("Failed to schedule: " + e.message);
+    } finally {
+      setSchedulingCalId(null);
+    }
+  }
+
+  async function removeScheduledPost(id) {
+    await supabase.from("scheduled_posts").delete().eq("id", id);
+    setScheduledPosts(prev => prev.filter(r => r.id !== id));
+  }
+
   async function newCalendar() {
     // Check for duplicate
     if (clientName.trim()) {
@@ -1060,30 +1175,101 @@ useEffect(() => {
         </div>
       )}
       <div style={{ padding: "40px 60px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0 }}>My Calendars</h1>
-          <button onClick={newCalendar} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ New Calendar</button>
+        {/* ── Tabs ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+          <div style={{ display: "flex", gap: 4, background: "#ebebea", borderRadius: 10, padding: 4 }}>
+            <button onClick={() => setShowScheduleView(false)} style={{ background: !showScheduleView ? "white" : "transparent", color: !showScheduleView ? "#1a1a2e" : "#888", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: !showScheduleView ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>My Calendars</button>
+            <button onClick={() => setShowScheduleView(true)} style={{ background: showScheduleView ? "white" : "transparent", color: showScheduleView ? "#1a1a2e" : "#888", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: showScheduleView ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}>
+              Schedule
+              {scheduledPosts.filter(r => r.post_date >= new Date().toISOString().slice(0, 10)).length > 0 && (
+                <span style={{ background: "#D7FA06", color: "#1a1a2e", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 800 }}>{scheduledPosts.filter(r => r.post_date >= new Date().toISOString().slice(0, 10)).length}</span>
+              )}
+            </button>
+          </div>
+          {!showScheduleView && (
+            <button onClick={newCalendar} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ New Calendar</button>
+          )}
         </div>
-        {allCalendars.length === 0 && (
-          <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
-            <div style={{ fontSize: 40, marginBottom: 16 }}>📅</div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No calendars yet</div>
-            <div style={{ fontSize: 13 }}>Hit "+ New Calendar" to get started</div>
+
+        {/* ── Calendars view ── */}
+        {!showScheduleView && (
+          <>
+            {allCalendars.length === 0 && (
+              <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>📅</div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No calendars yet</div>
+                <div style={{ fontSize: 13 }}>Hit "+ New Calendar" to get started</div>
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+              {allCalendars.map(cal => (
+                <div key={cal.id} style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
+                  <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{cal.client_name}</div>
+                  <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>{MONTHS[cal.month]} {cal.year} · {(cal.selected_days || []).length} day{(cal.selected_days || []).length !== 1 ? "s" : ""}</div>
+                  <div style={{ fontSize: 11, color: "#bbb", marginBottom: 14 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(cal.updated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={e => { e.stopPropagation(); openCalendar(cal); }} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                    <button
+                      onClick={e => { e.stopPropagation(); addToSchedule(cal); }}
+                      disabled={schedulingCalId === cal.id}
+                      title="Add posting dates to your reminder schedule"
+                      style={{ background: "#f5fbda", color: "#5a7a00", border: "1.5px solid #D7FA06", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: schedulingCalId === cal.id ? "default" : "pointer", whiteSpace: "nowrap", opacity: schedulingCalId === cal.id ? 0.6 : 1 }}
+                    >{schedulingCalId === cal.id ? "..." : "+ Schedule"}</button>
+                    <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ── Schedule view ── */}
+        {showScheduleView && (
+          <div>
+            {scheduledPosts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>🗓</div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No scheduled posts yet</div>
+                <div style={{ fontSize: 13 }}>Click "+ Schedule" on any calendar card to add its posting dates.</div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>
+                  You'll get an email reminder each morning a post is due. Remove any dates you don't want.
+                </div>
+                {(() => {
+                  const today = new Date().toISOString().slice(0, 10);
+                  const upcoming = scheduledPosts.filter(r => r.post_date >= today);
+                  const past = scheduledPosts.filter(r => r.post_date < today);
+                  return (
+                    <>
+                      {upcoming.length > 0 && (
+                        <div style={{ marginBottom: 32 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Upcoming ({upcoming.length})</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {upcoming.map(row => (
+                              <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {past.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#ccc", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Past ({past.length})</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, opacity: 0.5 }}>
+                            {past.map(row => (
+                              <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         )}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
-          {allCalendars.map(cal => (
-            <div key={cal.id} style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
-              <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{cal.client_name}</div>
-              <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>{MONTHS[cal.month]} {cal.year}</div>
-              <div style={{ fontSize: 11, color: "#bbb", marginBottom: 14 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(cal.updated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={e => { e.stopPropagation(); openCalendar(cal); }} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
-                <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

@@ -6,8 +6,17 @@
     },
     "api/export-data.js": {
       "maxDuration": 10
+    },
+    "api/send-reminders.js": {
+      "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/send-reminders",
+      "schedule": "0 14 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
