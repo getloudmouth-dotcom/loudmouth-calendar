@@ -39,7 +39,7 @@ async function sendEmail({ to, subject, html }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Loudmouth Calendar <onboarding@resend.dev>",
+      from: "Loudmouth Calendar <reminders@loudmouthcalendar.com>",
       to,
       subject,
       html,
@@ -182,7 +182,7 @@ export default async function handler(req, res) {
 
     try {
       await sendEmail({
-        to: "delivered@resend.dev", // TODO: change back to `email` after domain is verified
+        to: email,
         subject: `Posting reminder: ${userRows.length} client${userRows.length > 1 ? "s" : ""} today`,
         html: buildEmailHtml(dateStr, userRows),
       });
