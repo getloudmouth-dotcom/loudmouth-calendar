@@ -1206,33 +1206,6 @@ useEffect(() => {
     }
   }
 
-  // ── Collaboration ──
-  async function loadProfiles() {
-    const { data } = await supabase.from("profiles").select("id, name, email, role");
-    setAllProfiles(data || []);
-  }
-
-  async function loadCollaborators(calId) {
-    const { data } = await supabase
-      .from("calendar_collaborators")
-      .select("user_id, profiles(id, name, email)")
-      .eq("calendar_id", calId);
-    setCalCollaborators(prev => ({ ...prev, [calId]: (data || []).map(r => r.profiles).filter(Boolean) }));
-  }
-
-  async function addCollaborator(calId, userId) {
-    const { data } = await supabase.auth.getUser();
-    const uid = data?.user?.id;
-    if (!uid) return;
-    await supabase.from("calendar_collaborators").insert({ calendar_id: calId, user_id: userId, added_by: uid });
-    await loadCollaborators(calId);
-  }
-
-  async function removeCollaborator(calId, userId) {
-    await supabase.from("calendar_collaborators").delete().eq("calendar_id", calId).eq("user_id", userId);
-    await loadCollaborators(calId);
-  }
-
   // ── Schedule ──
   async function loadScheduledPosts() {
     const { data } = await supabase
@@ -1428,48 +1401,6 @@ useEffect(() => {
               <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
               <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
             </div>
-          </div>
-        </div>
-      )}
-      {/* ── Share Calendar Modal ── */}
-      {shareModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={e => e.target === e.currentTarget && setShareModal(null)}>
-          <div style={{ background: "white", borderRadius: 14, padding: 32, width: 440, boxShadow: "0 24px 60px rgba(0,0,0,0.2)", maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1a2e", marginBottom: 4 }}>Share Calendar</div>
-            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>{shareModal.client_name} — {MONTHS[shareModal.month]} {shareModal.year}</div>
-
-            {/* Current collaborators */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: "0.05em", marginBottom: 8 }}>COLLABORATORS</div>
-            {(calCollaborators[shareModal.id] || []).length === 0 && (
-              <div style={{ fontSize: 13, color: "#bbb", marginBottom: 16 }}>No collaborators yet</div>
-            )}
-            {(calCollaborators[shareModal.id] || []).map(p => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{p.name}</div>
-                  <div style={{ fontSize: 11, color: "#aaa" }}>{p.email}</div>
-                </div>
-                <button onClick={() => removeCollaborator(shareModal.id, p.id)} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Remove</button>
-              </div>
-            ))}
-
-            {/* Add collaborator */}
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: "0.05em", marginTop: 20, marginBottom: 8 }}>ADD PERSON</div>
-            <select
-              defaultValue=""
-              onChange={e => { if (e.target.value) { addCollaborator(shareModal.id, e.target.value); e.target.value = ""; } }}
-              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #e0e0e0", fontSize: 13, color: "#1a1a2e", marginBottom: 8 }}
-            >
-              <option value="" disabled>Select a team member…</option>
-              {allProfiles
-                .filter(p => p.id !== user?.id && !(calCollaborators[shareModal.id] || []).find(c => c.id === p.id))
-                .map(p => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.email})</option>
-                ))
-              }
-            </select>
-
-            <button onClick={() => setShareModal(null)} style={{ marginTop: 16, width: "100%", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, padding: "11px 0", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Done</button>
           </div>
         </div>
       )}
