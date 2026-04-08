@@ -64,4 +64,14 @@ app.post('/api/invite-user', async (req, res) => {
   }
 });
 
+app.post('/api/share-calendar', async (req, res) => {
+  try {
+    const { default: handler } = await import('./api/share-calendar.js');
+    return handler(req, res);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || 'share-calendar load failed' });
+  }
+});
+
 app.listen(3001, () => console.log('API server running on port 3001'));
