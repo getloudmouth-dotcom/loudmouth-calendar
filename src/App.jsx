@@ -1221,8 +1221,10 @@ useEffect(() => {
   }
 
   async function addCollaborator(calId, userId) {
-    const { data: { user } } = await supabase.auth.getUser();
-    await supabase.from("calendar_collaborators").insert({ calendar_id: calId, user_id: userId, added_by: user.id });
+    const { data } = await supabase.auth.getUser();
+    const uid = data?.user?.id;
+    if (!uid) return;
+    await supabase.from("calendar_collaborators").insert({ calendar_id: calId, user_id: userId, added_by: uid });
     await loadCollaborators(calId);
   }
 
@@ -1653,7 +1655,7 @@ useEffect(() => {
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
               {allCalendars.map(cal => (
-                <div key={cal.id} className="cal-card" style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
+                <div key={cal.id} className="cal-card" style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={e => { if (e.target.closest('button')) return; openCalendar(cal); }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <div style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>{cal.client_name}</div>
                     {cal.user_id !== user?.id && (
