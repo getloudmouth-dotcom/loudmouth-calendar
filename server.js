@@ -54,4 +54,14 @@ app.get('/api/export-data', async (req, res) => {
   }
 });
 
+app.post('/api/invite-user', async (req, res) => {
+  try {
+    const { default: handler } = await import('./api/invite-user.js');
+    return handler(req, res);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message || 'invite-user load failed' });
+  }
+});
+
 app.listen(3001, () => console.log('API server running on port 3001'));
