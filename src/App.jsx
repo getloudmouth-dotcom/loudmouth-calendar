@@ -1078,8 +1078,10 @@ useEffect(() => {
           <button onClick={() => setAuthMode("login")} style={{ flex: 1, padding: "9px 0", background: authMode === "login" ? "#1a1a2e" : "white", color: authMode === "login" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Log In</button>
           <button onClick={() => setAuthMode("signup")} style={{ flex: 1, padding: "9px 0", background: authMode === "signup" ? "#1a1a2e" : "white", color: authMode === "signup" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Sign Up</button>
         </div>
-        <input type="email" placeholder="Email" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 10, outline: "none", boxSizing: "border-box" }} />
-        <input type="password" placeholder="Password" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && (authMode === "login" ? signIn() : signUp())} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 16, outline: "none", boxSizing: "border-box" }} />
+        <label htmlFor="auth-email" style={{ fontSize: 11, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 }}>Email</label>
+        <input id="auth-email" type="email" placeholder="you@example.com" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 14, outline: "none", boxSizing: "border-box" }} />
+        <label htmlFor="auth-password" style={{ fontSize: 11, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 }}>Password</label>
+        <input id="auth-password" type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && (authMode === "login" ? signIn() : signUp())} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 16, outline: "none", boxSizing: "border-box" }} />
         {authError && <div style={{ fontSize: 12, color: authError.includes("Check") ? "#22aa66" : "#E8001C", marginBottom: 12, textAlign: "center" }}>{authError}</div>}
         <button onClick={authMode === "login" ? signIn : signUp} disabled={authBusy} style={{ width: "100%", padding: "12px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer", letterSpacing: "0.06em" }}>
           {authBusy ? "..." : authMode === "login" ? "LOG IN" : "CREATE ACCOUNT"}
@@ -1203,7 +1205,7 @@ useEffect(() => {
             )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
               {allCalendars.map(cal => (
-                <div key={cal.id} style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
+                <div key={cal.id} className="cal-card" style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
                   <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{cal.client_name}</div>
                   <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>{MONTHS[cal.month]} {cal.year} · {(cal.selected_days || []).length} day{(cal.selected_days || []).length !== 1 ? "s" : ""}</div>
                   <div style={{ fontSize: 11, color: "#bbb", marginBottom: 14 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(cal.updated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>
@@ -1215,7 +1217,7 @@ useEffect(() => {
                       title="Add posting dates to your reminder schedule"
                       style={{ background: "#f5fbda", color: "#5a7a00", border: "1.5px solid #D7FA06", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: schedulingCalId === cal.id ? "default" : "pointer", whiteSpace: "nowrap", opacity: schedulingCalId === cal.id ? 0.6 : 1 }}
                     >{schedulingCalId === cal.id ? "..." : "+ Schedule"}</button>
-                    <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
+                    <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} aria-label="Delete calendar" title="Delete calendar" style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
                   </div>
                 </div>
               ))}
@@ -1298,9 +1300,9 @@ useEffect(() => {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
         
-        <button onClick={undo} disabled={!canUndo} title="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
-          <button onClick={redo} disabled={!canRedo} title="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
-          <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
+        <button onClick={undo} disabled={!canUndo} title="Undo" aria-label="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
+          <button onClick={redo} disabled={!canRedo} title="Redo" aria-label="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? "#fff" : "#555", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
+          <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset calendar" aria-label="Reset calendar" style={{ background: "rgba(255,255,255,0.08)", color: "#aaa", border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
           {clientName && <SaveMenu onSave={() => saveDraft()} onExport={exportPDF} showExport={step === 4} />}
           <NavProfileMenu
             profileName={profileName}

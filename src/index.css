@@ -50,6 +50,32 @@
   }
 }
 
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus rings for keyboard navigation — overrides inline outline:none */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #1a1a2e !important;
+  outline-offset: 0 !important;
+  border-color: #1a1a2e !important;
+}
+
+/* Dashboard calendar card hover */
+.cal-card {
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.cal-card:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.11) !important;
+  border-color: #bbb !important;
+}
+
 body {
   margin: 0;
 }
