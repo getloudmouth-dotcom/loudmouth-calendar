@@ -267,6 +267,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [showScheduleView, setShowScheduleView] = useState(false);
   const [schedulingCalId, setSchedulingCalId] = useState(null);
+  const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin'
   // ── RBAC ──
   const [userProfile, setUserProfile] = useState(null);
   const [userToolAccess, setUserToolAccess] = useState([]);
@@ -900,7 +901,7 @@ useEffect(() => {
     await supabase.auth.signOut();
     setUser(null); setShowDashboard(true); setAllCalendars([]);
     setCurrentCalendarId(null); setClientName(""); setSelectedDays([]); setPosts({});
-    setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]);
+    setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);
   }
 
   async function loadUserProfile(userId) {
@@ -1226,10 +1227,13 @@ useEffect(() => {
           <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</div>
           <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by LOUDMOUTH CREATIVE</div>
         </div>
+        {activePortal && (
+          <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", fontWeight: 600, padding: 0 }}>← Home</button>
+        )}
         <NavProfileMenu
           profileName={profileName}
           currentCalendarId={null}
-          onMyCalendars={() => {}}
+          onMyCalendars={() => setActivePortal(null)}
           onHistory={() => {}}
           onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
           onSignOut={signOut}
@@ -1356,42 +1360,99 @@ useEffect(() => {
         </div>
       )}
 
-      <div style={{ padding: "40px 60px" }}>
-        {/* ── Tabs ── */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
-          <div style={{ display: "flex", gap: 4, background: "#ebebea", borderRadius: 10, padding: 4 }}>
-            <button
-              onClick={() => { setShowScheduleView(false); setShowAdminView(false); }}
-              style={{ background: !showScheduleView && !showAdminView ? "white" : "transparent", color: !showScheduleView && !showAdminView ? "#1a1a2e" : "#888", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: !showScheduleView && !showAdminView ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
-              My Calendars
-            </button>
-            <button
-              onClick={() => { setShowScheduleView(true); setShowAdminView(false); }}
-              style={{ background: showScheduleView && !showAdminView ? "white" : "transparent", color: showScheduleView && !showAdminView ? "#1a1a2e" : "#888", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: showScheduleView && !showAdminView ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s", display: "flex", alignItems: "center", gap: 6 }}>
-              Schedule
-              {scheduledPosts.filter(r => r.post_date >= new Date().toISOString().slice(0, 10)).length > 0 && (
-                <span style={{ background: "#D7FA06", color: "#1a1a2e", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 800 }}>{scheduledPosts.filter(r => r.post_date >= new Date().toISOString().slice(0, 10)).length}</span>
-              )}
-            </button>
+      {/* ── Hub: portal selector ── */}
+      {activePortal === null && (
+        <div style={{ padding: "60px 60px 80px", maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ marginBottom: 48 }}>
+            <div style={{ fontSize: 26, fontWeight: 900, color: "#1a1a2e", letterSpacing: "-0.01em", marginBottom: 6 }}>
+              Welcome back{profileName ? `, ${profileName.split(" ")[0]}` : ""}.
+            </div>
+            <div style={{ fontSize: 14, color: "#999" }}>Select a portal to get started.</div>
+          </div>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            {/* Calendar Creator */}
+            {can("calendar_creator") && (
+              <div onClick={() => setActivePortal("calendar")} style={{ background: "white", borderRadius: 16, padding: "32px 28px 28px", width: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", flexDirection: "column", gap: 0, transition: "box-shadow 0.15s, transform 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "none"; }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="4" width="18" height="17" rx="2" stroke="#D7FA06" strokeWidth="2"/>
+                    <path d="M3 9h18" stroke="#D7FA06" strokeWidth="2"/>
+                    <path d="M8 2v4M16 2v4" stroke="#D7FA06" strokeWidth="2" strokeLinecap="round"/>
+                    <rect x="7" y="13" width="3" height="3" rx="0.5" fill="#D7FA06"/>
+                    <rect x="11" y="13" width="3" height="3" rx="0.5" fill="#D7FA06"/>
+                  </svg>
+                </div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1a2e", marginBottom: 8 }}>Calendar Creator</div>
+                <div style={{ fontSize: 13, color: "#888", lineHeight: 1.5, flex: 1 }}>Build social media content calendars and export them to PDF for your clients.</div>
+                <div style={{ marginTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: "#bbb" }}>{allCalendars.length} calendar{allCalendars.length !== 1 ? "s" : ""}</span>
+                  <span style={{ background: "#1a1a2e", color: "#D7FA06", borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 800, letterSpacing: "0.04em" }}>Open →</span>
+                </div>
+              </div>
+            )}
+            {/* Content Scheduling */}
+            {can("content_scheduling") && (() => {
+              const upcomingCount = scheduledPosts.filter(r => r.post_date >= new Date().toISOString().slice(0, 10)).length;
+              return (
+                <div onClick={() => setActivePortal("scheduling")} style={{ background: "white", borderRadius: 16, padding: "32px 28px 28px", width: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", flexDirection: "column", gap: 0, transition: "box-shadow 0.15s, transform 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "none"; }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="9" stroke="#D7FA06" strokeWidth="2"/>
+                      <path d="M12 7v5l3 3" stroke="#D7FA06" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1a2e", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                    Content Scheduling
+                    {upcomingCount > 0 && <span style={{ background: "#D7FA06", color: "#1a1a2e", borderRadius: 20, padding: "2px 8px", fontSize: 11, fontWeight: 800 }}>{upcomingCount}</span>}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#888", lineHeight: 1.5, flex: 1 }}>Schedule posting dates and receive daily email reminders for each client.</div>
+                  <div style={{ marginTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 12, color: "#bbb" }}>{upcomingCount} upcoming</span>
+                    <span style={{ background: "#1a1a2e", color: "#D7FA06", borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 800, letterSpacing: "0.04em" }}>Open →</span>
+                  </div>
+                </div>
+              );
+            })()}
+            {/* Admin Portal */}
             {can("admin_portal") && (
-              <button
-                onClick={() => { setShowScheduleView(false); setShowAdminView(true); if (adminUsers.length === 0) loadAdminUsers(); }}
-                style={{ background: showAdminView ? "white" : "transparent", color: showAdminView ? "#1a1a2e" : "#888", border: "none", borderRadius: 7, padding: "7px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: showAdminView ? "0 1px 4px rgba(0,0,0,0.1)" : "none", transition: "all 0.15s" }}>
-                Admin
-              </button>
+              <div onClick={() => { setActivePortal("admin"); if (adminUsers.length === 0) loadAdminUsers(); }} style={{ background: "white", borderRadius: 16, padding: "32px 28px 28px", width: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", flexDirection: "column", gap: 0, transition: "box-shadow 0.15s, transform 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "none"; }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                    <circle cx="9" cy="8" r="3" stroke="#D7FA06" strokeWidth="2"/>
+                    <path d="M3 20c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#D7FA06" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M17 11l1.5 1.5L21 10" stroke="#D7FA06" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="18" cy="8" r="3" stroke="#D7FA06" strokeWidth="2"/>
+                  </svg>
+                </div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1a2e", marginBottom: 8 }}>Admin Portal</div>
+                <div style={{ fontSize: 13, color: "#888", lineHeight: 1.5, flex: 1 }}>Manage team members, assign roles, and control tool access for your organization.</div>
+                <div style={{ marginTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 12, color: "#bbb" }}> </span>
+                  <span style={{ background: "#1a1a2e", color: "#D7FA06", borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 800, letterSpacing: "0.04em" }}>Open →</span>
+                </div>
+              </div>
             )}
           </div>
-          {!showScheduleView && !showAdminView && (
-            <button onClick={newCalendar} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ New Calendar</button>
-          )}
-          {showAdminView && (
-            <button onClick={() => setInviteModal(true)} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ Invite User</button>
-          )}
         </div>
+      )}
 
-        {/* ── Calendars view ── */}
-        {!showScheduleView && !showAdminView && (
-          <>
+      {/* ── Calendar Creator portal ── */}
+      {activePortal === "calendar" && (
+        <div>
+          <div style={{ padding: "20px 60px", borderBottom: "1.5px solid #e8e8e8", display: "flex", alignItems: "center", gap: 16, background: "white" }}>
+            <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>← Back</button>
+            <div style={{ width: 1, height: 18, background: "#e0e0e0" }} />
+            <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1a2e" }}>Calendar Creator</div>
+            <div style={{ flex: 1 }} />
+            <button onClick={newCalendar} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "10px 22px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ New Calendar</button>
+          </div>
+          <div style={{ padding: "36px 60px" }}>
             {allCalendars.length === 0 && (
               <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
                 <div style={{ fontSize: 40, marginBottom: 16 }}>📅</div>
@@ -1407,23 +1468,76 @@ useEffect(() => {
                   <div style={{ fontSize: 11, color: "#bbb", marginBottom: 14 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(cal.updated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={e => { e.stopPropagation(); openCalendar(cal); }} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
-                    <button
-                      onClick={e => { e.stopPropagation(); addToSchedule(cal); }}
-                      disabled={schedulingCalId === cal.id}
-                      title="Add posting dates to your reminder schedule"
-                      style={{ background: "#f5fbda", color: "#5a7a00", border: "1.5px solid #D7FA06", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: schedulingCalId === cal.id ? "default" : "pointer", whiteSpace: "nowrap", opacity: schedulingCalId === cal.id ? 0.6 : 1 }}
-                    >{schedulingCalId === cal.id ? "..." : "+ Schedule"}</button>
+                    <button onClick={e => { e.stopPropagation(); addToSchedule(cal); }} disabled={schedulingCalId === cal.id} title="Add posting dates to your reminder schedule" style={{ background: "#f5fbda", color: "#5a7a00", border: "1.5px solid #D7FA06", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: schedulingCalId === cal.id ? "default" : "pointer", whiteSpace: "nowrap", opacity: schedulingCalId === cal.id ? 0.6 : 1 }}>{schedulingCalId === cal.id ? "..." : "+ Schedule"}</button>
                     <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} aria-label="Delete calendar" title="Delete calendar" style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
                   </div>
                 </div>
               ))}
             </div>
-          </>
-        )}
+          </div>
+        </div>
+      )}
 
-        {/* ── Admin view ── */}
-        {showAdminView && can("admin_portal") && (
-          <div>
+      {/* ── Content Scheduling portal ── */}
+      {activePortal === "scheduling" && (
+        <div>
+          <div style={{ padding: "20px 60px", borderBottom: "1.5px solid #e8e8e8", display: "flex", alignItems: "center", gap: 16, background: "white" }}>
+            <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>← Back</button>
+            <div style={{ width: 1, height: 18, background: "#e0e0e0" }} />
+            <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1a2e" }}>Content Scheduling</div>
+          </div>
+          <div style={{ padding: "36px 60px" }}>
+            {scheduledPosts.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
+                <div style={{ fontSize: 40, marginBottom: 16 }}>🗓</div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No scheduled posts yet</div>
+                <div style={{ fontSize: 13 }}>Open the Calendar Creator, then click "+ Schedule" on any calendar to add its posting dates here.</div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>You'll get an email reminder each morning a post is due. Remove any dates you don't want.</div>
+                {(() => {
+                  const today = new Date().toISOString().slice(0, 10);
+                  const upcoming = scheduledPosts.filter(r => r.post_date >= today);
+                  const past = scheduledPosts.filter(r => r.post_date < today);
+                  return (
+                    <>
+                      {upcoming.length > 0 && (
+                        <div style={{ marginBottom: 32 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Upcoming ({upcoming.length})</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {upcoming.map(row => <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />)}
+                          </div>
+                        </div>
+                      )}
+                      {past.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#ccc", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Past ({past.length})</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, opacity: 0.5 }}>
+                            {past.map(row => <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />)}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Admin portal ── */}
+      {activePortal === "admin" && can("admin_portal") && (
+        <div>
+          <div style={{ padding: "20px 60px", borderBottom: "1.5px solid #e8e8e8", display: "flex", alignItems: "center", gap: 16, background: "white" }}>
+            <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>← Back</button>
+            <div style={{ width: 1, height: 18, background: "#e0e0e0" }} />
+            <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1a2e" }}>Admin Portal</div>
+            <div style={{ flex: 1 }} />
+            <button onClick={() => setInviteModal(true)} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "10px 22px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ Invite User</button>
+          </div>
+          <div style={{ padding: "36px 60px" }}>
             {adminLoading ? (
               <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa", fontSize: 14 }}>Loading...</div>
             ) : (
@@ -1435,10 +1549,7 @@ useEffect(() => {
                   {adminUsers.map(u => {
                     const effectiveTools = (() => {
                       const base = new Set(ROLE_TOOLS[u.role] || []);
-                      for (const t of (u.tool_overrides || [])) {
-                        if (t.granted) base.add(t.tool_key);
-                        else base.delete(t.tool_key);
-                      }
+                      for (const t of (u.tool_overrides || [])) { if (t.granted) base.add(t.tool_key); else base.delete(t.tool_key); }
                       return base;
                     })();
                     return (
@@ -1448,8 +1559,7 @@ useEffect(() => {
                         for (const { key } of ALL_TOOLS) {
                           const defaultOn = (ROLE_TOOLS[u.role] || []).includes(key);
                           const override = (u.tool_overrides || []).find(t => t.tool_key === key);
-                          if (override) form[`tool_${key}`] = override.granted;
-                          else form[`tool_${key}`] = defaultOn;
+                          form[`tool_${key}`] = override ? override.granted : defaultOn;
                         }
                         setEditUserForm(form);
                       }} style={{ background: "white", borderRadius: 12, padding: "18px 20px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
@@ -1474,56 +1584,8 @@ useEffect(() => {
               </div>
             )}
           </div>
-        )}
-
-        {/* ── Schedule view ── */}
-        {showScheduleView && !showAdminView && (
-          <div>
-            {scheduledPosts.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
-                <div style={{ fontSize: 40, marginBottom: 16 }}>🗓</div>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No scheduled posts yet</div>
-                <div style={{ fontSize: 13 }}>Click "+ Schedule" on any calendar card to add its posting dates.</div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>
-                  You'll get an email reminder each morning a post is due. Remove any dates you don't want.
-                </div>
-                {(() => {
-                  const today = new Date().toISOString().slice(0, 10);
-                  const upcoming = scheduledPosts.filter(r => r.post_date >= today);
-                  const past = scheduledPosts.filter(r => r.post_date < today);
-                  return (
-                    <>
-                      {upcoming.length > 0 && (
-                        <div style={{ marginBottom: 32 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Upcoming ({upcoming.length})</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            {upcoming.map(row => (
-                              <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {past.length > 0 && (
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#ccc", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Past ({past.length})</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 8, opacity: 0.5 }}>
-                            {past.map(row => (
-                              <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 
