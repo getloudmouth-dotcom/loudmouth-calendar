@@ -1045,18 +1045,6 @@ useEffect(() => {
   }
 
   async function newCalendar() {
-    // Check for duplicate
-    if (clientName.trim()) {
-      const existing = allCalendars.find(c =>
-        c.client_name === clientName && c.month === month && c.year === year
-      );
-      if (existing) {
-        if (window.confirm(`A calendar for ${clientName} — ${MONTHS[month]} ${year} already exists. Open it?`)) {
-          openCalendar(existing);
-        }
-        return;
-      }
-    }
     setCurrentCalendarId(null);
     setClientName(""); setSelectedDays([]); setPosts({});
     setMonth(today.getMonth()); setYear(today.getFullYear());
