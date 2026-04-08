@@ -206,6 +206,40 @@ function ScheduleRow({ row, onRemove }) {
   );
 }
 
+// ── Toast ──
+function Toast({ toast }) {
+  if (!toast) return null;
+  const bg = toast.type === "success" ? "#22aa66" : toast.type === "error" ? "#E8001C" : "#1a1a2e";
+  return (
+    <div style={{ position: "fixed", bottom: 28, right: 28, zIndex: 99999, background: bg, color: "white", borderRadius: 10, padding: "12px 20px", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 32px rgba(0,0,0,0.22)", letterSpacing: "0.02em", pointerEvents: "none", animation: "fadeInUp 0.2s ease" }}>
+      {toast.msg}
+    </div>
+  );
+}
+
+// ── Collaborator Avatar Stack ──
+function CollabAvatars({ collaborators }) {
+  if (!collaborators?.length) return null;
+  const shown = collaborators.slice(0, 3);
+  const overflow = collaborators.length - shown.length;
+  const colors = ["#4f6ef7", "#e06c75", "#56b6c2", "#98c379"];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: 10 }}>
+      {shown.map((c, i) => (
+        <div key={c.user_id} title={`${c.name} (${c.permission})`} style={{ width: 26, height: 26, borderRadius: "50%", background: colors[i % colors.length], color: "white", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid white", marginLeft: i === 0 ? 0 : -6, zIndex: shown.length - i, position: "relative", cursor: "default" }}>
+          {(c.name || "?")[0].toUpperCase()}
+        </div>
+      ))}
+      {overflow > 0 && (
+        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#ddd", color: "#666", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid white", marginLeft: -6, position: "relative" }}>
+          +{overflow}
+        </div>
+      )}
+      <span style={{ fontSize: 10, color: "#bbb", marginLeft: 4 }}>shared</span>
+    </div>
+  );
+}
+
 export default function App() {
   const today = new Date();
   const [step, setStep] = useState(() => (readExportToken() ? 4 : 1));
@@ -281,6 +315,18 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [editingUser, setEditingUser] = useState(null);
   const [editUserForm, setEditUserForm] = useState({});
   const [editUserBusy, setEditUserBusy] = useState(false);
+  // ── Collaborators ──
+  const [calCollaborators, setCalCollaborators] = useState({}); // calId → [{user_id, name, email, permission}]
+  const [shareModal, setShareModal] = useState(null); // null | { cal }
+  const [shareEmail, setShareEmail] = useState("");
+  const [sharePermission, setSharePermission] = useState("editor");
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareError, setShareError] = useState("");
+  // ── Toast ──
+  const [toast, setToast] = useState(null); // null | { msg, type }
+  const toastTimerRef = useRef(null);
+  // ── Realtime ──
+  const realtimeChannelRef = useRef(null);
 // Warm up the PDF export function on load to reduce cold start lag
 useEffect(() => {
   if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
@@ -904,6 +950,40 @@ useEffect(() => {
     setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);
   }
 
+  function showToast(msg, type = "info") {
+    setToast({ msg, type });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  }
+
+  async function addCollaborator(cal) {
+    const email = shareEmail.trim();
+    if (!email) return;
+    setShareBusy(true); setShareError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/share-calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify({ calendarId: cal.id, collaboratorEmail: email, permission: sharePermission }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to share");
+      setShareEmail(""); setSharePermission("editor");
+      await loadAllCalendars();
+      showToast(`Shared with ${json.collaborator?.name || email}`, "success");
+    } catch (e) {
+      setShareError(e.message);
+    }
+    setShareBusy(false);
+  }
+
+  async function removeCollaborator(calId, userId) {
+    await supabase.from("calendar_collaborators")
+      .delete().eq("calendar_id", calId).eq("user_id", userId);
+    await loadAllCalendars();
+  }
+
   async function loadUserProfile(userId) {
     const [{ data: profile }, { data: access }] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).single(),
@@ -978,7 +1058,31 @@ useEffect(() => {
   // ── Calendars ──
   async function loadAllCalendars() {
     const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
-    setAllCalendars(data || []);
+    const calendars = data || [];
+    setAllCalendars(calendars);
+    if (calendars.length === 0) return;
+    // Load collaborators for all calendars
+    const calIds = calendars.map(c => c.id);
+    const { data: collabs } = await supabase
+      .from("calendar_collaborators")
+      .select("calendar_id, user_id, permission")
+      .in("calendar_id", calIds);
+    if (!collabs?.length) return;
+    // Load profiles for all collaborator user_ids
+    const userIds = [...new Set(collabs.map(c => c.user_id))];
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, name, email")
+      .in("id", userIds);
+    const profileMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
+    // Build map: calId → [{user_id, name, email, permission}]
+    const map = {};
+    for (const c of collabs) {
+      if (!map[c.calendar_id]) map[c.calendar_id] = [];
+      const profile = profileMap[c.user_id] || {};
+      map[c.calendar_id].push({ user_id: c.user_id, name: profile.name || profile.email || "Unknown", email: profile.email || "", permission: c.permission });
+    }
+    setCalCollaborators(map);
   }
 
   async function loadClients(userId) {
@@ -1023,6 +1127,23 @@ useEffect(() => {
     setShowDashboard(false);
     setStep(1);
     loadDraftHistory(cal.id);
+    // ── Realtime: subscribe to draft changes from other users ──
+    if (realtimeChannelRef.current) realtimeChannelRef.current.unsubscribe();
+    const channel = supabase
+      .channel(`calendar-drafts-${cal.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "calendar_drafts", filter: `calendar_id=eq.${cal.id}` }, async (payload) => {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (payload.new?.user_id && payload.new.user_id === currentUser?.id) return; // own save
+        // Look up who saved
+        let saverName = "Someone";
+        if (payload.new?.user_id) {
+          const { data: p } = await supabase.from("profiles").select("name").eq("id", payload.new.user_id).single();
+          if (p?.name) saverName = p.name;
+        }
+        showToast(`Updated by ${saverName}`, "info");
+      })
+      .subscribe();
+    realtimeChannelRef.current = channel;
   }
 
   async function loadDraftHistory(calId) {
@@ -1056,7 +1177,7 @@ useEffect(() => {
     }
     setCurrentCalendarId(calData.id);
     const { error: draftErr } = await supabase.from("calendar_drafts").insert({
-      calendar_id: calData.id, posts, label: lbl,
+      calendar_id: calData.id, posts, label: lbl, user_id: user.id,
     });
     if (draftErr) {
       if (!silent) alert("Save failed: " + draftErr.message);
@@ -1465,11 +1586,17 @@ useEffect(() => {
                 <div key={cal.id} className="cal-card" style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
                   <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{cal.client_name}</div>
                   <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>{MONTHS[cal.month]} {cal.year} · {(cal.selected_days || []).length} day{(cal.selected_days || []).length !== 1 ? "s" : ""}</div>
-                  <div style={{ fontSize: 11, color: "#bbb", marginBottom: 14 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(cal.updated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>
+                  <div style={{ fontSize: 11, color: "#bbb", marginBottom: 10 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(cal.updated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>
+                  <CollabAvatars collaborators={calCollaborators[cal.id]} />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={e => { e.stopPropagation(); openCalendar(cal); }} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
+                    {cal.user_id === user?.id && (
+                      <button onClick={e => { e.stopPropagation(); setShareModal({ cal }); setShareEmail(""); setShareError(""); }} title="Share with collaborators" style={{ background: "#f0f0ee", color: "#555", border: "1.5px solid #e0e0e0", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Share</button>
+                    )}
                     <button onClick={e => { e.stopPropagation(); addToSchedule(cal); }} disabled={schedulingCalId === cal.id} title="Add posting dates to your reminder schedule" style={{ background: "#f5fbda", color: "#5a7a00", border: "1.5px solid #D7FA06", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: schedulingCalId === cal.id ? "default" : "pointer", whiteSpace: "nowrap", opacity: schedulingCalId === cal.id ? 0.6 : 1 }}>{schedulingCalId === cal.id ? "..." : "+ Schedule"}</button>
-                    <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} aria-label="Delete calendar" title="Delete calendar" style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
+                    {cal.user_id === user?.id && (
+                      <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} aria-label="Delete calendar" title="Delete calendar" style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1586,6 +1713,60 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {/* ── Share Modal ── */}
+      {shareModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => e.target === e.currentTarget && setShareModal(null)}>
+          <div style={{ background: "white", borderRadius: 16, width: 420, padding: 28, boxShadow: "0 24px 60px rgba(0,0,0,0.2)", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 4 }}>Share Calendar</div>
+            <div style={{ fontSize: 12, color: "#aaa", marginBottom: 20 }}>{shareModal.cal.client_name} — {MONTHS[shareModal.cal.month]} {shareModal.cal.year}</div>
+            {/* Existing collaborators */}
+            {(calCollaborators[shareModal.cal.id] || []).length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Shared with</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(calCollaborators[shareModal.cal.id] || []).map(c => (
+                    <div key={c.user_id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#f8f8f8", borderRadius: 8, padding: "8px 12px" }}>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#1a1a2e", color: "#D7FA06", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{(c.name || "?")[0].toUpperCase()}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{c.name}</div>
+                        <div style={{ fontSize: 11, color: "#aaa" }}>{c.email}</div>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: c.permission === "editor" ? "#5a7a00" : "#888", background: c.permission === "editor" ? "#f5fbda" : "#f0f0f0", borderRadius: 5, padding: "2px 7px" }}>{c.permission}</span>
+                      <button onClick={() => removeCollaborator(shareModal.cal.id, c.user_id)} style={{ background: "none", border: "none", color: "#ccc", fontSize: 16, cursor: "pointer", padding: "0 4px" }} title="Remove">×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Add new collaborator */}
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Add collaborator</div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input
+                value={shareEmail}
+                onChange={e => setShareEmail(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addCollaborator(shareModal.cal)}
+                placeholder="colleague@example.com"
+                style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none" }}
+              />
+              <select value={sharePermission} onChange={e => setSharePermission(e.target.value)} style={{ padding: "9px 10px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 12, outline: "none", background: "white" }}>
+                <option value="editor">Editor</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </div>
+            {shareError && <div style={{ fontSize: 12, color: "#E8001C", marginBottom: 10 }}>{shareError}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => addCollaborator(shareModal.cal)} disabled={shareBusy || !shareEmail.trim()} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: shareBusy || !shareEmail.trim() ? "default" : "pointer", opacity: shareEmail.trim() ? 1 : 0.4 }}>
+                {shareBusy ? "Adding..." : "Add"}
+              </button>
+              <button onClick={() => { setShareModal(null); setShareEmail(""); setShareError(""); }} style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Toast toast={toast} />
     </div>
   );
 
@@ -2178,6 +2359,7 @@ useEffect(() => {
         @keyframes driveShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         @keyframes cardSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes offlinePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         input:focus, select:focus, textarea:focus { border-color: #1a1a2e !important; }
         /* Headless PDF: Chromium may not apply @media print for page.pdf(); hide chrome like .no-print */
         html[data-pdf-export="1"] .no-print,
@@ -2191,6 +2373,7 @@ useEffect(() => {
           .cal-page { page-break-after: always; box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; border: none !important; }
         }
       `}</style>
+      <Toast toast={toast} />
     </div>
   );
 }
