@@ -281,6 +281,11 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [editingUser, setEditingUser] = useState(null);
   const [editUserForm, setEditUserForm] = useState({});
   const [editUserBusy, setEditUserBusy] = useState(false);
+  // ── Collaboration ──
+  const [shareModal, setShareModal] = useState(null); // calendar object or null
+  const [allProfiles, setAllProfiles] = useState([]);
+  const [calCollaborators, setCalCollaborators] = useState({}); // { [calId]: [profiles] }
+  const realtimeChannelRef = useRef(null);
 // Warm up the PDF export function on load to reduce cold start lag
 useEffect(() => {
   if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
@@ -977,8 +982,17 @@ useEffect(() => {
 
   // ── Calendars ──
   async function loadAllCalendars() {
-    const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
-    setAllCalendars(data || []);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: owned } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
+    const { data: collab } = await supabase
+      .from("calendar_collaborators")
+      .select("calendar_id, calendars(*)")
+      .eq("user_id", user.id);
+    const collabCals = (collab || []).map(r => r.calendars).filter(Boolean);
+    const merged = [...(owned || []), ...collabCals]
+      .filter((c, i, a) => a.findIndex(x => x.id === c.id) === i)
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    setAllCalendars(merged);
   }
 
   async function loadClients(userId) {
@@ -1023,6 +1037,22 @@ useEffect(() => {
     setShowDashboard(false);
     setStep(1);
     loadDraftHistory(cal.id);
+    // Realtime: subscribe to new drafts from collaborators
+    realtimeChannelRef.current?.unsubscribe();
+    const channel = supabase.channel(`calendar-${cal.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'calendar_drafts',
+        filter: `calendar_id=eq.${cal.id}`
+      }, (payload) => {
+        if (payload.new.posts) {
+          setPosts(payload.new.posts);
+          loadDraftHistory(cal.id);
+        }
+      })
+      .subscribe();
+    realtimeChannelRef.current = channel;
   }
 
   async function loadDraftHistory(calId) {
@@ -1082,6 +1112,31 @@ useEffect(() => {
     if (currentCalendarId === cal.id) {
       setCurrentCalendarId(null); setShowDashboard(true);
     }
+  }
+
+  // ── Collaboration ──
+  async function loadProfiles() {
+    const { data } = await supabase.from("profiles").select("id, name, email, role");
+    setAllProfiles(data || []);
+  }
+
+  async function loadCollaborators(calId) {
+    const { data } = await supabase
+      .from("calendar_collaborators")
+      .select("user_id, profiles(id, name, email)")
+      .eq("calendar_id", calId);
+    setCalCollaborators(prev => ({ ...prev, [calId]: (data || []).map(r => r.profiles).filter(Boolean) }));
+  }
+
+  async function addCollaborator(calId, userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("calendar_collaborators").insert({ calendar_id: calId, user_id: userId, added_by: user.id });
+    await loadCollaborators(calId);
+  }
+
+  async function removeCollaborator(calId, userId) {
+    await supabase.from("calendar_collaborators").delete().eq("calendar_id", calId).eq("user_id", userId);
+    await loadCollaborators(calId);
   }
 
   // ── Schedule ──
@@ -1158,6 +1213,8 @@ useEffect(() => {
   }
 
   async function newCalendar() {
+    realtimeChannelRef.current?.unsubscribe();
+    realtimeChannelRef.current = null;
     setCurrentCalendarId(null);
     setClientName(""); setSelectedDays([]); setPosts({});
     setMonth(today.getMonth()); setYear(today.getFullYear());
@@ -1277,6 +1334,48 @@ useEffect(() => {
               <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
               <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── Share Calendar Modal ── */}
+      {shareModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={e => e.target === e.currentTarget && setShareModal(null)}>
+          <div style={{ background: "white", borderRadius: 14, padding: 32, width: 440, boxShadow: "0 24px 60px rgba(0,0,0,0.2)", maxHeight: "80vh", overflowY: "auto" }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1a2e", marginBottom: 4 }}>Share Calendar</div>
+            <div style={{ fontSize: 13, color: "#888", marginBottom: 20 }}>{shareModal.client_name} — {MONTHS[shareModal.month]} {shareModal.year}</div>
+
+            {/* Current collaborators */}
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: "0.05em", marginBottom: 8 }}>COLLABORATORS</div>
+            {(calCollaborators[shareModal.id] || []).length === 0 && (
+              <div style={{ fontSize: 13, color: "#bbb", marginBottom: 16 }}>No collaborators yet</div>
+            )}
+            {(calCollaborators[shareModal.id] || []).map(p => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>{p.name}</div>
+                  <div style={{ fontSize: 11, color: "#aaa" }}>{p.email}</div>
+                </div>
+                <button onClick={() => removeCollaborator(shareModal.id, p.id)} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 6, padding: "4px 10px", fontSize: 11, cursor: "pointer" }}>Remove</button>
+              </div>
+            ))}
+
+            {/* Add collaborator */}
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#aaa", letterSpacing: "0.05em", marginTop: 20, marginBottom: 8 }}>ADD PERSON</div>
+            <select
+              defaultValue=""
+              onChange={e => { if (e.target.value) { addCollaborator(shareModal.id, e.target.value); e.target.value = ""; } }}
+              style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1.5px solid #e0e0e0", fontSize: 13, color: "#1a1a2e", marginBottom: 8 }}
+            >
+              <option value="" disabled>Select a team member…</option>
+              {allProfiles
+                .filter(p => p.id !== user?.id && !(calCollaborators[shareModal.id] || []).find(c => c.id === p.id))
+                .map(p => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.email})</option>
+                ))
+              }
+            </select>
+
+            <button onClick={() => setShareModal(null)} style={{ marginTop: 16, width: "100%", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, padding: "11px 0", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Done</button>
           </div>
         </div>
       )}
@@ -1463,12 +1562,20 @@ useEffect(() => {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
               {allCalendars.map(cal => (
                 <div key={cal.id} className="cal-card" style={{ background: "white", borderRadius: 12, padding: "20px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }} onClick={() => openCalendar(cal)}>
-                  <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{cal.client_name}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>{cal.client_name}</div>
+                    {cal.user_id !== user?.id && (
+                      <span style={{ background: "#f0f4ff", color: "#4466cc", fontSize: 10, fontWeight: 800, borderRadius: 5, padding: "3px 7px", letterSpacing: "0.04em" }}>SHARED</span>
+                    )}
+                  </div>
                   <div style={{ fontSize: 13, color: "#888", marginBottom: 14 }}>{MONTHS[cal.month]} {cal.year} · {(cal.selected_days || []).length} day{(cal.selected_days || []).length !== 1 ? "s" : ""}</div>
                   <div style={{ fontSize: 11, color: "#bbb", marginBottom: 14 }}>Last saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · {new Date(cal.updated_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}</div>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={e => { e.stopPropagation(); openCalendar(cal); }} style={{ flex: 1, background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, padding: "8px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Open</button>
                     <button onClick={e => { e.stopPropagation(); addToSchedule(cal); }} disabled={schedulingCalId === cal.id} title="Add posting dates to your reminder schedule" style={{ background: "#f5fbda", color: "#5a7a00", border: "1.5px solid #D7FA06", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: schedulingCalId === cal.id ? "default" : "pointer", whiteSpace: "nowrap", opacity: schedulingCalId === cal.id ? 0.6 : 1 }}>{schedulingCalId === cal.id ? "..." : "+ Schedule"}</button>
+                    {cal.user_id === user?.id && (
+                      <button onClick={e => { e.stopPropagation(); loadProfiles(); loadCollaborators(cal.id); setShareModal(cal); }} title="Share calendar" style={{ background: "none", border: "1.5px solid #e0e0e0", color: "#888", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>Share</button>
+                    )}
                     <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} aria-label="Delete calendar" title="Delete calendar" style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
                   </div>
                 </div>
@@ -1594,7 +1701,7 @@ useEffect(() => {
 
       {/* NAV */}
       <nav className="no-print" style={{ background: "#1a1a2e", padding: "12px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, gap: 24 }}>
-        <div onClick={() => setShowDashboard(true)} style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start", flexShrink: 0, cursor: "pointer" }}>
+        <div onClick={() => { realtimeChannelRef.current?.unsubscribe(); realtimeChannelRef.current = null; setShowDashboard(true); }} style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start", flexShrink: 0, cursor: "pointer" }}>
           <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16.5, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</span>
           <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em" }}>by LOUDMOUTH CREATIVE</span>
         </div>
@@ -1620,7 +1727,7 @@ useEffect(() => {
           <NavProfileMenu
             profileName={profileName}
             currentCalendarId={currentCalendarId}
-            onMyCalendars={() => setShowDashboard(true)}
+            onMyCalendars={() => { realtimeChannelRef.current?.unsubscribe(); realtimeChannelRef.current = null; setShowDashboard(true); }}
             onHistory={() => { loadDraftHistory(); setShowDraftHistory(true); }}
             onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
             onSignOut={signOut}
