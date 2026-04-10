@@ -9,6 +9,25 @@
     },
     "api/send-reminders.js": {
       "maxDuration": 30
+    },
+    "api/export-content-plan-pdf.js": {
+      "maxDuration": 60,
+      "memory": 2048
+    },
+    "api/export-content-plan-data.js": {
+      "maxDuration": 10
+    },
+    "api/export-content-plan-docx.js": {
+      "maxDuration": 15
+    },
+    "api/share-content-plan.js": {
+      "maxDuration": 10
+    },
+    "api/get-content-plan-public.js": {
+      "maxDuration": 10
+    },
+    "api/update-content-plan-item.js": {
+      "maxDuration": 10
     }
   },
   "crons": [
