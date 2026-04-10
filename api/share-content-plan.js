@@ -71,7 +71,7 @@ export default async function handler(req, res) {
   if (shareErr) return res.status(500).json({ error: shareErr.message });
 
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const siteUrl = process.env.SITE_URL || process.env.APP_URL || "https://loudmouthcalendar.com";
+  const siteUrl = process.env.SITE_URL || process.env.APP_URL || "https://app.getloudmouth.us";
   const publicUrl = `${siteUrl}/?contentPlanToken=${share.token}`;
 
   // Look up sender's name

@@ -95,7 +95,7 @@ export default async function handler(req, res) {
     .single();
 
   const sharerName = sharerProfile?.name || "Someone";
-  const siteUrl = process.env.SITE_URL || "https://loudmouthcalendar.com";
+  const siteUrl = process.env.SITE_URL || "https://app.getloudmouth.us";
 
   // Send email notification
   try {
