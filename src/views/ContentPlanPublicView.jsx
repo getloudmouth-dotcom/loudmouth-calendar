@@ -111,9 +111,8 @@ export default function ContentPlanPublicView({ token }) {
           <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.07)" }}>
             <thead>
               <tr style={{ background: "#1a1a2e" }}>
-                <th style={{ padding: "12px 16px", textAlign: "left", color: "#D7FA06", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", width: "22%" }}>TITLE / TYPE</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", color: "#D7FA06", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", width: "22%" }}>PRODUCED VIDEO</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", color: "#D7FA06", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", width: "30%" }}>WHAT'S NEEDED</th>
-                <th style={{ padding: "12px 16px", textAlign: "left", color: "#D7FA06", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", width: "14%" }}>REFERENCE</th>
                 <th style={{ padding: "12px 16px", textAlign: "left", color: "#D7FA06", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", width: "12%" }}>CREATOR</th>
                 <th style={{ padding: "12px 16px", textAlign: "center", color: "#D7FA06", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", width: "10%" }}>APPROVAL</th>
                 {shareConfig?.allow_client_notes && (
@@ -123,7 +122,7 @@ export default function ContentPlanPublicView({ token }) {
             </thead>
             <tbody>
               {producedItems.length > 0 && (
-                <tr><td colSpan={shareConfig?.allow_client_notes ? 6 : 5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", padding: "8px 16px" }}>PRODUCED VIDEOS</td></tr>
+                <tr><td colSpan={shareConfig?.allow_client_notes ? 5 : 4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", padding: "8px 16px" }}>PRODUCED VIDEOS</td></tr>
               )}
               {producedItems.map((item, idx) => {
                 const status = itemStates[item.id] || "pending";
@@ -132,14 +131,11 @@ export default function ContentPlanPublicView({ token }) {
                   <tr key={item.id} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                     <td style={{ padding: "14px 16px", verticalAlign: "top" }}>
                       <div style={{ fontSize: 10, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 4 }}>PRODUCED VIDEO #{item.item_number}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", lineHeight: 1.4 }}>{item.title || <span style={{ color: "#ccc" }}>Untitled</span>}</div>
-                    </td>
-                    <td style={{ padding: "14px 16px", verticalAlign: "top", fontSize: 13, color: "#444", lineHeight: 1.6 }}>{item.whats_needed || "—"}</td>
-                    <td style={{ padding: "14px 16px", verticalAlign: "top" }}>
                       {item.reference_link ? (
-                        <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e", fontSize: 12, fontWeight: 600, textDecoration: "underline", wordBreak: "break-all" }}>INSPO ↗</a>
+                        <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e", fontSize: 12, fontWeight: 600, textDecoration: "underline", wordBreak: "break-all" }}>LINK ↗</a>
                       ) : <span style={{ color: "#ddd", fontSize: 12 }}>—</span>}
                     </td>
+                    <td style={{ padding: "14px 16px", verticalAlign: "top", fontSize: 13, color: "#444", lineHeight: 1.6 }}>{item.whats_needed || "—"}</td>
                     <td style={{ padding: "14px 16px", verticalAlign: "top", fontSize: 13, fontWeight: 600, color: "#333" }}>{item.creator_name || "—"}</td>
                     <td style={{ padding: "14px 16px", verticalAlign: "top", textAlign: "center" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
@@ -163,7 +159,7 @@ export default function ContentPlanPublicView({ token }) {
                 );
               })}
               {organicItems.length > 0 && (
-                <tr><td colSpan={shareConfig?.allow_client_notes ? 6 : 5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", padding: "8px 16px" }}>ORGANIC VIDEOS</td></tr>
+                <tr><td colSpan={shareConfig?.allow_client_notes ? 5 : 4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", padding: "8px 16px" }}>ORGANIC VIDEOS</td></tr>
               )}
               {organicItems.map((item, idx) => {
                 const status = itemStates[item.id] || "pending";
@@ -172,14 +168,11 @@ export default function ContentPlanPublicView({ token }) {
                   <tr key={item.id} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                     <td style={{ padding: "14px 16px", verticalAlign: "top" }}>
                       <div style={{ fontSize: 10, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 4 }}>ORGANIC VIDEO #{item.item_number}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1a2e", lineHeight: 1.4 }}>{item.title || <span style={{ color: "#ccc" }}>Untitled</span>}</div>
-                    </td>
-                    <td style={{ padding: "14px 16px", verticalAlign: "top", fontSize: 13, color: "#444", lineHeight: 1.6 }}>{item.whats_needed || "—"}</td>
-                    <td style={{ padding: "14px 16px", verticalAlign: "top" }}>
                       {item.reference_link ? (
-                        <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e", fontSize: 12, fontWeight: 600, textDecoration: "underline", wordBreak: "break-all" }}>INSPO ↗</a>
+                        <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e", fontSize: 12, fontWeight: 600, textDecoration: "underline", wordBreak: "break-all" }}>LINK ↗</a>
                       ) : <span style={{ color: "#ddd", fontSize: 12 }}>—</span>}
                     </td>
+                    <td style={{ padding: "14px 16px", verticalAlign: "top", fontSize: 13, color: "#444", lineHeight: 1.6 }}>{item.whats_needed || "—"}</td>
                     <td style={{ padding: "14px 16px", verticalAlign: "top", fontSize: 13, fontWeight: 600, color: "#333" }}>{item.creator_name || "—"}</td>
                     <td style={{ padding: "14px 16px", verticalAlign: "top", textAlign: "center" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>

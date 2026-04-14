@@ -2,6 +2,7 @@ import { supabase } from "../supabase";
 import { MONTHS } from "../constants";
 import { labelStyle, inputStyle, primaryBtn, secondaryBtn } from "../styles";
 import { useApp } from "../AppContext";
+import { useState, useEffect } from "react";
 
 export default function ContentPlanPortal({
   currentCPId, setCurrentCPId,
@@ -27,6 +28,53 @@ export default function ContentPlanPortal({
   setActivePortal,
 }) {
   const { showToast } = useApp();
+  const [creators, setCreators] = useState([]);
+  const [showCreatorMgmt, setShowCreatorMgmt] = useState(false);
+  const [newCreatorName, setNewCreatorName] = useState("");
+  const [creatorLoading, setCreatorLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchCreators = async () => {
+      const { data, error } = await supabase
+        .from("content_creators")
+        .select("*")
+        .order("name");
+      if (!error && data) setCreators(data);
+    };
+    fetchCreators();
+  }, []);
+
+  const addCreator = async () => {
+    if (!newCreatorName.trim()) return;
+    setCreatorLoading(true);
+    const { data, error } = await supabase
+      .from("content_creators")
+      .insert({ name: newCreatorName.trim() })
+      .select();
+    if (!error && data) {
+      setCreators(prev => [...prev, ...data].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewCreatorName("");
+      showToast("Creator added", "success");
+    } else {
+      showToast("Failed to add creator", "error");
+    }
+    setCreatorLoading(false);
+  };
+
+  const deleteCreator = async (id) => {
+    setCreatorLoading(true);
+    const { error } = await supabase
+      .from("content_creators")
+      .delete()
+      .eq("id", id);
+    if (!error) {
+      setCreators(prev => prev.filter(c => c.id !== id));
+      showToast("Creator deleted", "success");
+    } else {
+      showToast("Failed to delete creator", "error");
+    }
+    setCreatorLoading(false);
+  };
 
   return (
     <div>
@@ -85,6 +133,12 @@ export default function ContentPlanPortal({
         {/* Step 1: Setup */}
         {currentCPId === null && activeCPStep === 1 && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
+            <button
+              onClick={() => setActiveCPStep(null)}
+              style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600, marginBottom: 20 }}
+            >
+              ← Back to Plans
+            </button>
             <div style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e", marginBottom: 8 }}>New Content Plan</div>
             <div style={{ fontSize: 13, color: "#999", marginBottom: 28 }}>Set up the basics for this content plan.</div>
             <label style={labelStyle}>Client</label>
@@ -163,39 +217,48 @@ export default function ContentPlanPortal({
               <div style={{ overflowX: "auto", marginBottom: 24 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", tableLayout: "fixed" }}>
                   <colgroup>
-                    <col style={{ width: "20%" }} />
+                    <col style={{ width: "22%" }} />
                     <col style={{ width: "28%" }} />
-                    <col style={{ width: "18%" }} />
                     <col style={{ width: "14%" }} />
                     <col style={{ width: "12%" }} />
                     <col style={{ width: "8%" }} />
                   </colgroup>
                   <thead>
                     <tr style={{ background: "#1a1a2e" }}>
-                      {["TITLE / TYPE", "WHAT'S NEEDED", "REFERENCE LINK (INSPO)", "CONTENT CREATOR", "APPROVAL", ""].map(h => (
-                        <th key={h} style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>{h}</th>
-                      ))}
+                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>PRODUCED VIDEO</th>
+                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>WHAT'S NEEDED</th>
+                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 6 }}>
+                        CREATOR
+                        <button
+                          onClick={() => setShowCreatorMgmt(true)}
+                          style={{ background: "none", border: "none", color: "#D7FA06", cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1 }}
+                          title="Manage creators"
+                        >
+                          ⚙
+                        </button>
+                      </th>
+                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>APPROVAL</th>
+                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {producedItems.length > 0 && (
-                      <tr><td colSpan={6} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
+                      <tr><td colSpan={5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
                     )}
                     {producedItems.map((item, idx) => (
                       <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
                           <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>PRODUCED VIDEO #{item.item_number}</div>
-                          <input value={item.title} onChange={e => updateCPItem(item._localId, "title", e.target.value)} placeholder="Video title..." style={{ width: "100%", fontSize: 12, fontWeight: 700, border: "none", outline: "none", background: "transparent", color: "#1a1a2e", padding: 0, boxSizing: "border-box" }} />
+                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
                           <textarea value={item.whats_needed} onChange={e => updateCPItem(item._localId, "whats_needed", e.target.value)} placeholder="Props, people, description..." rows={3} style={{ width: "100%", fontSize: 12, border: "none", outline: "none", background: "transparent", color: "#444", padding: 0, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="https://..." style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
-                          {item.reference_link && <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#1a1a2e", textDecoration: "underline", display: "block", marginTop: 4 }}>INSPO ↗</a>}
-                        </td>
-                        <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <input value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} placeholder="Name..." style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: "#333", padding: 0, boxSizing: "border-box" }} />
+                          <select value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: "#333", padding: 0, boxSizing: "border-box", cursor: "pointer" }}>
+                            <option value="">— Select —</option>
+                            {creators.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          </select>
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
                           <select value={item.approval_status} onChange={e => updateCPItem(item._localId, "approval_status", e.target.value)} style={{ width: "100%", fontSize: 11, fontWeight: 700, border: "1.5px solid", borderRadius: 20, padding: "4px 8px", outline: "none", cursor: "pointer", background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderColor: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#ccc" }}>
@@ -210,23 +273,22 @@ export default function ContentPlanPortal({
                       </tr>
                     ))}
                     {organicItems.length > 0 && (
-                      <tr><td colSpan={6} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
+                      <tr><td colSpan={5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
                     )}
                     {organicItems.map((item, idx) => (
                       <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
                           <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>ORGANIC VIDEO #{item.item_number}</div>
-                          <input value={item.title} onChange={e => updateCPItem(item._localId, "title", e.target.value)} placeholder="Video title..." style={{ width: "100%", fontSize: 12, fontWeight: 700, border: "none", outline: "none", background: "transparent", color: "#1a1a2e", padding: 0, boxSizing: "border-box" }} />
+                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
                           <textarea value={item.whats_needed} onChange={e => updateCPItem(item._localId, "whats_needed", e.target.value)} placeholder="Props, people, description..." rows={3} style={{ width: "100%", fontSize: 12, border: "none", outline: "none", background: "transparent", color: "#444", padding: 0, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="https://..." style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
-                          {item.reference_link && <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#1a1a2e", textDecoration: "underline", display: "block", marginTop: 4 }}>INSPO ↗</a>}
-                        </td>
-                        <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <input value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} placeholder="Name..." style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: "#333", padding: 0, boxSizing: "border-box" }} />
+                          <select value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: "#333", padding: 0, boxSizing: "border-box", cursor: "pointer" }}>
+                            <option value="">— Select —</option>
+                            {creators.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          </select>
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
                           <select value={item.approval_status} onChange={e => updateCPItem(item._localId, "approval_status", e.target.value)} style={{ width: "100%", fontSize: 11, fontWeight: 700, border: "1.5px solid", borderRadius: 20, padding: "4px 8px", outline: "none", cursor: "pointer", background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderColor: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#ccc" }}>
@@ -332,24 +394,22 @@ export default function ContentPlanPortal({
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#1a1a2e" }}>
-                    {["TITLE / TYPE", "WHAT'S NEEDED", "REFERENCE", "CONTENT CREATOR", "APPROVAL"].map(h => (
+                    {["PRODUCED VIDEO", "WHAT'S NEEDED", "CREATOR", "APPROVAL"].map(h => (
                       <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", border: "1px solid #333" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {cpItems.filter(it => it.item_type === "produced").length > 0 && (
-                    <tr><td colSpan={5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
+                    <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
                   )}
                   {cpItems.filter(it => it.item_type === "produced").map(item => (
                     <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0" }}>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
                         <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em" }}>PRODUCED VIDEO #{item.item_number}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3, color: "#1a1a2e" }}>{item.title || <span style={{ color: "#ccc" }}>Untitled</span>}</div>
-                        {item.reference_link && <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>INSPO: <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e" }}>{item.reference_link.slice(0, 40)}...</a></div>}
+                        {item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 600, marginTop: 3, display: "block" }}>LINK ↗</a> : <span style={{ color: "#ddd", fontSize: 12, marginTop: 3, display: "block" }}>—</span>}
                       </td>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 12, color: "#444", lineHeight: 1.5, border: "1px solid #eee" }}>{item.whats_needed || "—"}</td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>{item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 600 }}>INSPO ↗</a> : <span style={{ color: "#ddd", fontSize: 12 }}>—</span>}</td>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 13, fontWeight: 700, color: "#333", border: "1px solid #eee" }}>{item.creator_name || "—"}</td>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
                         <span style={{ background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>
@@ -359,17 +419,15 @@ export default function ContentPlanPortal({
                     </tr>
                   ))}
                   {cpItems.filter(it => it.item_type === "organic").length > 0 && (
-                    <tr><td colSpan={5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
+                    <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
                   )}
                   {cpItems.filter(it => it.item_type === "organic").map(item => (
                     <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0" }}>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
                         <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em" }}>ORGANIC VIDEO #{item.item_number}</div>
-                        <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3, color: "#1a1a2e" }}>{item.title || <span style={{ color: "#ccc" }}>Untitled</span>}</div>
-                        {item.reference_link && <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>INSPO: <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e" }}>{item.reference_link.slice(0, 40)}...</a></div>}
+                        {item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 600, marginTop: 3, display: "block" }}>LINK ↗</a> : <span style={{ color: "#ddd", fontSize: 12, marginTop: 3, display: "block" }}>—</span>}
                       </td>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 12, color: "#444", lineHeight: 1.5, border: "1px solid #eee" }}>{item.whats_needed || "—"}</td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>{item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 600 }}>INSPO ↗</a> : <span style={{ color: "#ddd", fontSize: 12 }}>—</span>}</td>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 13, fontWeight: 700, color: "#333", border: "1px solid #eee" }}>{item.creator_name || "—"}</td>
                       <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
                         <span style={{ background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>
@@ -384,6 +442,64 @@ export default function ContentPlanPortal({
           </div>
         )}
       </div>
+
+      {/* ── Creator Management Modal ── */}
+      {showCreatorMgmt && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={e => e.target === e.currentTarget && setShowCreatorMgmt(false)}
+        >
+          <div style={{ background: "white", borderRadius: 16, width: 400, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 20 }}>Manage Creators</div>
+            <div style={{ marginBottom: 20, maxHeight: 200, overflowY: "auto" }}>
+              {creators.length === 0 ? (
+                <div style={{ color: "#aaa", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No creators yet. Add one below.</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {creators.map(creator => (
+                    <div key={creator.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: "#f8f8f8", borderRadius: 8, border: "1px solid #e8e8e8" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>{creator.name}</span>
+                      <button
+                        onClick={() => deleteCreator(creator.id)}
+                        disabled={creatorLoading}
+                        style={{ background: "none", border: "none", color: "#E8001C", cursor: "pointer", fontSize: 16, padding: 0, lineHeight: 1 }}
+                        title="Delete creator"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <input
+                autoFocus
+                type="text"
+                value={newCreatorName}
+                onChange={e => setNewCreatorName(e.target.value)}
+                placeholder="Creator name..."
+                onKeyDown={e => e.key === "Enter" && addCreator()}
+                style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 12, outline: "none" }}
+                disabled={creatorLoading}
+              />
+              <button
+                onClick={addCreator}
+                disabled={creatorLoading || !newCreatorName.trim()}
+                style={{ ...primaryBtn, padding: "9px 16px", fontSize: 12 }}
+              >
+                Add
+              </button>
+            </div>
+            <button
+              onClick={() => setShowCreatorMgmt(false)}
+              style={{ width: "100%", ...secondaryBtn, padding: "10px 16px" }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Content Plan Share Modal ── */}
       {cpShareModal && (
