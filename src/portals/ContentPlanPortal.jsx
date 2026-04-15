@@ -19,7 +19,7 @@ export default function ContentPlanPortal({
   clients, setClients,
   addingClient, setAddingClient,
   newClientInput, setNewClientInput,
-  newContentPlan, openContentPlan, saveContentPlan, generateCPItems, updateCPItem,
+  newContentPlan, openContentPlan, saveContentPlan, deleteContentPlan, generateCPItems, updateCPItem,
   getOrCreateShareToken,
   cpShareModal, setCpShareModal,
   cpShareEmail, setCpShareEmail,
@@ -27,7 +27,7 @@ export default function ContentPlanPortal({
   cpShareError, setCpShareError,
   setActivePortal,
 }) {
-  const { showToast } = useApp();
+  const { showToast, user } = useApp();
   const [creators, setCreators] = useState([]);
   const [showCreatorMgmt, setShowCreatorMgmt] = useState(false);
   const [newCreatorName, setNewCreatorName] = useState("");
@@ -80,7 +80,7 @@ export default function ContentPlanPortal({
     <div>
       {/* ── Content Plan Creator portal ── */}
       <div style={{ padding: "20px 40px", borderBottom: "1.5px solid #e8e8e8", display: "flex", alignItems: "center", gap: 16, background: "white" }}>
-        <button onClick={() => { setActivePortal(null); setCurrentCPId(null); }} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>← Back</button>
+        <button onClick={() => { setActivePortal(null); setCurrentCPId(null); setActiveCPStep(null); }} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>← Back</button>
         <div style={{ width: 1, height: 18, background: "#e0e0e0" }} />
         <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1a2e" }}>Content Plan Creator</div>
         {currentCPId && (
@@ -94,8 +94,8 @@ export default function ContentPlanPortal({
         )}
       </div>
       <div style={{ padding: "36px 40px", maxWidth: 1100, margin: "0 auto" }}>
-        {/* Plan list (no active plan) */}
-        {!currentCPId && (
+        {/* Plan list (no active plan, not in setup) */}
+        {!currentCPId && activeCPStep === null && (
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
               <div>
@@ -114,7 +114,14 @@ export default function ContentPlanPortal({
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
                 {allContentPlans.map(plan => (
-                  <div key={plan.id} onClick={() => openContentPlan(plan)} style={{ background: "white", borderRadius: 12, padding: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }}>
+                  <div key={plan.id} onClick={() => openContentPlan(plan)} style={{ position: "relative", background: "white", borderRadius: 12, padding: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }}>
+                    {plan.user_id === user?.id && (
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteContentPlan(plan); }}
+                        style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: "#ccc", fontSize: 16, padding: 0, lineHeight: 1 }}
+                        title="Delete plan"
+                      >🗑</button>
+                    )}
                     <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{plan.client_name}</div>
                     <div style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>{MONTHS[plan.month]} {plan.year}</div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -122,6 +129,10 @@ export default function ContentPlanPortal({
                         {plan.shoot_date === "PENDING" ? "SHOOT PENDING" : `SHOOT: ${plan.shoot_date}`}
                       </span>
                       <span style={{ fontSize: 12, color: "#bbb" }}>{new Date(plan.updated_at).toLocaleDateString()}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#bbb", marginTop: 8 }}>
+                      Last saved {new Date(plan.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {plan.last_updated_by && ` · ${plan.last_updated_by}`}
                     </div>
                   </div>
                 ))}
@@ -185,7 +196,7 @@ export default function ContentPlanPortal({
               </div>
             </div>
             <button
-              onClick={() => { if (!cpClientName.trim()) { showToast("Please select a client", "error"); return; } const items = generateCPItems(cpProducedCount, cpOrganicCount); setCpItems(items); setActiveCPStep(2); }}
+              onClick={() => { if (!cpClientName.trim()) { showToast("Please select a client", "error"); return; } const duplicate = allContentPlans.find(p => p.client_name === cpClientName && p.month === cpMonth && p.year === cpYear); if (duplicate) { showToast(`A content plan for ${cpClientName} — ${MONTHS[cpMonth]} ${cpYear} already exists`, "error"); return; } const items = generateCPItems(cpProducedCount, cpOrganicCount); setCpItems(items); setActiveCPStep(2); }}
               style={{ ...primaryBtn, width: "100%", textAlign: "center" }}
               disabled={!cpClientName.trim() || (cpProducedCount === 0 && cpOrganicCount === 0)}
             >
@@ -392,9 +403,15 @@ export default function ContentPlanPortal({
                 <div style={{ fontSize: 12, color: "#888", marginTop: 4, fontWeight: 600 }}>SHOOT DATE: {cpShootDate}</div>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <colgroup>
+                  <col style={{ width: "30%" }} />
+                  <col style={{ width: "38%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "14%" }} />
+                </colgroup>
                 <thead>
                   <tr style={{ background: "#1a1a2e" }}>
-                    {["PRODUCED VIDEO", "WHAT'S NEEDED", "CREATOR", "APPROVAL"].map(h => (
+                    {["REFERENCE", "WHAT'S NEEDED", "CREATOR", "APPROVAL"].map(h => (
                       <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", border: "1px solid #333" }}>{h}</th>
                     ))}
                   </tr>

@@ -107,7 +107,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [shareBusy, setShareBusy] = useState(false);
   const [shareError, setShareError] = useState("");
   // ── Content Plan Creator ──
-  const [activeCPStep, setActiveCPStep] = useState(1);
+  const [activeCPStep, setActiveCPStep] = useState(null);
   const [cpClientName, setCpClientName] = useState("");
   const [cpMonth, setCpMonth] = useState(today.getMonth());
   const [cpYear, setCpYear] = useState(today.getFullYear());
@@ -1104,6 +1104,17 @@ useEffect(() => {
     setAllContentPlans(data || []);
   }
 
+  async function deleteContentPlan(plan) {
+    if (!window.confirm(`Delete "${plan.client_name}" content plan? This cannot be undone.`)) return;
+    try {
+      await supabase.from("content_plan_items").delete().eq("plan_id", plan.id);
+      await supabase.from("content_plans").delete().eq("id", plan.id);
+      setAllContentPlans(prev => prev.filter(p => p.id !== plan.id));
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  }
+
   function generateCPItems(producedN, organicN, existing = []) {
     const items = [];
     for (let i = 1; i <= producedN; i++) {
@@ -1157,6 +1168,7 @@ useEffect(() => {
           year: cpYear,
           shoot_date: cpShootDate,
           updated_at: new Date().toISOString(),
+          last_updated_by: userProfile?.full_name || user?.email,
         }, { onConflict: "id" })
         .select()
         .single();
@@ -1327,7 +1339,7 @@ useEffect(() => {
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
         newContentPlan={newContentPlan} openContentPlan={openContentPlan}
-        saveContentPlan={saveContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
+        saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
         getOrCreateShareToken={getOrCreateShareToken}
         cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
         cpShareEmail={cpShareEmail} setCpShareEmail={setCpShareEmail}

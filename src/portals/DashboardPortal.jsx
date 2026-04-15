@@ -28,7 +28,7 @@ export default function DashboardPortal({
   cpOrganicCount, setCpOrganicCount, cpItems, setCpItems, cpSaving,
   allContentPlans, clients, setClients, addingClient, setAddingClient,
   newClientInput, setNewClientInput,
-  newContentPlan, openContentPlan, saveContentPlan, generateCPItems, updateCPItem,
+  newContentPlan, openContentPlan, saveContentPlan, deleteContentPlan, generateCPItems, updateCPItem,
   getOrCreateShareToken,
   cpShareModal, setCpShareModal, cpShareEmail, setCpShareEmail,
   cpShareBusy, setCpShareBusy, cpShareError, setCpShareError,
@@ -257,7 +257,7 @@ export default function DashboardPortal({
       addingClient={addingClient} setAddingClient={setAddingClient}
       newClientInput={newClientInput} setNewClientInput={setNewClientInput}
       newContentPlan={newContentPlan} openContentPlan={openContentPlan}
-      saveContentPlan={saveContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
+      saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
       getOrCreateShareToken={getOrCreateShareToken}
       cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
       cpShareEmail={cpShareEmail} setCpShareEmail={setCpShareEmail}
