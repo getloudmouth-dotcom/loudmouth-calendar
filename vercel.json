@@ -1,8 +1,7 @@
 {
   "functions": {
     "api/export-pdf.js": {
-      "maxDuration": 60,
-      "memory": 2048
+      "maxDuration": 60
     },
     "api/export-data.js": {
       "maxDuration": 10
@@ -11,8 +10,7 @@
       "maxDuration": 30
     },
     "api/export-content-plan-pdf.js": {
-      "maxDuration": 60,
-      "memory": 2048
+      "maxDuration": 60
     },
     "api/export-content-plan-data.js": {
       "maxDuration": 10
