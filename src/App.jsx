@@ -73,6 +73,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const historyIdxRef = useRef(-1);
   const isUndoingRef = useRef(false);
   const autoSaveTimerRef = useRef(null);
+  const initialSelectedDaysRef = useRef([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
@@ -922,6 +923,7 @@ useEffect(() => {
     setPostsPerPage(cal.posts_per_page);
     setBuilderName(cal.builder_name || "");
     setSelectedDays(cal.selected_days || []);
+    initialSelectedDaysRef.current = cal.selected_days || [];
     setCalendarNotes(cal.notes || "");
     setCalendarNotesImage(cal.notes_image || "");
     // Load most recent draft
@@ -1012,70 +1014,129 @@ useEffect(() => {
 
   // ── Schedule ──
   async function loadScheduledPosts() {
-    const { data } = await supabase
+    const { data: posts } = await supabase
       .from("scheduled_posts")
       .select("*")
       .order("post_date", { ascending: true });
-    setScheduledPosts(data || []);
+
+    const allPosts = posts || [];
+
+    // Fetch profiles for all visible user_ids (to show names in "who's opted in")
+    const userIds = [...new Set(allPosts.map(r => r.user_id))];
+    let profileMap = {};
+    if (userIds.length > 0) {
+      const { data: profileRows } = await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .in("id", userIds);
+      for (const p of profileRows || []) profileMap[p.id] = p;
+    }
+
+    setScheduledPosts(allPosts.map(r => ({ ...r, profile: profileMap[r.user_id] || null })));
   }
 
-  async function addToSchedule(cal) {
+  async function loadDraftPostsFor(calId) {
+    const { data: drafts } = await supabase
+      .from("calendar_drafts")
+      .select("posts")
+      .eq("calendar_id", calId)
+      .order("saved_at", { ascending: false })
+      .limit(1);
+    return drafts?.[0]?.posts ?? {};
+  }
+
+  function buildScheduleRow(cal, day, draftPosts, userId) {
+    const dayPosts = draftPosts[day] || [];
+    const contentTypes = [...new Set(dayPosts.map(p => p.contentType).filter(Boolean))];
+    const driveLinks = dayPosts.flatMap(p => {
+      const links = [];
+      if (p.url) links.push(p.url);
+      if (p.videoUrl) links.push(p.videoUrl);
+      if (Array.isArray(p.urls)) links.push(...p.urls.filter(Boolean));
+      return links;
+    }).filter(Boolean);
+    const postDate = new Date(cal.year, cal.month, day).toISOString().slice(0, 10);
+    return { user_id: userId, calendar_id: cal.id, client_name: cal.client_name, post_date: postDate, content_types: contentTypes, drive_links: driveLinks };
+  }
+
+  async function toggleSchedule(cal) {
     if (!user) return;
     setSchedulingCalId(cal.id);
     try {
-      // Load latest draft posts for this calendar
-      const { data: drafts } = await supabase
-        .from("calendar_drafts")
-        .select("posts")
-        .eq("calendar_id", cal.id)
-        .order("saved_at", { ascending: false })
-        .limit(1);
-      const draftPosts = drafts?.[0]?.posts ?? {};
-
-      // Build one row per selected day
-      const rows = (cal.selected_days || []).map(day => {
-        const dayPosts = draftPosts[day] || [];
-        const contentTypes = [...new Set(dayPosts.map(p => p.contentType).filter(Boolean))];
-        const driveLinks = dayPosts.flatMap(p => {
-          const links = [];
-          if (p.url) links.push(p.url);
-          if (p.videoUrl) links.push(p.videoUrl);
-          if (Array.isArray(p.urls)) links.push(...p.urls.filter(Boolean));
-          return links;
-        }).filter(Boolean);
-
-        // Build ISO date string: YYYY-MM-DD
-        const date = new Date(cal.year, cal.month, day);
-        const postDate = date.toISOString().slice(0, 10);
-
-        return {
-          user_id: user.id,
-          calendar_id: cal.id,
-          client_name: cal.client_name,
-          post_date: postDate,
-          content_types: contentTypes,
-          drive_links: driveLinks,
-          email_sent_at: null,
-        };
-      });
-
-      if (rows.length === 0) {
-        alert("This calendar has no selected days to schedule.");
-        return;
+      const isScheduled = scheduledPosts.some(r => r.calendar_id === cal.id && r.user_id === user.id);
+      if (isScheduled) {
+        const { error } = await supabase
+          .from("scheduled_posts")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("calendar_id", cal.id);
+        if (error) throw error;
+        await loadScheduledPosts();
+      } else {
+        const draftPosts = await loadDraftPostsFor(cal.id);
+        const rows = (cal.selected_days || []).map(day => ({
+          ...buildScheduleRow(cal, day, draftPosts, user.id),
+          notify: true,
+        }));
+        if (rows.length === 0) {
+          alert("This calendar has no selected days to schedule.");
+          return;
+        }
+        const { error } = await supabase
+          .from("scheduled_posts")
+          .upsert(rows, { onConflict: "user_id,calendar_id,post_date", ignoreDuplicates: false });
+        if (error) throw error;
+        await loadScheduledPosts();
+        alert(`Scheduled ${rows.length} posting day${rows.length > 1 ? "s" : ""} for ${cal.client_name}.`);
       }
-
-      const { error } = await supabase
-        .from("scheduled_posts")
-        .upsert(rows, { onConflict: "user_id,calendar_id,post_date", ignoreDuplicates: false });
-
-      if (error) throw error;
-      await loadScheduledPosts();
-      alert(`Scheduled ${rows.length} posting day${rows.length > 1 ? "s" : ""} for ${cal.client_name}.`);
     } catch (e) {
-      alert("Failed to schedule: " + e.message);
+      alert("Failed: " + e.message);
     } finally {
       setSchedulingCalId(null);
     }
+  }
+
+  async function syncScheduleForCalendar(cal) {
+    if (!user) return;
+    const days = cal.selected_days || [];
+    const draftPosts = await loadDraftPostsFor(cal.id);
+    const toIso = (day) => new Date(cal.year, cal.month, day).toISOString().slice(0, 10);
+    const targetDates = days.map(toIso);
+    const existingRows = scheduledPosts.filter(r => r.calendar_id === cal.id && r.user_id === user.id);
+    const existingDates = existingRows.map(r => r.post_date);
+
+    // Insert new rows with notify: true (don't touch existing rows' notify preference)
+    const newDays = days.filter(day => !existingDates.includes(toIso(day)));
+    if (newDays.length > 0) {
+      const newRows = newDays.map(day => ({ ...buildScheduleRow(cal, day, draftPosts, user.id), notify: true }));
+      await supabase.from("scheduled_posts").insert(newRows);
+    }
+
+    // Update content for existing rows (preserve notify)
+    for (const row of existingRows) {
+      if (targetDates.includes(row.post_date)) {
+        const day = days.find(d => toIso(d) === row.post_date);
+        if (day !== undefined) {
+          const { content_types, drive_links } = buildScheduleRow(cal, day, draftPosts, user.id);
+          await supabase.from("scheduled_posts")
+            .update({ content_types, drive_links, client_name: cal.client_name })
+            .eq("id", row.id);
+        }
+      }
+    }
+
+    // Delete rows for days no longer selected
+    const toDelete = existingRows.filter(r => !targetDates.includes(r.post_date));
+    if (toDelete.length > 0) {
+      await supabase.from("scheduled_posts").delete().in("id", toDelete.map(r => r.id));
+    }
+
+    await loadScheduledPosts();
+  }
+
+  async function toggleNotify(rowId, notify) {
+    await supabase.from("scheduled_posts").update({ notify }).eq("id", rowId);
+    setScheduledPosts(prev => prev.map(r => r.id === rowId ? { ...r, notify } : r));
   }
 
   async function removeScheduledPost(id) {
@@ -1273,6 +1334,23 @@ useEffect(() => {
     return () => clearTimeout(cpAutoSaveTimerRef.current);
   }, [cpItems, cpClientName, cpMonth, cpYear, cpShootDate]);
 
+  // Auto-sync schedule when selected days change (only if user is already opted in)
+  useEffect(() => {
+    if (!currentCalendarId || !user?.id) return;
+    const sorted = (arr) => [...arr].sort((a, b) => a - b).join(",");
+    if (sorted(selectedDays) === sorted(initialSelectedDaysRef.current)) return;
+    const isOptedIn = scheduledPosts.some(r => r.calendar_id === currentCalendarId && r.user_id === user.id);
+    if (!isOptedIn) return;
+    const cal = allCalendars.find(c => c.id === currentCalendarId);
+    if (!cal) return;
+    const daysSnapshot = [...selectedDays];
+    const timer = setTimeout(() => {
+      syncScheduleForCalendar({ ...cal, selected_days: daysSnapshot });
+      initialSelectedDaysRef.current = daysSnapshot;
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [selectedDays, currentCalendarId, user?.id, scheduledPosts.length, allCalendars]);
+
   console.log("[App] render", { authLoading, user: !!user, showProfileSetup, showDashboard, exportMode, cpPublicToken: !!cpPublicToken, cpExportToken: !!cpExportToken });
 
   if (cpPublicToken) return <ErrorBoundary><ContentPlanPublicView token={cpPublicToken} /></ErrorBoundary>;
@@ -1311,13 +1389,13 @@ useEffect(() => {
         saveProfile={saveProfile} editingProfile={editingProfile} setEditingProfile={setEditingProfile}
         exporting={exporting} exportProgress={exportProgress} exportElapsed={exportElapsed}
         allCalendars={allCalendars} calCollaborators={calCollaborators} schedulingCalId={schedulingCalId}
-        openCalendar={openCalendar} newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
+        openCalendar={openCalendar} newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={toggleSchedule}
         setShareModal={setShareModal} setShareEmail={setShareEmail} setShareError={setShareError}
         shareModal={shareModal} shareEmail={shareEmail} shareError={shareError}
         shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
         sharePermission={sharePermission} setSharePermission={setSharePermission}
         loadAdminUsers={loadAdminUsers} loadAllContentPlans={loadAllContentPlans}
-        scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost}
+        scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost} toggleNotify={toggleNotify}
         adminUsers={adminUsers} adminLoading={adminLoading}
         inviteModal={inviteModal} setInviteModal={setInviteModal}
         inviteForm={inviteForm} setInviteForm={setInviteForm}

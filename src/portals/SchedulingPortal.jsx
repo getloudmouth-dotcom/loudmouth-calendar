@@ -1,9 +1,27 @@
+import { useApp } from "../AppContext";
 import ScheduleRow from "../components/ScheduleRow";
 
-export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, setActivePortal }) {
+export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, toggleNotify, setActivePortal }) {
+  const { user } = useApp();
   const today = new Date().toISOString().slice(0, 10);
-  const upcoming = scheduledPosts.filter(r => r.post_date >= today);
-  const past = scheduledPosts.filter(r => r.post_date < today);
+
+  // Only show the current user's own rows in the list
+  const myPosts = (scheduledPosts || []).filter(r => r.user_id === user?.id);
+  const upcoming = myPosts.filter(r => r.post_date >= today);
+  const past = myPosts.filter(r => r.post_date < today);
+
+  // For each of my rows, compute who else is opted in for the same calendar+date
+  function getOptedInUsers(row) {
+    return (scheduledPosts || [])
+      .filter(r => r.calendar_id === row.calendar_id && r.post_date === row.post_date)
+      .map(r => ({
+        userId: r.user_id,
+        rowId: r.id,
+        name: r.profile?.name || "",
+        email: r.profile?.email || "",
+        notify: r.notify !== false,
+      }));
+  }
 
   return (
     <div>
@@ -13,7 +31,7 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
         <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1a2e" }}>Content Scheduling</div>
       </div>
       <div style={{ padding: "36px 60px" }}>
-        {scheduledPosts.length === 0 ? (
+        {myPosts.length === 0 ? (
           <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
             <div style={{ fontSize: 40, marginBottom: 16 }}>🗓</div>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No scheduled posts yet</div>
@@ -26,7 +44,16 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
               <div style={{ marginBottom: 32 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Upcoming ({upcoming.length})</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {upcoming.map(row => <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />)}
+                  {upcoming.map(row => (
+                    <ScheduleRow
+                      key={row.id}
+                      row={row}
+                      onRemove={removeScheduledPost}
+                      onToggleNotify={toggleNotify}
+                      currentUserId={user?.id}
+                      optedInUsers={getOptedInUsers(row)}
+                    />
+                  ))}
                 </div>
               </div>
             )}
@@ -34,7 +61,16 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#ccc", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Past ({past.length})</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, opacity: 0.5 }}>
-                  {past.map(row => <ScheduleRow key={row.id} row={row} onRemove={removeScheduledPost} />)}
+                  {past.map(row => (
+                    <ScheduleRow
+                      key={row.id}
+                      row={row}
+                      onRemove={removeScheduledPost}
+                      onToggleNotify={toggleNotify}
+                      currentUserId={user?.id}
+                      optedInUsers={getOptedInUsers(row)}
+                    />
+                  ))}
                 </div>
               </div>
             )}

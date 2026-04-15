@@ -16,7 +16,7 @@ export default function DashboardPortal({
   setShareModal, setShareEmail, setShareError,
   shareModal, shareEmail, shareError, shareBusy, addCollaborator, removeCollaborator,
   sharePermission, setSharePermission,
-  scheduledPosts, removeScheduledPost,
+  scheduledPosts, removeScheduledPost, toggleNotify,
   adminUsers, adminLoading,
   inviteModal, setInviteModal, inviteForm, setInviteForm,
   inviteBusy, inviteError, setInviteError, doInviteUser,
@@ -211,6 +211,7 @@ export default function DashboardPortal({
       newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
       setShareModal={setShareModal} setShareEmail={setShareEmail} setShareError={setShareError}
       setActivePortal={setActivePortal}
+      scheduledPosts={scheduledPosts}
     />
   )}
 
@@ -219,6 +220,7 @@ export default function DashboardPortal({
     <SchedulingPortal
       scheduledPosts={scheduledPosts}
       removeScheduledPost={removeScheduledPost}
+      toggleNotify={toggleNotify}
       setActivePortal={setActivePortal}
     />
   )}

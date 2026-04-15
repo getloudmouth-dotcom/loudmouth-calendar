@@ -7,6 +7,7 @@ export default function CalendarListPortal({
   schedulingCalId, openCalendar, newCalendar, deleteCalendar, addToSchedule,
   setShareModal, setShareEmail, setShareError,
   setActivePortal,
+  scheduledPosts,
 }) {
   const { user } = useApp();
 
@@ -44,7 +45,20 @@ export default function CalendarListPortal({
                 {cal.user_id === user?.id && (
                   <button onClick={e => { e.stopPropagation(); setShareModal({ cal }); setShareEmail(""); setShareError(""); }} title="Share with collaborators" style={{ background: "#f0f0ee", color: "#555", border: "1.5px solid #e0e0e0", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Share</button>
                 )}
-                <button onClick={e => { e.stopPropagation(); addToSchedule(cal); }} disabled={schedulingCalId === cal.id} title="Add posting dates to your reminder schedule" style={{ background: "#f5fbda", color: "#5a7a00", border: "1.5px solid #D7FA06", borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: schedulingCalId === cal.id ? "default" : "pointer", whiteSpace: "nowrap", opacity: schedulingCalId === cal.id ? 0.6 : 1 }}>{schedulingCalId === cal.id ? "..." : "+ Schedule"}</button>
+                {(() => {
+                  const isScheduled = (scheduledPosts || []).some(r => r.calendar_id === cal.id && r.user_id === user?.id);
+                  const isBusy = schedulingCalId === cal.id;
+                  return (
+                    <button
+                      onClick={e => { e.stopPropagation(); addToSchedule(cal); }}
+                      disabled={isBusy}
+                      title={isScheduled ? "Remove posting dates from your reminder schedule" : "Add posting dates to your reminder schedule"}
+                      style={{ background: isScheduled ? "#D7FA06" : "#f5fbda", color: isScheduled ? "#1a1a2e" : "#5a7a00", border: `1.5px solid ${isScheduled ? "#b8d800" : "#D7FA06"}`, borderRadius: 7, padding: "8px 10px", fontSize: 12, fontWeight: 700, cursor: isBusy ? "default" : "pointer", whiteSpace: "nowrap", opacity: isBusy ? 0.6 : 1 }}
+                    >
+                      {isBusy ? "..." : isScheduled ? "✓ Scheduled" : "+ Schedule"}
+                    </button>
+                  );
+                })()}
                 {cal.user_id === user?.id && (
                   <button onClick={e => { e.stopPropagation(); deleteCalendar(cal); }} aria-label="Delete calendar" title="Delete calendar" style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "8px 12px", fontSize: 12, cursor: "pointer" }}>🗑</button>
                 )}

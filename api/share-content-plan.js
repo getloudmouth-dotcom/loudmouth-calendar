@@ -15,17 +15,22 @@ function getSupabaseAdmin() {
   return _supabaseCache.client;
 }
 
-async function sendEmail({ to, subject, html }) {
+async function sendEmail({ to, subject, html, text }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("Missing RESEND_API_KEY");
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Loudmouth Calendar <reminders@loudmouthcalendar.com>",
+      from: "Loudmouth Calendar <hello@posting.getloudmouth.us>",
       to,
       subject,
       html,
+      text,
+      headers: {
+        "List-Unsubscribe": `<mailto:unsubscribe@getloudmouth.us?subject=unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     }),
   });
   if (!res.ok) {
@@ -82,6 +87,7 @@ export default async function handler(req, res) {
     await sendEmail({
       to: recipientEmail,
       subject: `${senderName} shared a content plan with you`,
+      text: `${senderName} has shared the ${plan.client_name} content plan for ${MONTHS[plan.month]} ${plan.year} with you.\n\nReview it here (no login required):\n${publicUrl}\n\nYou can approve, deny, and add notes on each item.`,
       html: `
         <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff">
           <div style="font-weight:900;font-size:16px;letter-spacing:0.08em;color:#1a1a2e;margin-bottom:4px">CONTENT PLAN</div>
