@@ -167,13 +167,12 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Webhook not configured" });
   }
 
+  console.log(`[fb-webhook] content-type: ${req.headers["content-type"]}`);
+  console.log(`[fb-webhook] raw body: ${JSON.stringify(req.body)}`);
+
   const { name, object_id, account_id, verifier } = req.body ?? {};
 
   // ── callback.verify — FreshBooks URL ownership check ─────────────────────
-  // FreshBooks sends this immediately after webhook registration.
-  // Must return 200 BEFORE the HMAC check (the verifier here is a plain token,
-  // not an HMAC). Log it so we can capture it from Vercel logs and store it
-  // as FRESHBOOKS_WEBHOOK_SECRET for future payment event verification.
   if (name === "callback.verify") {
     console.log(`[fb-webhook] callback.verify received — verifier: ${verifier}`);
     return res.status(200).json({ verifier });
