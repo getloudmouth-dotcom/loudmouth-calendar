@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       .from("invoices")
       .select(`
         *,
-        clients ( id, name, email, company )
+        clients ( id, name, email, phone, company )
       `)
       .order("created_at", { ascending: false });
 
