@@ -3,7 +3,7 @@
 // Manages its own data — only shares the supabase client and auth session with the rest of the app.
 // Access: admin + account_manager roles only (enforced server-side; gated client-side via can("billing")).
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../supabase";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -81,6 +81,8 @@ export default function BillingPortal({ setActivePortal }) {
   const [syncResult, setSyncResult] = useState(null);
   const [invoiceSyncing, setInvoiceSyncing] = useState(false);
   const [invoiceSyncResult, setInvoiceSyncResult] = useState(null);
+  const [syncCooldown, setSyncCooldown] = useState(false);
+  const syncCooldownTimer = useRef(null);
 
   // ── Invoice form ──────────────────────────────────────────────────────────
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
@@ -200,9 +202,16 @@ export default function BillingPortal({ setActivePortal }) {
     }
   }
 
+  function startSyncCooldown() {
+    setSyncCooldown(true);
+    clearTimeout(syncCooldownTimer.current);
+    syncCooldownTimer.current = setTimeout(() => setSyncCooldown(false), 60_000);
+  }
+
   async function syncFromFreshbooks() {
     setSyncing(true);
     setSyncResult(null);
+    startSyncCooldown();
     try {
       const result = await apiFetch("/api/billing/sync-clients");
       setSyncResult(result);
@@ -217,6 +226,7 @@ export default function BillingPortal({ setActivePortal }) {
   async function syncInvoicesFromFreshbooks() {
     setInvoiceSyncing(true);
     setInvoiceSyncResult(null);
+    startSyncCooldown();
     try {
       const result = await apiFetch("/api/billing/sync-invoices", { method: "POST" });
       setInvoiceSyncResult(result);
@@ -345,8 +355,8 @@ export default function BillingPortal({ setActivePortal }) {
         <div style={{ display: "flex", gap: 8 }}>
           {tab === "clients" && (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={syncFromFreshbooks} disabled={syncing} style={{ background: "#1a1a1a", color: syncing ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: syncing ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
-                {syncing ? "Syncing…" : "↻ Sync from FreshBooks"}
+              <button onClick={syncFromFreshbooks} disabled={syncing || syncCooldown} style={{ background: "#1a1a1a", color: (syncing || syncCooldown) ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: (syncing || syncCooldown) ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
+                {syncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
               </button>
               <button onClick={openNewClient} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
                 + New Client
@@ -355,8 +365,8 @@ export default function BillingPortal({ setActivePortal }) {
           )}
           {tab === "invoices" && (
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={syncInvoicesFromFreshbooks} disabled={invoiceSyncing} style={{ background: "#1a1a1a", color: invoiceSyncing ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: invoiceSyncing ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
-                {invoiceSyncing ? "Syncing…" : "↻ Sync from FreshBooks"}
+              <button onClick={syncInvoicesFromFreshbooks} disabled={invoiceSyncing || syncCooldown} style={{ background: "#1a1a1a", color: (invoiceSyncing || syncCooldown) ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: (invoiceSyncing || syncCooldown) ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
+                {invoiceSyncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
               </button>
               <button onClick={() => setShowInvoiceForm(true)} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
                 + New Invoice
