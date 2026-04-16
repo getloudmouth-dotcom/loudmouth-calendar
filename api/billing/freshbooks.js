@@ -37,9 +37,20 @@ export async function getFreshBooksToken() {
   const supabase = getSupabaseAdmin();
   const { data: tokenRow } = await supabase
     .from("freshbooks_tokens")
-    .select("refresh_token")
+    .select("access_token, refresh_token, expires_at")
     .eq("account_id", ACCOUNT_ID)
     .single();
+
+  // Use stored access_token directly if it's still valid (with 60s buffer)
+  if (tokenRow?.access_token && tokenRow?.expires_at) {
+    const storedExpiry = new Date(tokenRow.expires_at).getTime();
+    if (now < storedExpiry - 60_000) {
+      cachedToken = tokenRow.access_token;
+      tokenExpiresAt = storedExpiry;
+      return cachedToken;
+    }
+  }
+
   const refreshToken = tokenRow?.refresh_token ?? process.env.FRESHBOOKS_REFRESH_TOKEN;
 
   if (!refreshToken) {
