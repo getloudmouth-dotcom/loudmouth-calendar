@@ -314,13 +314,18 @@ export default function BillingPortal({ setActivePortal }) {
   async function sendInvoice() {
     setSendError(""); setSendSuccess(""); setSending(true);
     try {
-      await apiFetch("/api/billing/send-invoice", {
+      const result = await apiFetch("/api/billing/send-invoice", {
         method: "POST",
         body: JSON.stringify({ invoiceId: sendModal.id, method: sendMethod }),
       });
-      setSendSuccess(`Invoice sent via ${sendMethod === "both" ? "email & SMS" : sendMethod}!`);
+      const warnings = result.warnings ?? [];
+      if (warnings.length > 0) {
+        setSendSuccess(`Partial send — ${warnings.join("; ")}`);
+      } else {
+        setSendSuccess(`Invoice sent via ${sendMethod === "both" ? "email & SMS" : sendMethod}!`);
+      }
       await loadInvoices();
-      setTimeout(() => { setSendModal(null); setSendSuccess(""); }, 2000);
+      setTimeout(() => { setSendModal(null); setSendSuccess(""); }, 3000);
     } catch (err) {
       setSendError(err.message);
     } finally {
