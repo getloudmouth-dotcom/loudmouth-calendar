@@ -1,6 +1,7 @@
 // api/billing/clients.js
-// GET  /api/billing/clients        — list all clients
-// POST /api/billing/clients        — create client in Supabase + sync to FreshBooks
+// GET   /api/billing/clients        — list all clients
+// POST  /api/billing/clients        — create client in Supabase + sync to FreshBooks
+// PATCH /api/billing/clients?id=X   — update client in Supabase + sync to FreshBooks
 
 import { createClient } from "@supabase/supabase-js";
 import { freshBooksHeaders } from "./freshbooks.js";
@@ -57,7 +58,7 @@ export default async function handler(req, res) {
   // ── POST — create client ──────────────────────────────────────────────────
   if (req.method === "POST") {
     const { name, email, phone, company } = req.body ?? {};
-    if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    if (!name?.trim() && !company?.trim()) return res.status(400).json({ error: "name or company is required" });
 
     const normalizedPhone = normalizePhone(phone?.trim());
 
@@ -126,6 +127,80 @@ export default async function handler(req, res) {
     }
 
     return res.status(201).json(client);
+  }
+
+  // ── PATCH — update client ─────────────────────────────────────────────────
+  if (req.method === "PATCH") {
+    const id = req.query.id;
+    if (!id) return res.status(400).json({ error: "id is required" });
+
+    const { name, email, phone, company } = req.body ?? {};
+    if (!name?.trim() && !company?.trim()) return res.status(400).json({ error: "name or company is required" });
+
+    const normalizedPhone = normalizePhone(phone?.trim());
+
+    // 1. Fetch existing client (need freshbooks_contact_id)
+    const { data: existing, error: fetchErr } = await supabase
+      .from("clients")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !existing) return res.status(404).json({ error: "Client not found" });
+
+    // 2. Update in Supabase
+    const { data: updated, error: updateErr } = await supabase
+      .from("clients")
+      .update({
+        name: name?.trim() || null,
+        email: email?.trim() || null,
+        phone: normalizedPhone || null,
+        company: company?.trim() || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateErr) return res.status(500).json({ error: updateErr.message });
+
+    // 3. Push to FreshBooks if synced (non-fatal)
+    const accountId = process.env.FRESHBOOKS_ACCOUNT_ID;
+    if (accountId && existing.freshbooks_contact_id) {
+      try {
+        const nameTrimmed = updated.name ?? "";
+        const nameParts = nameTrimmed.split(" ");
+        const headers = await freshBooksHeaders();
+        const fbRes = await fetch(
+          `https://api.freshbooks.com/accounting/account/${accountId}/users/clients/${existing.freshbooks_contact_id}`,
+          {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({
+              client: {
+                fname: nameParts[0] ?? "",
+                lname: nameParts.slice(1).join(" ") ?? "",
+                organization: updated.company ?? "",
+                email: updated.email ?? "",
+                bus_phone: updated.phone ?? "",
+              },
+            }),
+          }
+        );
+        if (fbRes.ok) {
+          await supabase.from("clients")
+            .update({ freshbooks_updated_at: new Date().toISOString() })
+            .eq("id", id);
+          updated.freshbooks_updated_at = new Date().toISOString();
+        } else {
+          console.error("FreshBooks update failed:", await fbRes.text());
+        }
+      } catch (fbErr) {
+        console.error("FreshBooks update error:", fbErr.message);
+      }
+    }
+
+    return res.status(200).json(updated);
   }
 
   return res.status(405).json({ error: "Method not allowed" });

@@ -71,9 +71,14 @@ export default function BillingPortal({ setActivePortal }) {
 
   // ── Client form ───────────────────────────────────────────────────────────
   const [showClientForm, setShowClientForm] = useState(false);
+  const [editingClient, setEditingClient] = useState(null); // null = new, object = editing
   const [clientForm, setClientForm] = useState({ name: "", email: "", phone: "", company: "" });
   const [savingClient, setSavingClient] = useState(false);
   const [clientError, setClientError] = useState("");
+
+  // ── Sync state ────────────────────────────────────────────────────────────
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null);
 
   // ── Invoice form ──────────────────────────────────────────────────────────
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
@@ -151,23 +156,59 @@ export default function BillingPortal({ setActivePortal }) {
   }, [loadClients, loadInvoices]);
 
   // ── Client CRUD ───────────────────────────────────────────────────────────
+  function openNewClient() {
+    setEditingClient(null);
+    setClientForm({ name: "", email: "", phone: "", company: "" });
+    setClientError("");
+    setShowClientForm(true);
+  }
+
+  function openEditClient(client) {
+    setEditingClient(client);
+    setClientForm({ name: client.name ?? "", email: client.email ?? "", phone: client.phone ?? "", company: client.company ?? "" });
+    setClientError("");
+    setShowClientForm(true);
+  }
+
   async function submitClient(e) {
     e.preventDefault();
     setClientError("");
-    if (!clientForm.name.trim()) return setClientError("Name is required.");
+    if (!clientForm.name.trim() && !clientForm.company.trim()) return setClientError("Name or company is required.");
     setSavingClient(true);
     try {
-      await apiFetch("/api/billing/clients", {
-        method: "POST",
-        body: JSON.stringify(clientForm),
-      });
+      if (editingClient) {
+        await apiFetch(`/api/billing/clients?id=${editingClient.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(clientForm),
+        });
+      } else {
+        await apiFetch("/api/billing/clients", {
+          method: "POST",
+          body: JSON.stringify(clientForm),
+        });
+      }
       setClientForm({ name: "", email: "", phone: "", company: "" });
+      setEditingClient(null);
       setShowClientForm(false);
       await loadClients();
     } catch (err) {
       setClientError(err.message);
     } finally {
       setSavingClient(false);
+    }
+  }
+
+  async function syncFromFreshbooks() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await apiFetch("/api/billing/sync-clients");
+      setSyncResult(result);
+      await loadClients();
+    } catch (err) {
+      setSyncResult({ error: err.message });
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -287,9 +328,14 @@ export default function BillingPortal({ setActivePortal }) {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {tab === "clients" && (
-            <button onClick={() => setShowClientForm(true)} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
-              + New Client
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button onClick={syncFromFreshbooks} disabled={syncing} style={{ background: "#1a1a1a", color: syncing ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: syncing ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
+                {syncing ? "Syncing…" : "↻ Sync from FreshBooks"}
+              </button>
+              <button onClick={openNewClient} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
+                + New Client
+              </button>
+            </div>
           )}
           {tab === "invoices" && (
             <button onClick={() => setShowInvoiceForm(true)} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
@@ -384,6 +430,14 @@ export default function BillingPortal({ setActivePortal }) {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {tab === "clients" && (
         <div style={{ padding: "32px 48px" }}>
+          {syncResult && (
+            <div style={{ marginBottom: 16, padding: "10px 16px", background: syncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${syncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: syncResult.error ? "#E8001C" : "#D7FA06", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {syncResult.error
+                ? `Sync failed: ${syncResult.error}`
+                : `Sync complete — ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.pushed} pushed to FreshBooks, ${syncResult.skipped} skipped`}
+              <button onClick={() => setSyncResult(null)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 16, padding: 0, marginLeft: 12 }}>×</button>
+            </div>
+          )}
           {loadingC ? (
             <div style={{ color: "#444", fontSize: 13, padding: "40px 0" }}>Loading clients...</div>
           ) : clients.length === 0 ? (
@@ -401,12 +455,17 @@ export default function BillingPortal({ setActivePortal }) {
                     {c.email && <div style={{ color: "#666", fontSize: 12, display: "flex", gap: 8 }}><span style={{ color: "#333" }}>Email</span>{c.email}</div>}
                     {c.phone && <div style={{ color: "#666", fontSize: 12, display: "flex", gap: 8 }}><span style={{ color: "#333" }}>Phone</span>{c.phone}</div>}
                   </div>
-                  <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                    {c.freshbooks_contact_id ? (
-                      <span style={{ fontSize: 10, color: "#D7FA06", background: "#1a2e0a", border: "1px solid #2a4e0a", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>FB SYNCED</span>
-                    ) : (
-                      <span style={{ fontSize: 10, color: "#555", background: "#111", border: "1px solid #222", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>NOT SYNCED</span>
-                    )}
+                  <div style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {c.freshbooks_contact_id ? (
+                        <span style={{ fontSize: 10, color: "#D7FA06", background: "#1a2e0a", border: "1px solid #2a4e0a", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>FB SYNCED</span>
+                      ) : (
+                        <span style={{ fontSize: 10, color: "#555", background: "#111", border: "1px solid #222", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>NOT SYNCED</span>
+                      )}
+                    </div>
+                    <button onClick={() => openEditClient(c)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 6, color: "#555", fontSize: 11, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
+                      Edit
+                    </button>
                   </div>
                 </div>
               ))}
@@ -422,15 +481,15 @@ export default function BillingPortal({ setActivePortal }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
           onClick={e => e.target === e.currentTarget && setShowClientForm(false)}>
           <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, width: "100%", maxWidth: 480, padding: 32 }}>
-            <div style={{ fontWeight: 900, fontSize: 18, color: "#fff", marginBottom: 24 }}>New Client</div>
+            <div style={{ fontWeight: 900, fontSize: 18, color: "#fff", marginBottom: 24 }}>{editingClient ? "Edit Client" : "New Client"}</div>
             <form onSubmit={submitClient} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <label style={LABEL}>Name *</label>
+                <label style={LABEL}>Name</label>
                 <input style={INPUT} value={clientForm.name} onChange={e => setClientForm(f => ({ ...f, name: e.target.value }))} placeholder="Full name or business name" autoFocus />
               </div>
               <div>
                 <label style={LABEL}>Company</label>
-                <input style={INPUT} value={clientForm.company} onChange={e => setClientForm(f => ({ ...f, company: e.target.value }))} placeholder="Optional" />
+                <input style={INPUT} value={clientForm.company} onChange={e => setClientForm(f => ({ ...f, company: e.target.value }))} placeholder="Required if no name" />
               </div>
               <div>
                 <label style={LABEL}>Email</label>
@@ -443,7 +502,7 @@ export default function BillingPortal({ setActivePortal }) {
               {clientError && <div style={{ color: "#E8001C", fontSize: 13 }}>{clientError}</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <button type="submit" disabled={savingClient} style={{ flex: 1, background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "11px 0", fontWeight: 900, fontSize: 13, cursor: "pointer", opacity: savingClient ? 0.6 : 1 }}>
-                  {savingClient ? "Saving..." : "Create Client"}
+                  {savingClient ? "Saving..." : editingClient ? "Save Changes" : "Create Client"}
                 </button>
                 <button type="button" onClick={() => setShowClientForm(false)} style={{ padding: "11px 20px", background: "#1a1a1a", color: "#888", border: "1px solid #2a2a2a", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
                   Cancel
@@ -469,7 +528,7 @@ export default function BillingPortal({ setActivePortal }) {
                 <label style={LABEL}>Client *</label>
                 <select value={invoiceForm.client_id} onChange={e => setInvoiceForm(f => ({ ...f, client_id: e.target.value }))} style={{ ...INPUT, appearance: "none" }}>
                   <option value="">Select a client…</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ""}</option>)}
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name || c.company}{c.name && c.company ? ` — ${c.company}` : ""}</option>)}
                 </select>
               </div>
 
