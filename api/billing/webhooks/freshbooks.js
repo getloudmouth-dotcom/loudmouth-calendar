@@ -169,6 +169,16 @@ export default async function handler(req, res) {
 
   const { name, object_id, account_id, verifier } = req.body ?? {};
 
+  // ── callback.verify — FreshBooks URL ownership check ─────────────────────
+  // FreshBooks sends this immediately after webhook registration.
+  // Must return 200 BEFORE the HMAC check (the verifier here is a plain token,
+  // not an HMAC). Log it so we can capture it from Vercel logs and store it
+  // as FRESHBOOKS_WEBHOOK_SECRET for future payment event verification.
+  if (name === "callback.verify") {
+    console.log(`[fb-webhook] callback.verify received — verifier: ${verifier}`);
+    return res.status(200).json({ ok: true, verified: true });
+  }
+
   // ── Verify signature ──────────────────────────────────────────────────────
   if (!verifier || !object_id) {
     return res.status(400).json({ error: "Missing verifier or object_id" });
@@ -180,7 +190,6 @@ export default async function handler(req, res) {
   }
 
   // ── Only handle payment.create ────────────────────────────────────────────
-  // FreshBooks sends a test event on webhook registration — log and ack.
   if (name !== "payment.create") {
     console.log(`[fb-webhook] Ignoring event: ${name}`);
     return res.status(200).json({ ok: true, ignored: true });
