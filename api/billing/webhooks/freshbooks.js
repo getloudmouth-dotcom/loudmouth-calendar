@@ -176,7 +176,8 @@ export default async function handler(req, res) {
   // as FRESHBOOKS_WEBHOOK_SECRET for future payment event verification.
   if (name === "callback.verify") {
     console.log(`[fb-webhook] callback.verify received — verifier: ${verifier}`);
-    return res.status(200).json({ ok: true, verified: true });
+    res.status(200).end();
+    return;
   }
 
   // ── Verify signature ──────────────────────────────────────────────────────
