@@ -79,6 +79,8 @@ export default function BillingPortal({ setActivePortal }) {
   // ── Sync state ────────────────────────────────────────────────────────────
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
+  const [invoiceSyncing, setInvoiceSyncing] = useState(false);
+  const [invoiceSyncResult, setInvoiceSyncResult] = useState(null);
 
   // ── Invoice form ──────────────────────────────────────────────────────────
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
@@ -212,6 +214,20 @@ export default function BillingPortal({ setActivePortal }) {
     }
   }
 
+  async function syncInvoicesFromFreshbooks() {
+    setInvoiceSyncing(true);
+    setInvoiceSyncResult(null);
+    try {
+      const result = await apiFetch("/api/billing/sync-invoices", { method: "POST" });
+      setInvoiceSyncResult(result);
+      await loadInvoices();
+    } catch (err) {
+      setInvoiceSyncResult({ error: err.message });
+    } finally {
+      setInvoiceSyncing(false);
+    }
+  }
+
   // ── Invoice CRUD ──────────────────────────────────────────────────────────
   function lineSubtotal(item) {
     return Number(item.quantity || 1) * Number(item.unit_price || 0);
@@ -338,9 +354,14 @@ export default function BillingPortal({ setActivePortal }) {
             </div>
           )}
           {tab === "invoices" && (
-            <button onClick={() => setShowInvoiceForm(true)} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
-              + New Invoice
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button onClick={syncInvoicesFromFreshbooks} disabled={invoiceSyncing} style={{ background: "#1a1a1a", color: invoiceSyncing ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: invoiceSyncing ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
+                {invoiceSyncing ? "Syncing…" : "↻ Sync from FreshBooks"}
+              </button>
+              <button onClick={() => setShowInvoiceForm(true)} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
+                + New Invoice
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -365,6 +386,14 @@ export default function BillingPortal({ setActivePortal }) {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {tab === "invoices" && (
         <div style={{ padding: "32px 48px" }}>
+          {invoiceSyncResult && (
+            <div style={{ marginBottom: 16, padding: "10px 16px", background: invoiceSyncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${invoiceSyncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: invoiceSyncResult.error ? "#E8001C" : "#D7FA06", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              {invoiceSyncResult.error
+                ? `Sync failed: ${invoiceSyncResult.error}`
+                : `Sync complete — ${invoiceSyncResult.created} created, ${invoiceSyncResult.updated} updated, ${invoiceSyncResult.skipped} skipped`}
+              <button onClick={() => setInvoiceSyncResult(null)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 16, padding: 0, marginLeft: 12 }}>×</button>
+            </div>
+          )}
           {loadingI ? (
             <div style={{ color: "#444", fontSize: 13, padding: "40px 0" }}>Loading invoices...</div>
           ) : invoices.length === 0 ? (
