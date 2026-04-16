@@ -22,7 +22,7 @@ async function sendEmail({ to, subject, html, text }) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Loudmouth Calendar <hello@posting.getloudmouth.us>",
+      from: "Loudmouth HQ <hello@posting.getloudmouth.us>",
       to,
       subject,
       html,
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
   if (shareErr) return res.status(500).json({ error: shareErr.message });
 
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const siteUrl = process.env.SITE_URL || process.env.APP_URL || "https://loudmouthcalendar.com";
+  const siteUrl = process.env.SITE_URL || process.env.APP_URL || "https://getloudmouth.work";
   const publicUrl = `${siteUrl}/?contentPlanToken=${share.token}`;
 
   // Look up sender's name
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
       html: `
         <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff">
           <div style="font-weight:900;font-size:16px;letter-spacing:0.08em;color:#1a1a2e;margin-bottom:4px">CONTENT PLAN</div>
-          <div style="font-size:11px;color:#aaa;letter-spacing:0.06em;margin-bottom:28px">by LOUDMOUTH CREATIVE</div>
+          <div style="font-size:11px;color:#aaa;letter-spacing:0.06em;margin-bottom:28px">by Loudmouth</div>
           <p style="font-size:15px;color:#222;margin-bottom:8px">Hi there,</p>
           <p style="font-size:14px;color:#444;line-height:1.6">
             <strong>${senderName}</strong> has shared the <strong>${plan.client_name}</strong> content plan for

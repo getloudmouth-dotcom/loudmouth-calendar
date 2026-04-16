@@ -55,8 +55,8 @@ export default function CalendarBuilder({
   {/* NAV */}
   <nav className="no-print" style={{ background: "#1a1a2e", padding: "12px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, gap: 24 }}>
     <div onClick={() => { realtimeChannelRef.current?.unsubscribe(); realtimeChannelRef.current = null; setShowDashboard(true); }} style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start", flexShrink: 0, cursor: "pointer" }}>
-      <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16.5, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</span>
-      <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em" }}>by LOUDMOUTH CREATIVE</span>
+      <span style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16.5, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>LOUDMOUTH HQ</span>
+      <span style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, fontSize: 10, letterSpacing: "0.08em" }}>by Loudmouth</span>
     </div>
     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
       {stepLabels.map((label, i) => {

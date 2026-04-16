@@ -92,7 +92,7 @@ export default function ContentPlanPublicView({ token }) {
       <div style={{ background: "#1a1a2e", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
           <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em" }}>CONTENT PLAN</div>
-          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em" }}>by LOUDMOUTH CREATIVE</div>
+          <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em" }}>by Loudmouth</div>
         </div>
         <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 600 }}>
           {plan?.client_name} — {MONTHS[plan?.month]} {plan?.year}

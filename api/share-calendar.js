@@ -19,7 +19,7 @@ async function sendEmail({ to, subject, html }) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Loudmouth Calendar <reminders@loudmouthcalendar.com>",
+      from: "Loudmouth HQ <hello@posting.getloudmouth.us>",
       to,
       subject,
       html,
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
     .single();
 
   const sharerName = sharerProfile?.name || "Someone";
-  const siteUrl = process.env.SITE_URL || "https://loudmouthcalendar.com";
+  const siteUrl = process.env.SITE_URL || "https://getloudmouth.work";
 
   // Send email notification
   try {
@@ -104,8 +104,8 @@ export default async function handler(req, res) {
       subject: `${sharerName} shared a calendar with you`,
       html: `
         <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff">
-          <div style="font-weight:900;font-size:16px;letter-spacing:0.08em;color:#1a1a2e;margin-bottom:4px">SMM CALENDAR CREATOR</div>
-          <div style="font-size:11px;color:#aaa;letter-spacing:0.06em;margin-bottom:28px">by LOUDMOUTH CREATIVE</div>
+          <div style="font-weight:900;font-size:16px;letter-spacing:0.08em;color:#1a1a2e;margin-bottom:4px">LOUDMOUTH HQ</div>
+          <div style="font-size:11px;color:#aaa;letter-spacing:0.06em;margin-bottom:28px">by Loudmouth</div>
           <p style="font-size:15px;color:#222;margin-bottom:8px">Hi ${collaboratorProfile.name || collaboratorProfile.email},</p>
           <p style="font-size:14px;color:#444;line-height:1.6">
             <strong>${sharerName}</strong> has shared the <strong>${calendar.client_name}</strong> calendar with you as a <strong>${permission}</strong>.

@@ -39,7 +39,7 @@ async function sendEmail({ to, subject, html, text }) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Loudmouth Calendar <reminders@posting.getloudmouth.us>",
+      from: "Loudmouth HQ <reminders@posting.getloudmouth.us>",
       to,
       subject,
       html,
@@ -127,8 +127,8 @@ function buildEmailHtml(dateStr, rows, userName, postsByRowId) {
   return `
     <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:560px;margin:0 auto;color:#222;">
       <div style="background:#1a1a2e;padding:20px 28px;border-radius:10px 10px 0 0;">
-        <span style="color:#D7FA06;font-weight:900;font-size:15px;letter-spacing:0.08em;">SMM CALENDAR CREATOR</span>
-        <span style="color:rgba(255,255,255,0.35);font-size:9px;letter-spacing:0.06em;display:block;">by LOUDMOUTH CREATIVE</span>
+        <span style="color:#D7FA06;font-weight:900;font-size:15px;letter-spacing:0.08em;">LOUDMOUTH HQ</span>
+        <span style="color:rgba(255,255,255,0.35);font-size:9px;letter-spacing:0.06em;display:block;">by Loudmouth</span>
       </div>
       <div style="background:white;padding:28px;border:1px solid #e8e8e8;border-top:none;border-radius:0 0 10px 10px;">
         ${greeting}
@@ -172,7 +172,7 @@ function buildEmailText(dateStr, rows, userName, postsByRowId) {
     })
     .join("\n\n---\n\n");
 
-  return `SMM CALENDAR CREATOR — Today's posting schedule\n${dateStr}\n\n${greeting}${sections}\n\nYou're receiving this because you scheduled posts in SMM Calendar Creator.`;
+  return `LOUDMOUTH HQ — Today's posting schedule\n${dateStr}\n\n${greeting}${sections}\n\nYou're receiving this because you scheduled posts in Loudmouth HQ.`;
 }
 
 function escHtml(str) {

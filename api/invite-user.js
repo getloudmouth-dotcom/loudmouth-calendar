@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid role" });
   }
 
-  const redirectTo = `${process.env.SITE_URL || "https://loudmouthcalendar.com"}`;
+  const redirectTo = `${process.env.SITE_URL || "https://getloudmouth.work"}`;
 
   const { data, error } = await sbAdmin.auth.admin.inviteUserByEmail(email, {
     redirectTo,

@@ -3,8 +3,8 @@ export default function AuthView({ authMode, setAuthMode, authEmail, setAuthEmai
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#1a1a2e", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
       <div style={{ background: "white", borderRadius: 16, padding: 40, width: 360, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
         <div style={{ marginBottom: 28, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-          <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: "0.08em", color: "#1a1a2e", whiteSpace: "nowrap" }}>SMM CALENDAR CREATOR</div>
-          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by LOUDMOUTH CREATIVE</div>
+          <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: "0.08em", color: "#1a1a2e", whiteSpace: "nowrap" }}>LOUDMOUTH HQ</div>
+          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by Loudmouth</div>
         </div>
         <div style={{ display: "flex", gap: 0, marginBottom: 24, border: "1.5px solid #e0e0e0", borderRadius: 8, overflow: "hidden" }}>
           <button onClick={() => setAuthMode("login")} style={{ flex: 1, padding: "9px 0", background: authMode === "login" ? "#1a1a2e" : "white", color: authMode === "login" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Log In</button>
