@@ -167,15 +167,35 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Webhook not configured" });
   }
 
-  console.log(`[fb-webhook] content-type: ${req.headers["content-type"]}`);
-  console.log(`[fb-webhook] raw body: ${JSON.stringify(req.body)}`);
-
   const { name, object_id, account_id, verifier } = req.body ?? {};
 
   // ── callback.verify — FreshBooks URL ownership check ─────────────────────
+  // FreshBooks sends this immediately after webhook registration.
+  // Step 1: respond 200 to acknowledge receipt.
+  // Step 2: PUT the verifier back to FreshBooks to confirm — this is what
+  //         flips verified: true on the callback record.
   if (name === "callback.verify") {
-    console.log(`[fb-webhook] callback.verify received — verifier: ${verifier}`);
-    return res.status(200).json({ verifier });
+    console.log(`[fb-webhook] callback.verify received — verifier: ${verifier}, object_id: ${object_id}`);
+    res.status(200).json({ verifier });
+
+    // Confirm verification with FreshBooks (fire-and-forget)
+    try {
+      const fbAccountId = account_id || process.env.FRESHBOOKS_ACCOUNT_ID;
+      const { getFreshBooksToken } = await import("../freshbooks.js");
+      const fbToken = await getFreshBooksToken();
+      const confirmRes = await fetch(
+        `https://api.freshbooks.com/events/account/${fbAccountId}/events/callbacks/${object_id}`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${fbToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ callback: { verifier } }),
+        }
+      );
+      console.log(`[fb-webhook] verification confirmed: ${confirmRes.status}`);
+    } catch (err) {
+      console.error(`[fb-webhook] verification confirm failed: ${err.message}`);
+    }
+    return;
   }
 
   // ── Verify signature ──────────────────────────────────────────────────────
