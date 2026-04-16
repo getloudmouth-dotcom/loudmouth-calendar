@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     while (true) {
       const headers = await freshBooksHeaders();
       const fbRes = await fetch(
-        `https://api.freshbooks.com/accounting/account/${accountId}/users/clients?page=${page}&per_page=100`,
+        `https://api.freshbooks.com/accounting/account/${accountId}/users/clients?page=${page}&per_page=100&search[vis_state]=0`,
         { headers }
       );
       if (!fbRes.ok) {
@@ -89,23 +89,47 @@ export default async function handler(req, res) {
       .filter(c => c.freshbooks_contact_id)
       .map(c => [c.freshbooks_contact_id, c])
   );
+  // Secondary index: unsynced local clients by name (for linking existing records)
+  const unsyncedByName = Object.fromEntries(
+    (localClients ?? [])
+      .filter(c => !c.freshbooks_contact_id && c.name)
+      .map(c => [c.name.toLowerCase(), c])
+  );
 
   let created = 0, updated = 0, pushed = 0, skipped = 0;
+  const errors = [];
 
   for (const fb of allFbClients) {
     const fbId = String(fb.id);
     // FreshBooks timestamps are UTC but have no timezone suffix — append " UTC"
     const fbUpdated = new Date(`${fb.updated} UTC`);
-    const name = parseName(fb.fname, fb.lname) || null;
+    const name = parseName(fb.fname, fb.lname) || fb.organization || null;
     const company = fb.organization || null;
     const email = fb.email || null;
     const phone = normalizePhone(fbPhone(fb)) || null;
 
-    const local = byFbId[fbId];
+    // Primary lookup: match by freshbooks_contact_id
+    let local = byFbId[fbId];
+
+    // Fallback: if not found by FB ID, check if an unsynced local client has the same name
+    if (!local && name) {
+      local = unsyncedByName[name.toLowerCase()];
+      if (local) {
+        // Link existing local record to FreshBooks — update its freshbooks_contact_id
+        await supabase.from("clients").update({
+          freshbooks_contact_id: fbId,
+          freshbooks_updated_at: fbUpdated.toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq("id", local.id);
+        byFbId[fbId] = { ...local, freshbooks_contact_id: fbId };
+        updated++;
+        continue;
+      }
+    }
 
     if (!local) {
       // ── New client from FreshBooks — insert locally ──────────────────────
-      await supabase.from("clients").insert({
+      const { error: insertErr } = await supabase.from("clients").insert({
         name,
         company,
         email,
@@ -114,6 +138,10 @@ export default async function handler(req, res) {
         freshbooks_updated_at: fbUpdated.toISOString(),
         created_by: user.id,
       });
+      if (insertErr) {
+        errors.push({ fbId, name: name ?? company, error: insertErr.message });
+        continue;
+      }
       created++;
       continue;
     }
@@ -171,5 +199,5 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ created, updated, pushed, skipped, total: allFbClients.length });
+  return res.status(200).json({ created, updated, pushed, skipped, total: allFbClients.length, errors });
 }

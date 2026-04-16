@@ -23,7 +23,7 @@ export default function CalendarBuilder({
   allPosts, pages, sortedDays, calendarCells, daysInMonth,
   toggleDay, changeDay, addPostToDay, removePostFromDay, swapPostContent, removeImageFromPost,
   updatePost,
-  clients, setClients, saveClients, addingClient, setAddingClient, newClientInput, setNewClientInput, addNewClient, editingClients, setEditingClients,
+  clients, addingClient, setAddingClient, newClientInput, setNewClientInput, addNewClient,
   canUndo, undo, canRedo, redo, resetCalendar,
   exporting, exportProgress, exportElapsed,
   exportMode,
@@ -188,43 +188,12 @@ export default function CalendarBuilder({
                       {clients.map(c => <option key={c} value={c}>{c}</option>)}
                       <option value="__add__">+ Add new client...</option>
                     </select>
-                    <button onClick={() => setEditingClients(true)} style={{ background: "none", border: "none", fontSize: 11, color: "#aaa", cursor: "pointer", textAlign: "left", padding: 0, textDecoration: "underline" }}>Edit client list</button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", gap: 8 }}>
                     <input autoFocus value={newClientInput} onChange={e => setNewClientInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNewClient()} placeholder="Type new client name..." style={inputStyle} />
                     <button onClick={addNewClient} style={{ ...primaryBtn, marginTop: 0, padding: "9px 18px", whiteSpace: "nowrap", fontSize: 13 }}>Add</button>
                     <button onClick={() => { setAddingClient(false); setNewClientInput(""); }} style={{ ...secondaryBtn, padding: "9px 14px", whiteSpace: "nowrap" }}>Cancel</button>
-                  </div>
-                )}
-                {editingClients && (
-                  <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-                    onClick={e => e.target === e.currentTarget && setEditingClients(false)}>
-                    <div style={{ background: "white", borderRadius: 14, width: 380, padding: 24, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>Edit Client List</div>
-                        <button onClick={() => setEditingClients(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
-                        {clients.map(c => (
-                          <div key={c} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "#f8f8f8", borderRadius: 8, border: "1px solid #eee" }}>
-                            <span style={{ flex: 1, fontSize: 13, color: "#333" }}>{c}</span>
-                            <button onClick={() => {
-                              const newName = prompt("Rename:", c);
-                              if (!newName || newName.trim() === c) return;
-                              setClients(prev => { const next = prev.map(x => x === c ? newName.trim() : x); saveClients(next); return next; });
-                              if (clientName === c) setClientName(newName.trim());
-                            }} style={{ background: "#f0f0f0", border: "none", borderRadius: 5, padding: "4px 10px", fontSize: 11, cursor: "pointer", color: "#555", fontWeight: 600 }}>Rename</button>
-                            <button onClick={() => {
-                              if (!window.confirm(`Delete "${c}"?`)) return;
-                              setClients(prev => { const next = prev.filter(x => x !== c); saveClients(next); return next; });
-                              if (clientName === c) setClientName("");
-                            }} style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", color: "#ccc" }}>✕</button>
-                          </div>
-                        ))}
-                      </div>
-                      <button onClick={() => setEditingClients(false)} style={{ ...primaryBtn, width: "100%", marginTop: 16, padding: "10px 0", textAlign: "center" }}>Done</button>
-                    </div>
                   </div>
                 )}
               </div>

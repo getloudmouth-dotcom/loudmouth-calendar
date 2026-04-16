@@ -155,9 +155,7 @@ export default function App() {
   const today = new Date();
   const [step, setStep] = useState(() => (readExportToken() ? 4 : 1));
   const [clientName, setClientName] = useState("");
-  const [clients, setClients] = useState(() => {
-    try { const s = localStorage.getItem("lm_clients"); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  const [clients, setClients] = useState([]);
   const [_builders, _setBuilders] = useState(() => {
     try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : []; } catch { return []; }
   });
@@ -363,7 +361,6 @@ useEffect(() => {
   const [cpPublicToken] = useState(() => readContentPlanToken());
   const [cpExportToken] = useState(() => readCPExportToken());
   const [billingExportToken] = useState(() => readBillingExportToken());
-  const [editingClients, setEditingClients] = useState(false);
 
   function connectDrive() {
     if (!window.google?.accounts?.oauth2) {
@@ -656,14 +653,11 @@ useEffect(() => {
     setDriveUploadProgress({ active: false, done: 0, total: 0 });
   }
 
-  function addNewClient() {
+  async function addNewClient() {
     const name = newClientInput.trim();
     if (!name) return;
-    setClients(prev => {
-      const next = [...prev, name];
-      saveClients(next);
-      return next;
-    });
+    await supabase.from("clients").insert({ name, created_by: (await supabase.auth.getUser()).data.user?.id });
+    await loadClients();
     setClientName(name);
     setNewClientInput("");
     setAddingClient(false);
@@ -817,7 +811,7 @@ useEffect(() => {
         if (!name) setShowProfileSetup(true);
         loadAllCalendars();
         loadAllContentPlans();
-        loadClients(session.user.id);
+        loadClients();
         loadScheduledPosts();
         loadUserProfile(session.user.id);
       }
@@ -830,7 +824,7 @@ useEffect(() => {
         if (!name) setShowProfileSetup(true);
         loadAllCalendars();
         loadAllContentPlans();
-        loadClients(session.user.id);
+        loadClients();
         loadScheduledPosts();
         loadUserProfile(session.user.id);
       }
@@ -1017,30 +1011,13 @@ useEffect(() => {
     setCalCollaborators(map);
   }
 
-  async function loadClients(userId) {
-    const { data } = await supabase.from("user_settings").select("clients").eq("user_id", userId).single();
-    if (data?.clients?.length) {
-      setClients(data.clients);
-    } else {
-      // One-time migration: seed from localStorage if Supabase is empty
-      try {
-        const local = localStorage.getItem("lm_clients");
-        if (local) {
-          const parsed = JSON.parse(local);
-          if (parsed.length) {
-            setClients(parsed);
-            await supabase.from("user_settings").upsert({ user_id: userId, clients: parsed, updated_at: new Date().toISOString() });
-          }
-        }
-      } catch { /* ignore */ }
+  async function loadClients() {
+    const { data } = await supabase.from("clients").select("name").order("name", { ascending: true });
+    if (data?.length) {
+      setClients(data.map(c => c.name).filter(Boolean));
     }
   }
 
-  async function saveClients(next, userId) {
-    const uid = userId || (await supabase.auth.getUser()).data.user?.id;
-    if (!uid) return;
-    await supabase.from("user_settings").upsert({ user_id: uid, clients: next, updated_at: new Date().toISOString() });
-  }
 
   async function openCalendar(cal) {
     setCurrentCalendarId(cal.id);
@@ -1573,10 +1550,10 @@ useEffect(() => {
         toggleDay={toggleDay} changeDay={changeDay} addPostToDay={addPostToDay} removePostFromDay={removePostFromDay}
         swapPostContent={swapPostContent} removeImageFromPost={removeImageFromPost}
         updatePost={updatePost}
-        clients={clients} setClients={setClients} saveClients={saveClients}
+        clients={clients}
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
-        addNewClient={addNewClient} editingClients={editingClients} setEditingClients={setEditingClients}
+        addNewClient={addNewClient}
         canUndo={canUndo} undo={undo} canRedo={canRedo} redo={redo} resetCalendar={resetCalendar}
         exporting={exporting} exportProgress={exportProgress} exportElapsed={exportElapsed}
         exportMode={exportMode}
