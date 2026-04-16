@@ -19,7 +19,7 @@ async function sendEmail({ to, subject, html }) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Loudmouth HQ <hello@posting.getloudmouth.us>",
+      from: "Loudmouth HQ <reminders@getloudmouth.work>",
       to,
       subject,
       html,

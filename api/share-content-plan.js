@@ -22,13 +22,13 @@ async function sendEmail({ to, subject, html, text }) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Loudmouth HQ <hello@posting.getloudmouth.us>",
+      from: "Loudmouth HQ <reminders@getloudmouth.work>",
       to,
       subject,
       html,
       text,
       headers: {
-        "List-Unsubscribe": `<mailto:unsubscribe@getloudmouth.us?subject=unsubscribe>`,
+        "List-Unsubscribe": `<mailto:unsubscribe@getloudmouth.work?subject=unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     }),

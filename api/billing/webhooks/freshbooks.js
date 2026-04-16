@@ -125,13 +125,13 @@ async function sendPaymentConfirmation(invoice) {
           </table>
 
           <p style="color:#555;font-size:13px;line-height:1.6;margin:0;">
-            Questions? Reply to this email or reach us at <a href="mailto:billing@getloudmouth.us" style="color:#888;text-decoration:none;">billing@getloudmouth.us</a>
+            Questions? Reply to this email or reach us at <a href="mailto:billing@getloudmouth.work" style="color:#888;text-decoration:none;">billing@getloudmouth.work</a>
           </p>
         </td></tr>
 
         <!-- Footer -->
         <tr><td style="padding:0 32px 28px;border-top:1px solid #111;">
-          <p style="color:#333;font-size:11px;margin:16px 0 0;">Loudmouth Creative — billing@getloudmouth.us</p>
+          <p style="color:#333;font-size:11px;margin:16px 0 0;">Loudmouth Creative — billing@getloudmouth.work</p>
         </td></tr>
 
       </table>
@@ -144,7 +144,7 @@ async function sendPaymentConfirmation(invoice) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Loudmouth <billing@getloudmouth.us>",
+      from: "Loudmouth <billing@getloudmouth.work>",
       to: [client.email],
       subject: `Payment received — Invoice ${invoice.invoice_number} (${formattedTotal})`,
       html,

@@ -191,8 +191,8 @@ async function sendInvoiceEmail(invoice, client, lineItems) {
 
         <tr><td style="padding:0 32px 28px;border-top:1px solid #111;">
           <p style="color:#444;font-size:11px;margin:16px 0 0;line-height:1.5;">
-            Questions? Reply to this email or contact us at billing@getloudmouth.us<br>
-            <a href="mailto:billing@getloudmouth.us" style="color:#555;text-decoration:none;">Unsubscribe</a>
+            Questions? Reply to this email or contact us at billing@getloudmouth.work<br>
+            <a href="mailto:billing@getloudmouth.work" style="color:#555;text-decoration:none;">Unsubscribe</a>
           </p>
         </td></tr>
 
@@ -206,11 +206,11 @@ async function sendInvoiceEmail(invoice, client, lineItems) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "Loudmouth <billing@getloudmouth.us>",
+      from: "Loudmouth <billing@getloudmouth.work>",
       to: [client.email],
       subject: `Invoice ${invoice.invoice_number} from Loudmouth Creative — ${formattedTotal}`,
       html,
-      headers: { "List-Unsubscribe": "<mailto:billing@getloudmouth.us>" },
+      headers: { "List-Unsubscribe": "<mailto:billing@getloudmouth.work>" },
     }),
   });
 
