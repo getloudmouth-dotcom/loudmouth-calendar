@@ -15,6 +15,11 @@ export function readCPExportToken() {
   return new URLSearchParams(window.location.search).get("contentPlanExportToken");
 }
 
+export function readBillingExportToken() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("billingExportToken");
+}
+
 export async function compressToBlob(file) {
   return new Promise(resolve => {
     const img = new Image();

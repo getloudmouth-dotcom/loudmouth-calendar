@@ -26,12 +26,19 @@
     },
     "api/update-content-plan-item.js": {
       "maxDuration": 10
+    },
+    "api/billing/process-recurring.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/api/send-reminders",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/billing/process-recurring",
+      "schedule": "0 10 * * *"
     }
   ],
   "headers": [

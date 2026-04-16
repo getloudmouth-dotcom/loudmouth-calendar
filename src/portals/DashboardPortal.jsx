@@ -6,6 +6,7 @@ import CalendarListPortal from "./CalendarListPortal";
 import SchedulingPortal from "./SchedulingPortal";
 import AdminPortal from "./AdminPortal";
 import ContentPlanPortal from "./ContentPlanPortal";
+import BillingPortal from "./BillingPortal";
 
 export default function DashboardPortal({
   activePortal, setActivePortal,
@@ -199,6 +200,27 @@ export default function DashboardPortal({
             </div>
           </div>
         )}
+        {/* Billing */}
+        {can("billing") && (
+          <div onClick={() => setActivePortal("billing")} style={{ background: "white", borderRadius: 16, padding: "32px 28px 28px", width: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", flexDirection: "column", gap: 0, transition: "box-shadow 0.15s, transform 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "none"; }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <rect x="2" y="5" width="20" height="14" rx="2" stroke="#D7FA06" strokeWidth="2"/>
+                <path d="M2 10h20" stroke="#D7FA06" strokeWidth="2"/>
+                <rect x="5" y="14" width="4" height="2" rx="0.5" fill="#D7FA06"/>
+                <rect x="11" y="14" width="6" height="2" rx="0.5" fill="#D7FA06"/>
+              </svg>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1a2e", marginBottom: 8 }}>Billing</div>
+            <div style={{ fontSize: 13, color: "#888", lineHeight: 1.5, flex: 1 }}>Create and send branded invoices, track payments, and manage client billing.</div>
+            <div style={{ marginTop: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: "#bbb" }}> </span>
+              <span style={{ background: "#1a1a2e", color: "#D7FA06", borderRadius: 8, padding: "7px 16px", fontSize: 12, fontWeight: 800, letterSpacing: "0.04em" }}>Open →</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )}
@@ -267,6 +289,11 @@ export default function DashboardPortal({
       cpShareError={cpShareError} setCpShareError={setCpShareError}
       setActivePortal={setActivePortal}
     />
+  )}
+
+  {/* ── Billing portal ── */}
+  {activePortal === "billing" && can("billing") && (
+    <BillingPortal setActivePortal={setActivePortal} />
   )}
 
   {/* ── Share Modal ── */}

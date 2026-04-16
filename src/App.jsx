@@ -16,7 +16,7 @@ class ErrorBoundary extends Component {
 // PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
 import { MONTHS, CONTENT_FIELDS, ROLE_TOOLS, ALL_TOOLS, newPost } from "./constants";
-import { readExportToken, readContentPlanToken, readCPExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, formatDate, chunkArray } from "./utils";
+import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, formatDate, chunkArray } from "./utils";
 import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
 import AuthView from "./views/AuthView";
@@ -24,6 +24,132 @@ import ProfileSetupView from "./views/ProfileSetupView";
 import { AppContext } from "./AppContext";
 import CalendarBuilder from "./portals/CalendarBuilder";
 import DashboardPortal from "./portals/DashboardPortal";
+
+// ── Billing Invoice Export View ───────────────────────────────────────────────
+// Rendered headlessly by Puppeteer when generating invoice PDFs.
+// Fetches invoice data from Redis via /api/billing/invoice-export-data, renders
+// a styled invoice page, then signals window.__BILLING_EXPORT_READY__.
+function BillingInvoiceExportView({ token }) {
+  const [invoice, setInvoice] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/billing/invoice-export-data?token=${token}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        setInvoice(data);
+        setTimeout(() => {
+          if (document.fonts?.ready) {
+            document.fonts.ready.then(() => { window.__BILLING_EXPORT_READY__ = true; });
+          } else {
+            window.__BILLING_EXPORT_READY__ = true;
+          }
+        }, 300);
+      })
+      .catch(() => {
+        setError(true);
+        window.__BILLING_EXPORT_ERROR__ = true;
+      });
+  }, [token]);
+
+  if (error) return <div style={{ padding: 40, color: "red" }}>Failed to load invoice data.</div>;
+  if (!invoice) return null;
+
+  const fmt = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: invoice.currency ?? "USD" }).format(n ?? 0);
+  const fmtDate = (s) => s ? new Date(s).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "";
+
+  return (
+    <div className="invoice-page" style={{ width: 794, minHeight: 1123, background: "#fff", fontFamily: "'Helvetica Neue', Arial, sans-serif", padding: "60px 64px", boxSizing: "border-box", color: "#111" }}>
+      {/* Header */}
+      <div style={{ background: "#1a1a2e", padding: "28px 32px", marginBottom: 40, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 26, letterSpacing: "-0.5px", textTransform: "uppercase" }}>LOUDMOUTH</div>
+        <div style={{ color: "rgba(255,255,255,0.5)", fontWeight: 700, fontSize: 13, textTransform: "uppercase", letterSpacing: "1px" }}>Invoice</div>
+      </div>
+
+      {/* Meta */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 40 }}>
+        <div>
+          <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Invoice #</div>
+          <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: "-0.5px" }}>{invoice.invoiceNumber}</div>
+          <div style={{ marginTop: 20 }}>
+            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Bill To</div>
+            <div style={{ fontWeight: 800, fontSize: 16 }}>{invoice.client?.name ?? ""}</div>
+            {invoice.client?.company && <div style={{ color: "#888", fontSize: 13 }}>{invoice.client.company}</div>}
+            {invoice.client?.email && <div style={{ color: "#aaa", fontSize: 12 }}>{invoice.client.email}</div>}
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Issue Date</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{fmtDate(invoice.issueDate)}</div>
+          </div>
+          <div>
+            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Due Date</div>
+            <div style={{ fontWeight: 800, fontSize: 14, color: "#E8001C" }}>{fmtDate(invoice.dueDate)}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Line items */}
+      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 32, fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: "2px solid #1a1a2e" }}>
+            {["Description", "Qty", "Rate", "Total"].map((h, i) => (
+              <th key={h} style={{ textAlign: i === 0 ? "left" : "right", padding: "10px 8px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "#888", fontWeight: 700 }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {(invoice.lineItems ?? []).sort((a, b) => a.sort_order - b.sort_order).map((item, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #f0f0f0" }}>
+              <td style={{ padding: "12px 8px", color: "#333" }}>{item.description}</td>
+              <td style={{ padding: "12px 8px", textAlign: "right", color: "#666" }}>{Number(item.quantity)}</td>
+              <td style={{ padding: "12px 8px", textAlign: "right", color: "#666" }}>${Number(item.unit_price).toFixed(2)}</td>
+              <td style={{ padding: "12px 8px", textAlign: "right", fontWeight: 600 }}>${Number(item.line_total ?? (item.quantity * item.unit_price)).toFixed(2)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Totals */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ width: 280 }}>
+          {invoice.taxRate > 0 && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", color: "#888", fontSize: 13 }}>
+                <span>Subtotal</span><span>{fmt(invoice.subtotal)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", color: "#888", fontSize: 13 }}>
+                <span>Tax ({invoice.taxRate}%)</span><span>{fmt(invoice.taxAmount)}</span>
+              </div>
+            </>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderTop: "2px solid #1a1a2e", fontWeight: 900, fontSize: 20 }}>
+            <span>Total Due</span>
+            <span style={{ color: "#D7FA06", background: "#1a1a2e", padding: "2px 12px", borderRadius: 4 }}>{fmt(invoice.total)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      {invoice.notes && (
+        <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid #f0f0f0" }}>
+          <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Notes</div>
+          <div style={{ color: "#666", fontSize: 13, lineHeight: 1.6 }}>{invoice.notes}</div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div style={{ marginTop: 60, paddingTop: 24, borderTop: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ color: "#ccc", fontSize: 11 }}>billing@getloudmouth.us</div>
+        {invoice.paymentUrl && (
+          <div style={{ color: "#aaa", fontSize: 11 }}>Pay at: {invoice.paymentUrl}</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const today = new Date();
@@ -236,6 +362,7 @@ useEffect(() => {
   const [exportMode, setExportMode] = useState(() => !!readExportToken());
   const [cpPublicToken] = useState(() => readContentPlanToken());
   const [cpExportToken] = useState(() => readCPExportToken());
+  const [billingExportToken] = useState(() => readBillingExportToken());
   const [editingClients, setEditingClients] = useState(false);
 
   function connectDrive() {
@@ -1355,6 +1482,7 @@ useEffect(() => {
 
   if (cpPublicToken) return <ErrorBoundary><ContentPlanPublicView token={cpPublicToken} /></ErrorBoundary>;
   if (cpExportToken) return <ContentPlanExportView token={cpExportToken} />;
+  if (billingExportToken) return <BillingInvoiceExportView token={billingExportToken} />;
 
   if (authLoading && !exportMode) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "'Helvetica Neue', Arial, sans-serif", background: "#1a1a2e", color: "#D7FA06", fontSize: 16, fontWeight: 700, letterSpacing: "0.08em" }}>LOADING...</div>;
 
