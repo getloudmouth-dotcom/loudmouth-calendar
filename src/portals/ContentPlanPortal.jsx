@@ -8,6 +8,7 @@ export default function ContentPlanPortal({
   currentCPId, setCurrentCPId,
   activeCPStep, setActiveCPStep,
   cpClientName, setCpClientName,
+  cpClientId, setCpClientId,
   cpMonth, setCpMonth,
   cpYear, setCpYear,
   cpShootDate, setCpShootDate,
@@ -16,15 +17,18 @@ export default function ContentPlanPortal({
   cpItems, setCpItems,
   cpSaving,
   allContentPlans,
-  clients, setClients,
+  clients,
   addingClient, setAddingClient,
   newClientInput, setNewClientInput,
   newContentPlan, openContentPlan, saveContentPlan, deleteContentPlan, generateCPItems, updateCPItem,
   getOrCreateShareToken,
   cpShareModal, setCpShareModal,
   cpShareEmail, setCpShareEmail,
+  cpShareMethod, setCpShareMethod,
   cpShareBusy, setCpShareBusy,
   cpShareError, setCpShareError,
+  cpShareSuccess, setCpShareSuccess,
+  doSendContentPlan,
   setActivePortal,
 }) {
   const { showToast, user } = useApp();
@@ -153,21 +157,23 @@ export default function ContentPlanPortal({
             <div style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e", marginBottom: 8 }}>New Content Plan</div>
             <div style={{ fontSize: 13, color: "#999", marginBottom: 28 }}>Set up the basics for this content plan.</div>
             <label style={labelStyle}>Client</label>
-            {!addingClient ? (
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                <select value={cpClientName} onChange={e => { if (e.target.value === "__add__") setAddingClient(true); else setCpClientName(e.target.value); }} style={{ ...inputStyle, flex: 1 }}>
-                  <option value="">Select a client...</option>
-                  {clients.map(c => <option key={c} value={c}>{c}</option>)}
-                  <option value="__add__">+ Add new client</option>
-                </select>
-              </div>
-            ) : (
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                <input autoFocus value={newClientInput} onChange={e => setNewClientInput(e.target.value)} placeholder="Client name..." style={{ ...inputStyle, flex: 1 }} onKeyDown={e => { if (e.key === "Enter" && newClientInput.trim()) { const n = newClientInput.trim(); setClients(p => [...p, n]); setCpClientName(n); setNewClientInput(""); setAddingClient(false); } if (e.key === "Escape") { setAddingClient(false); setNewClientInput(""); } }} />
-                <button onClick={() => { if (newClientInput.trim()) { const n = newClientInput.trim(); setClients(p => [...p, n]); setCpClientName(n); setNewClientInput(""); setAddingClient(false); } }} style={{ ...primaryBtn, padding: "9px 16px" }}>Add</button>
-                <button onClick={() => { setAddingClient(false); setNewClientInput(""); }} style={{ ...secondaryBtn, padding: "9px 14px" }}>✕</button>
-              </div>
-            )}
+            <div style={{ marginBottom: 16 }}>
+              <select
+                value={cpClientId || ""}
+                onChange={e => {
+                  const c = clients.find(c => c.id === e.target.value);
+                  setCpClientId(e.target.value || null);
+                  setCpClientName(c?.name || "");
+                }}
+                style={{ ...inputStyle, width: "100%" }}
+              >
+                <option value="">Select a client...</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              {clients.length === 0 && (
+                <div style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>No clients yet — add them in Billing first.</div>
+              )}
+            </div>
             <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>Month</label>
@@ -196,9 +202,9 @@ export default function ContentPlanPortal({
               </div>
             </div>
             <button
-              onClick={() => { if (!cpClientName.trim()) { showToast("Please select a client", "error"); return; } const duplicate = allContentPlans.find(p => p.client_name === cpClientName && p.month === cpMonth && p.year === cpYear); if (duplicate) { showToast(`A content plan for ${cpClientName} — ${MONTHS[cpMonth]} ${cpYear} already exists`, "error"); return; } const items = generateCPItems(cpProducedCount, cpOrganicCount); setCpItems(items); setActiveCPStep(2); }}
+              onClick={() => { if (!cpClientId) { showToast("Please select a client", "error"); return; } const duplicate = allContentPlans.find(p => p.client_id === cpClientId && p.month === cpMonth && p.year === cpYear); if (duplicate) { showToast(`A content plan for ${cpClientName} — ${MONTHS[cpMonth]} ${cpYear} already exists`, "error"); return; } const items = generateCPItems(cpProducedCount, cpOrganicCount); setCpItems(items); setActiveCPStep(2); }}
               style={{ ...primaryBtn, width: "100%", textAlign: "center" }}
-              disabled={!cpClientName.trim() || (cpProducedCount === 0 && cpOrganicCount === 0)}
+              disabled={!cpClientId || (cpProducedCount === 0 && cpOrganicCount === 0)}
             >
               Continue →
             </button>
@@ -388,7 +394,7 @@ export default function ContentPlanPortal({
                 <button
                   onClick={async () => {
                     if (!currentCPId) { await saveContentPlan(false); }
-                    try { await getOrCreateShareToken(currentCPId); setCpShareEmail(""); setCpShareError(""); } catch (e) { showToast("Failed to generate share link", "error"); }
+                    try { await getOrCreateShareToken(currentCPId); } catch (e) { showToast("Failed to generate share link", "error"); }
                   }}
                   style={{ ...primaryBtn }}
                 >
@@ -518,63 +524,73 @@ export default function ContentPlanPortal({
         </div>
       )}
 
-      {/* ── Content Plan Share Modal ── */}
-      {cpShareModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => e.target === e.currentTarget && setCpShareModal(null)}>
-          <div style={{ background: "white", borderRadius: 16, width: 460, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>Share Content Plan</div>
-            <div style={{ fontSize: 12, color: "#aaa", marginBottom: 20 }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Public link (no login required)</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              <input readOnly value={cpShareModal.url} style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 12, outline: "none", color: "#555", background: "#f8f8f8" }} />
-              <button
-                onClick={() => { navigator.clipboard.writeText(cpShareModal.url).then(() => showToast("Link copied!")); }}
-                style={{ ...primaryBtn, padding: "9px 16px", fontSize: 12 }}
-              >
-                Copy
-              </button>
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Send via email</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input
-                type="email"
-                value={cpShareEmail}
-                onChange={e => setCpShareEmail(e.target.value)}
-                placeholder="client@example.com"
-                style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none" }}
-              />
-              <button
-                onClick={async () => {
-                  if (!cpShareEmail.trim()) return;
-                  setCpShareBusy(true); setCpShareError("");
-                  try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    const res = await fetch("/api/share-content-plan", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-                      body: JSON.stringify({ planId: cpShareModal.planId, recipientEmail: cpShareEmail.trim() }),
-                    });
-                    const json = await res.json();
-                    if (!res.ok) throw new Error(json.error || "Failed to send");
-                    showToast(`Email sent to ${cpShareEmail}`);
-                    setCpShareEmail("");
-                  } catch (e) { setCpShareError(e.message); }
-                  finally { setCpShareBusy(false); }
-                }}
-                disabled={cpShareBusy || !cpShareEmail.trim()}
-                style={{ ...primaryBtn, padding: "9px 16px", fontSize: 12, opacity: cpShareEmail.trim() ? 1 : 0.4 }}
-              >
-                {cpShareBusy ? "..." : "Send →"}
-              </button>
-            </div>
-            {cpShareError && <div style={{ fontSize: 12, color: "#E8001C", marginBottom: 8 }}>{cpShareError}</div>}
-            <div style={{ marginTop: 16, textAlign: "right" }}>
-              <button onClick={() => setCpShareModal(null)} style={{ ...secondaryBtn }}>Close</button>
+      {/* ── Content Plan Share / Send Modal ── */}
+      {cpShareModal && (() => {
+        const client = cpShareModal.client;
+        const noEmail = !client?.email;
+        const noPhone = !client?.phone;
+        const methods = [
+          { value: "email", label: "Email ✉️", disabled: noEmail, tip: noEmail ? "No email on file" : client.email },
+          { value: "sms",   label: "SMS 💬",   disabled: noPhone, tip: noPhone ? "No phone on file" : client.phone },
+          { value: "both",  label: "Both 📨",  disabled: noEmail || noPhone, tip: (noEmail || noPhone) ? "Needs email & phone" : `${client.email} & ${client.phone}` },
+        ];
+        const activeMethod = methods.find(m => m.value === cpShareMethod);
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+            onClick={e => e.target === e.currentTarget && setCpShareModal(null)}>
+            <div style={{ background: "white", borderRadius: 16, width: 460, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 2 }}>Send Content Plan</div>
+              <div style={{ fontSize: 12, color: "#aaa", marginBottom: 20 }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
+
+              {/* Public link row */}
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Public link (no login required)</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+                <input readOnly value={cpShareModal.url} style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 12, outline: "none", color: "#555", background: "#f8f8f8" }} />
+                <button onClick={() => { navigator.clipboard.writeText(cpShareModal.url).then(() => showToast("Link copied!")); }} style={{ ...primaryBtn, padding: "9px 16px", fontSize: 12 }}>Copy</button>
+              </div>
+
+              {/* Delivery method toggle */}
+              {!client ? (
+                <div style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>No client linked — link a client to enable direct send.</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Deliver via</div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    {methods.map(m => (
+                      <button
+                        key={m.value}
+                        disabled={m.disabled}
+                        onClick={() => { if (!m.disabled) { setCpShareMethod(m.value); setCpShareError(""); setCpShareSuccess(""); } }}
+                        style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: m.disabled ? "not-allowed" : "pointer", border: "1.5px solid", borderColor: cpShareMethod === m.value ? "#1a1a2e" : "#e0e0e0", background: cpShareMethod === m.value ? "#1a1a2e" : "white", color: cpShareMethod === m.value ? "#D7FA06" : m.disabled ? "#ccc" : "#555", opacity: m.disabled ? 0.5 : 1 }}
+                      >{m.label}</button>
+                    ))}
+                  </div>
+                  {activeMethod && !activeMethod.disabled && (
+                    <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>To: <span style={{ color: "#1a1a2e", fontWeight: 600 }}>{activeMethod.tip}</span></div>
+                  )}
+                  {cpShareSuccess && <div style={{ fontSize: 13, color: "#22aa66", fontWeight: 700, marginBottom: 10 }}>{cpShareSuccess}</div>}
+                  {cpShareError && <div style={{ fontSize: 12, color: "#E8001C", marginBottom: 10 }}>{cpShareError}</div>}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={doSendContentPlan}
+                      disabled={cpShareBusy || (activeMethod?.disabled)}
+                      style={{ flex: 1, padding: "11px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: cpShareBusy || activeMethod?.disabled ? "default" : "pointer", opacity: activeMethod?.disabled ? 0.4 : 1 }}
+                    >
+                      {cpShareBusy ? "Sending..." : `Send via ${cpShareMethod === "both" ? "Email & SMS" : cpShareMethod === "email" ? "Email" : "SMS"}`}
+                    </button>
+                    <button onClick={() => setCpShareModal(null)} style={{ ...secondaryBtn, padding: "11px 16px" }}>Close</button>
+                  </div>
+                </>
+              )}
+              {!client && (
+                <div style={{ textAlign: "right", marginTop: 16 }}>
+                  <button onClick={() => setCpShareModal(null)} style={{ ...secondaryBtn }}>Close</button>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

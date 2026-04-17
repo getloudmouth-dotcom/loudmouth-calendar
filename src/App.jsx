@@ -245,10 +245,13 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [cpItems, setCpItems] = useState([]);
   const [currentCPId, setCurrentCPId] = useState(null);
   const [allContentPlans, setAllContentPlans] = useState([]);
-  const [cpShareModal, setCpShareModal] = useState(null); // null | { planId, token, url }
+  const [cpClientId, setCpClientId] = useState(null);
+  const [cpShareModal, setCpShareModal] = useState(null); // null | { planId, token, url, client }
   const [cpShareEmail, setCpShareEmail] = useState("");
+  const [cpShareMethod, setCpShareMethod] = useState("email");
   const [cpShareBusy, setCpShareBusy] = useState(false);
   const [cpShareError, setCpShareError] = useState("");
+  const [cpShareSuccess, setCpShareSuccess] = useState("");
   const [cpSaving, setCpSaving] = useState(false);
   const cpAutoSaveTimerRef = useRef(null);
   // ── Toast ──
@@ -1024,10 +1027,8 @@ useEffect(() => {
   }
 
   async function loadClients() {
-    const { data } = await supabase.from("clients").select("name").order("name", { ascending: true });
-    if (data?.length) {
-      setClients(data.map(c => c.name).filter(Boolean));
-    }
+    const { data } = await supabase.from("clients").select("id, name, email, phone").order("name", { ascending: true });
+    if (data?.length) setClients(data.filter(c => c.name));
   }
 
 
@@ -1276,7 +1277,7 @@ useEffect(() => {
     if (!user) return;
     const { data } = await supabase
       .from("content_plans")
-      .select("*")
+      .select("*, clients(id, name, email, phone)")
       .order("updated_at", { ascending: false });
     setAllContentPlans(data || []);
   }
@@ -1341,6 +1342,7 @@ useEffect(() => {
           ...(currentCPId ? { id: currentCPId } : {}),
           user_id: user.id,
           client_name: cpClientName.trim(),
+          client_id: cpClientId || null,
           month: cpMonth,
           year: cpYear,
           shoot_date: cpShootDate,
@@ -1393,6 +1395,7 @@ useEffect(() => {
       .order("item_type")
       .order("item_number");
     setCurrentCPId(plan.id);
+    setCpClientId(plan.client_id || null);
     setCpClientName(plan.client_name);
     setCpMonth(plan.month);
     setCpYear(plan.year);
@@ -1408,6 +1411,7 @@ useEffect(() => {
 
   function newContentPlan() {
     setCurrentCPId(null);
+    setCpClientId(null);
     setCpClientName("");
     setCpMonth(today.getMonth());
     setCpYear(today.getFullYear());
@@ -1419,25 +1423,45 @@ useEffect(() => {
   }
 
   async function getOrCreateShareToken(planId) {
+    const { data: plan } = await supabase
+      .from("content_plans")
+      .select("*, clients(id, name, email, phone)")
+      .eq("id", planId)
+      .single();
     const { data: existing } = await supabase
       .from("content_plan_shares")
       .select("*")
       .eq("plan_id", planId)
       .single();
-    if (existing) {
-      const url = `${window.location.origin}/?contentPlanToken=${existing.token}`;
-      setCpShareModal({ planId, token: existing.token, url });
-      return existing;
-    }
-    const { data: created, error } = await supabase
+    const share = existing || (await supabase
       .from("content_plan_shares")
       .insert({ plan_id: planId, allow_client_notes: true })
       .select()
-      .single();
-    if (error) throw error;
-    const url = `${window.location.origin}/?contentPlanToken=${created.token}`;
-    setCpShareModal({ planId, token: created.token, url });
-    return created;
+      .single()).data;
+    if (!share) throw new Error("Failed to create share token");
+    const url = `${window.location.origin}/?contentPlanToken=${share.token}`;
+    setCpShareModal({ planId, token: share.token, url, client: plan?.clients || null });
+    setCpShareMethod("email");
+    setCpShareError("");
+    setCpShareSuccess("");
+    return share;
+  }
+
+  async function doSendContentPlan() {
+    setCpShareBusy(true); setCpShareError(""); setCpShareSuccess("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/share-content-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ planId: cpShareModal.planId, method: cpShareMethod }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to send");
+      const label = cpShareMethod === "both" ? "email & SMS" : cpShareMethod;
+      setCpShareSuccess(`Sent via ${label}`);
+    } catch (e) { setCpShareError(e.message); }
+    setCpShareBusy(false);
   }
 
   // Auto-save content plan
@@ -1537,6 +1561,7 @@ useEffect(() => {
         cpOrganicCount={cpOrganicCount} setCpOrganicCount={setCpOrganicCount}
         cpItems={cpItems} setCpItems={setCpItems} cpSaving={cpSaving}
         allContentPlans={allContentPlans} clients={clients} setClients={setClients}
+        cpClientId={cpClientId} setCpClientId={setCpClientId}
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
         newContentPlan={newContentPlan} openContentPlan={openContentPlan}
@@ -1544,8 +1569,11 @@ useEffect(() => {
         getOrCreateShareToken={getOrCreateShareToken}
         cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
         cpShareEmail={cpShareEmail} setCpShareEmail={setCpShareEmail}
+        cpShareMethod={cpShareMethod} setCpShareMethod={setCpShareMethod}
         cpShareBusy={cpShareBusy} setCpShareBusy={setCpShareBusy}
         cpShareError={cpShareError} setCpShareError={setCpShareError}
+        cpShareSuccess={cpShareSuccess} setCpShareSuccess={setCpShareSuccess}
+        doSendContentPlan={doSendContentPlan}
         signOut={signOut}
         toast={toast}
       />

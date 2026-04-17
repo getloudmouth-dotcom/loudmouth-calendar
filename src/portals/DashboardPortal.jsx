@@ -27,12 +27,15 @@ export default function DashboardPortal({
   cpClientName, setCpClientName, cpMonth, setCpMonth, cpYear, setCpYear,
   cpShootDate, setCpShootDate, cpProducedCount, setCpProducedCount,
   cpOrganicCount, setCpOrganicCount, cpItems, setCpItems, cpSaving,
-  allContentPlans, clients, setClients, addingClient, setAddingClient,
+  allContentPlans, clients, setClients, cpClientId, setCpClientId, addingClient, setAddingClient,
   newClientInput, setNewClientInput,
   newContentPlan, openContentPlan, saveContentPlan, deleteContentPlan, generateCPItems, updateCPItem,
   getOrCreateShareToken,
   cpShareModal, setCpShareModal, cpShareEmail, setCpShareEmail,
+  cpShareMethod, setCpShareMethod,
   cpShareBusy, setCpShareBusy, cpShareError, setCpShareError,
+  cpShareSuccess, setCpShareSuccess,
+  doSendContentPlan,
   loadAdminUsers,
   loadAllContentPlans,
   signOut,
@@ -283,10 +286,14 @@ export default function DashboardPortal({
       newContentPlan={newContentPlan} openContentPlan={openContentPlan}
       saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
       getOrCreateShareToken={getOrCreateShareToken}
+      cpClientId={cpClientId} setCpClientId={setCpClientId}
       cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
       cpShareEmail={cpShareEmail} setCpShareEmail={setCpShareEmail}
+      cpShareMethod={cpShareMethod} setCpShareMethod={setCpShareMethod}
       cpShareBusy={cpShareBusy} setCpShareBusy={setCpShareBusy}
       cpShareError={cpShareError} setCpShareError={setCpShareError}
+      cpShareSuccess={cpShareSuccess} setCpShareSuccess={setCpShareSuccess}
+      doSendContentPlan={doSendContentPlan}
       setActivePortal={setActivePortal}
     />
   )}

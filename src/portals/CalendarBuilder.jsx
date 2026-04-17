@@ -185,7 +185,7 @@ export default function CalendarBuilder({
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <select value={clientName} onChange={e => { if (e.target.value === "__add__") setAddingClient(true); else setClientName(e.target.value); }} style={inputStyle}>
                       <option value="">— Select a client —</option>
-                      {clients.map(c => <option key={c} value={c}>{c}</option>)}
+                      {clients.map(c => <option key={c.id || c.name || c} value={c.name || c}>{c.name || c}</option>)}
                       <option value="__add__">+ Add new client...</option>
                     </select>
                   </div>
