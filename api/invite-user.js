@@ -37,7 +37,7 @@ export default async function handler(req, res) {
 
   const { email, name = "", role = "smm", job_title = "" } = req.body;
   if (!email) return res.status(400).json({ error: "email is required" });
-  if (!["admin", "smm", "graphic_designer", "content_creator", "videographer", "video_editor", "public_relations", "account_manager", "client"].includes(role)) {
+  if (!["admin", "smm", "graphic_designer", "content_creator", "videographer", "video_editor", "public_relations", "account_manager"].includes(role)) {
     return res.status(400).json({ error: "Invalid role" });
   }
 

@@ -92,7 +92,6 @@ export default function AdminPortal({
               <option value="videographer">Videographer</option>
               <option value="video_editor">Video Editor</option>
               <option value="public_relations">Public Relations</option>
-              <option value="client">Client</option>
               <option value="admin">Admin</option>
             </select>
             {inviteError && <div style={{ fontSize: 12, color: "#E8001C", marginBottom: 12 }}>{inviteError}</div>}
@@ -126,7 +125,6 @@ export default function AdminPortal({
               <option value="videographer">Videographer</option>
               <option value="video_editor">Video Editor</option>
               <option value="public_relations">Public Relations</option>
-              <option value="client">Client</option>
               <option value="admin">Admin</option>
             </select>
             <label style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, display: "block", marginBottom: 4 }}>Status</label>
