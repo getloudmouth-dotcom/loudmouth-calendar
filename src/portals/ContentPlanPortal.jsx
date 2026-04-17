@@ -3,6 +3,7 @@ import { MONTHS } from "../constants";
 import { labelStyle, inputStyle, primaryBtn, secondaryBtn } from "../styles";
 import { useApp } from "../AppContext";
 import { useState, useEffect } from "react";
+import PinterestPanel from "../components/PinterestPanel";
 
 export default function ContentPlanPortal({
   currentCPId, setCurrentCPId,
@@ -29,6 +30,10 @@ export default function ContentPlanPortal({
   cpShareError, setCpShareError,
   cpShareSuccess, setCpShareSuccess,
   doSendContentPlan,
+  cpReferenceImages, addCPReferenceImages, removeCPReferenceImage,
+  pinterestToken, setPinterestToken,
+  pinterestOpen, setPinterestOpen,
+  pinterestPanelWidth, setPinterestPanelWidth,
   setActivePortal,
 }) {
   const { showToast, user } = useApp();
@@ -236,7 +241,13 @@ export default function ContentPlanPortal({
                   <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
                   <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>SHOOT DATE: {cpShootDate}</div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    onClick={() => setPinterestOpen(o => !o)}
+                    style={{ background: pinterestOpen ? "#E60023" : "#f5f5f5", color: pinterestOpen ? "white" : "#E60023", border: "1.5px solid #E60023", padding: "10px 16px", borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    📌 {pinterestOpen ? "Close" : "References"}
+                  </button>
                   <button onClick={() => saveContentPlan(false)} disabled={cpSaving} style={{ ...secondaryBtn, padding: "10px 18px" }}>
                     {cpSaving ? "Saving..." : "Save"}
                   </button>
@@ -339,6 +350,50 @@ export default function ContentPlanPortal({
                 <div style={{ flex: 1 }} />
                 <button onClick={() => { saveContentPlan(true); setActiveCPStep(3); }} style={{ ...primaryBtn }}>Preview & Export →</button>
               </div>
+
+              {/* Shot Plan / References */}
+              {cpReferenceImages?.length > 0 ? (
+                <div style={{ marginTop: 32, borderTop: "1.5px solid #f0f0f0", paddingTop: 24 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#aaa", letterSpacing: "0.08em", textTransform: "uppercase" }}>📌 Shot Plan / References</div>
+                    <button onClick={() => setPinterestOpen(o => !o)} style={{ background: "none", border: "none", fontSize: 11, color: "#E60023", cursor: "pointer", fontWeight: 700, padding: 0 }}>
+                      {pinterestOpen ? "Close Panel" : "+ Add More"}
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {cpReferenceImages.map((url, i) => (
+                      <div key={i} style={{ position: "relative" }}
+                        onMouseEnter={e => e.currentTarget.querySelector("button").style.display = "flex"}
+                        onMouseLeave={e => e.currentTarget.querySelector("button").style.display = "none"}
+                      >
+                        <img src={url} alt="" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8, display: "block" }} />
+                        <button
+                          onClick={() => removeCPReferenceImage(i)}
+                          style={{ display: "none", position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.65)", border: "none", color: "white", borderRadius: "50%", width: 20, height: 20, fontSize: 11, cursor: "pointer", alignItems: "center", justifyContent: "center", padding: 0 }}
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 24, textAlign: "center", padding: "16px 0" }}>
+                  <button onClick={() => setPinterestOpen(true)} style={{ background: "none", border: "1.5px dashed #E60023", color: "#E60023", borderRadius: 8, padding: "10px 20px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    📌 Add Pinterest References
+                  </button>
+                </div>
+              )}
+
+              {/* Pinterest panel (position:fixed, DOM location doesn't matter) */}
+              <PinterestPanel
+                isOpen={pinterestOpen}
+                onClose={() => setPinterestOpen(false)}
+                onAddImages={addCPReferenceImages}
+                width={pinterestPanelWidth}
+                onWidthChange={setPinterestPanelWidth}
+                pinterestToken={pinterestToken}
+                onTokenReceived={setPinterestToken}
+                showToast={showToast}
+              />
             </div>
           );
         })() : null}
@@ -476,6 +531,18 @@ export default function ContentPlanPortal({
                   ))}
                 </tbody>
               </table>
+
+              {/* Shot Plan / References — preview */}
+              {cpReferenceImages?.length > 0 && (
+                <div style={{ marginTop: 28, paddingTop: 24, borderTop: "1.5px solid #f0f0f0" }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#aaa", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>📌 Shot Plan / References</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {cpReferenceImages.map((url, i) => (
+                      <img key={i} src={url} alt="" style={{ width: 110, height: 110, objectFit: "cover", borderRadius: 8, display: "block" }} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

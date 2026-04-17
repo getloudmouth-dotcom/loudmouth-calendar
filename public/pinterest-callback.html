@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><title>Pinterest Auth</title></head>
+<body>
+<script>
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  const error = params.get('error');
+  if (window.opener) {
+    window.opener.postMessage(
+      { type: 'PINTEREST_AUTH', code, error },
+      window.location.origin
+    );
+    window.close();
+  } else {
+    document.body.innerText = error ? 'Auth failed: ' + error : 'Auth complete. You may close this window.';
+  }
+</script>
+</body>
+</html>

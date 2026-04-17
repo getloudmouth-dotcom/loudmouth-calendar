@@ -255,6 +255,10 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [cpShareError, setCpShareError] = useState("");
   const [cpShareSuccess, setCpShareSuccess] = useState("");
   const [cpSaving, setCpSaving] = useState(false);
+  const [cpReferenceImages, setCpReferenceImages] = useState([]);
+  const [pinterestToken, setPinterestToken] = useState(null);
+  const [pinterestOpen, setPinterestOpen] = useState(false);
+  const [pinterestPanelWidth, setPinterestPanelWidth] = useState(300);
   const cpAutoSaveTimerRef = useRef(null);
   // ── Toast ──
   const [toast, setToast] = useState(null); // null | { msg, type }
@@ -1366,6 +1370,14 @@ useEffect(() => {
     setCpItems(prev => prev.map(it => it._localId === localId ? { ...it, [field]: value } : it));
   }
 
+  function addCPReferenceImages(urls) {
+    setCpReferenceImages(prev => [...new Set([...prev, ...urls])]);
+  }
+
+  function removeCPReferenceImage(idx) {
+    setCpReferenceImages(prev => prev.filter((_, i) => i !== idx));
+  }
+
   async function saveContentPlan(silent = false) {
     if (!user || !cpClientName.trim()) return;
     if (!silent) setCpSaving(true);
@@ -1380,6 +1392,7 @@ useEffect(() => {
           month: cpMonth,
           year: cpYear,
           shoot_date: cpShootDate,
+          reference_images: cpReferenceImages,
           updated_at: new Date().toISOString(),
           last_updated_by: userProfile?.full_name || user?.email,
         }, { onConflict: "id" })
@@ -1435,6 +1448,7 @@ useEffect(() => {
     setCpMonth(plan.month);
     setCpYear(plan.year);
     setCpShootDate(plan.shoot_date || "PENDING");
+    setCpReferenceImages(plan.reference_images || []);
     const produced = (items || []).filter(x => x.item_type === "produced");
     const organic = (items || []).filter(x => x.item_type === "organic");
     setCpProducedCount(produced.length || 2);
@@ -1454,6 +1468,8 @@ useEffect(() => {
     setCpProducedCount(2);
     setCpOrganicCount(3);
     setCpItems([]);
+    setCpReferenceImages([]);
+    setPinterestOpen(false);
     setActiveCPStep(1);
   }
 
@@ -1610,6 +1626,12 @@ useEffect(() => {
         cpShareError={cpShareError} setCpShareError={setCpShareError}
         cpShareSuccess={cpShareSuccess} setCpShareSuccess={setCpShareSuccess}
         doSendContentPlan={doSendContentPlan}
+        cpReferenceImages={cpReferenceImages}
+        addCPReferenceImages={addCPReferenceImages}
+        removeCPReferenceImage={removeCPReferenceImage}
+        pinterestToken={pinterestToken} setPinterestToken={setPinterestToken}
+        pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
+        pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
         signOut={signOut}
         toast={toast}
       />

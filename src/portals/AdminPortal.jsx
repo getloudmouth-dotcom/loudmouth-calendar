@@ -74,6 +74,7 @@ export default function AdminPortal({
           ))}
         </div>
         <div style={{ flex: 1 }} />
+        <a href="/privacy-policy" target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#aaa", fontWeight: 600, textDecoration: "none", letterSpacing: "0.03em" }}>Privacy Policy ↗</a>
         {tab === "team" && (
           <button onClick={() => setInviteModal(true)} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "10px 22px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ Invite User</button>
         )}
