@@ -8,11 +8,15 @@ export const CONTENT_FIELDS = ["contentType", "imageUrls", "url", "urls", "video
 
 // RBAC: which tools each role gets by default
 export const ROLE_TOOLS = {
-  admin:           ["calendar_creator", "content_scheduling", "admin_portal", "content_plan_creator", "billing"],
-  smm:             ["calendar_creator", "content_scheduling", "content_plan_creator"],
-  designer:        [],
-  client:          [],
-  account_manager: ["billing"],
+  admin:            ["calendar_creator", "content_scheduling", "admin_portal", "content_plan_creator", "billing"],
+  smm:              ["calendar_creator", "content_scheduling", "content_plan_creator"],
+  account_manager:  ["calendar_creator", "content_scheduling", "content_plan_creator", "billing"],
+  graphic_designer: [],
+  content_creator:  [],
+  videographer:     [],
+  video_editor:     [],
+  public_relations: [],
+  client:           [],
 };
 export const ALL_TOOLS = [
   { key: "calendar_creator",      label: "Calendar Creator" },
