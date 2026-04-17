@@ -23,7 +23,7 @@ export default function DashboardPortal({
   inviteModal, setInviteModal, inviteForm, setInviteForm,
   inviteBusy, inviteError, setInviteError, doInviteUser,
   editingUser, setEditingUser, editUserForm, setEditUserForm,
-  editUserBusy, doUpdateUser,
+  editUserBusy, doUpdateUser, doDeleteUser, deleteUserBusy, currentUserId,
   currentCPId, setCurrentCPId, activeCPStep, setActiveCPStep,
   cpClientName, setCpClientName, cpMonth, setCpMonth, cpYear, setCpYear,
   cpShootDate, setCpShootDate, cpProducedCount, setCpProducedCount,
@@ -268,6 +268,7 @@ export default function DashboardPortal({
       editUserForm={editUserForm} setEditUserForm={setEditUserForm}
       editUserBusy={editUserBusy}
       doUpdateUser={doUpdateUser}
+      doDeleteUser={doDeleteUser} deleteUserBusy={deleteUserBusy} currentUserId={currentUserId}
       setActivePortal={setActivePortal}
     />
   )}
