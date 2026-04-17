@@ -37,6 +37,10 @@ export default function DashboardPortal({
   cpShareBusy, setCpShareBusy, cpShareError, setCpShareError,
   cpShareSuccess, setCpShareSuccess,
   doSendContentPlan,
+  cpReferenceImages, addCPReferenceImages, removeCPReferenceImage,
+  pinterestToken, setPinterestToken,
+  pinterestOpen, setPinterestOpen,
+  pinterestPanelWidth, setPinterestPanelWidth,
   loadAdminUsers, loadRoleToolDefaults,
   loadAllContentPlans,
   signOut,
@@ -296,6 +300,12 @@ export default function DashboardPortal({
       cpShareError={cpShareError} setCpShareError={setCpShareError}
       cpShareSuccess={cpShareSuccess} setCpShareSuccess={setCpShareSuccess}
       doSendContentPlan={doSendContentPlan}
+      cpReferenceImages={cpReferenceImages}
+      addCPReferenceImages={addCPReferenceImages}
+      removeCPReferenceImage={removeCPReferenceImage}
+      pinterestToken={pinterestToken} setPinterestToken={setPinterestToken}
+      pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
+      pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
       setActivePortal={setActivePortal}
     />
   )}
