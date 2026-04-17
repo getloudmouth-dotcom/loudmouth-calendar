@@ -12,7 +12,7 @@ export const ROLE_TOOLS = {
   smm:              ["calendar_creator", "content_scheduling", "content_plan_creator"],
   account_manager:  ["calendar_creator", "content_scheduling", "content_plan_creator", "billing"],
   graphic_designer: [],
-  content_creator:  [],
+  content_creator:  ["content_plan_creator"],
   videographer:     [],
   video_editor:     [],
   public_relations: [],
