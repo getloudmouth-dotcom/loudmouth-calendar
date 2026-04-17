@@ -51,7 +51,7 @@ export default function DashboardPortal({
       <div style={{ color: "#D7FA06", fontWeight: 900, fontSize: 16, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>LOUDMOUTH HQ</div>
       <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 9, letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by Loudmouth</div>
     </div>
-    {activePortal && (
+    {activePortal && activePortal !== "content-plan" && (
       <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", fontWeight: 600, padding: 0 }}>← Home</button>
     )}
     <NavProfileMenu

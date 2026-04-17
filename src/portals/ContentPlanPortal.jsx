@@ -80,11 +80,23 @@ export default function ContentPlanPortal({
     setCreatorLoading(false);
   };
 
+  const onPlansList = !currentCPId && activeCPStep === null;
+  const onSetup = !currentCPId && activeCPStep === 1;
+  const onPreview = activeCPStep === 3;
+  const backLabel = onPlansList ? "← Home" : onPreview ? "← Back" : "← Plans";
+  const backAction = onPlansList
+    ? () => { setActivePortal(null); }
+    : onSetup
+    ? () => { setActiveCPStep(null); }
+    : onPreview
+    ? () => { setActiveCPStep(2); }
+    : () => { setCurrentCPId(null); setActiveCPStep(null); };
+
   return (
     <div>
       {/* ── Content Plan Creator portal ── */}
       <div style={{ padding: "20px 40px", borderBottom: "1.5px solid #e8e8e8", display: "flex", alignItems: "center", gap: 16, background: "white" }}>
-        <button onClick={() => { setActivePortal(null); setCurrentCPId(null); setActiveCPStep(null); }} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>← Back</button>
+        <button onClick={backAction} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>{backLabel}</button>
         <div style={{ width: 1, height: 18, background: "#e0e0e0" }} />
         <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1a2e" }}>Content Plan Creator</div>
         {currentCPId && (
@@ -323,7 +335,7 @@ export default function ContentPlanPortal({
                 </table>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setCurrentCPId(null); setActiveCPStep(1); }} style={{ ...secondaryBtn }}>← Back to Plans</button>
+                <button onClick={() => { setCurrentCPId(null); setActiveCPStep(null); }} style={{ ...secondaryBtn }}>← Plans</button>
                 <div style={{ flex: 1 }} />
                 <button onClick={() => { saveContentPlan(true); setActiveCPStep(3); }} style={{ ...primaryBtn }}>Preview & Export →</button>
               </div>
