@@ -283,9 +283,9 @@ export default function PinterestPanel({ isOpen, onClose, onAddImages, width, on
           </div>
         )}
 
-        {/* Pin grid (shared between url + oauth modes) */}
+        {/* Pin grid — masonry via CSS columns */}
         {showingPins && !loading && (
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+          <div style={{ columns: 2, columnGap: 6 }}>
             {pins.map((pin, idx) => {
               const isSel = selectedIds.has(pin.id);
               return (
@@ -293,20 +293,20 @@ export default function PinterestPanel({ isOpen, onClose, onAddImages, width, on
                   key={pin.id}
                   onClick={e => handlePinClick(e, pin, idx)}
                   title={pin.title || undefined}
-                  style={{ borderRadius: 6, overflow: "hidden", background: isSel ? "#cc0020" : "#f0f0f0", cursor: "pointer", position: "relative", outline: isSel ? "2.5px solid #E60023" : "none", outlineOffset: -2 }}
+                  style={{ breakInside: "avoid", marginBottom: 6, borderRadius: 8, overflow: "hidden", cursor: "pointer", position: "relative", outline: isSel ? "2.5px solid #E60023" : "none", outlineOffset: -2, display: "block" }}
                 >
                   <img
                     src={pin.image_url}
                     alt={pin.title || ""}
                     loading="lazy"
                     style={{ width: "100%", height: "auto", display: "block", opacity: isSel ? 0.65 : 1 }}
-                    onError={e => { e.currentTarget.style.display = "none"; }}
+                    onError={e => { e.currentTarget.parentElement.style.display = "none"; }}
                   />
                   {isSel && (
-                    <div style={{ position: "absolute", top: 4, right: 4, background: "#E60023", borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "white", pointerEvents: "none" }}>✓</div>
+                    <div style={{ position: "absolute", top: 5, right: 5, background: "#E60023", borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: "white", pointerEvents: "none" }}>✓</div>
                   )}
                   {pin.title && (
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.65))", padding: "14px 5px 4px", fontSize: 8, color: "white", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", pointerEvents: "none" }}>{pin.title}</div>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.6))", padding: "16px 6px 5px", fontSize: 8, color: "white", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", pointerEvents: "none" }}>{pin.title}</div>
                   )}
                 </div>
               );
