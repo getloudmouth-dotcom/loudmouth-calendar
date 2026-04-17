@@ -1467,7 +1467,7 @@ useEffect(() => {
       .from("content_plan_shares")
       .select("*")
       .eq("plan_id", planId)
-      .single();
+      .maybeSingle();
     const share = existing || (await supabase
       .from("content_plan_shares")
       .insert({ plan_id: planId, allow_client_notes: true })
