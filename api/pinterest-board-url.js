@@ -6,6 +6,17 @@ const ratelimit = new Ratelimit({ redis: kv, limiter: Ratelimit.slidingWindow(30
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
+async function resolveUrl(raw) {
+  const full = raw.startsWith("http") ? raw : `https://${raw}`;
+  const parsed = new URL(full);
+  // Follow pin.it shortlinks to get the real pinterest.com URL
+  if (parsed.hostname === "pin.it" || parsed.hostname === "www.pin.it") {
+    const resp = await fetch(full, { method: "HEAD", redirect: "follow", headers: { "User-Agent": UA } });
+    return resp.url;
+  }
+  return full;
+}
+
 function parsePinterestUrl(raw) {
   try {
     const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
@@ -60,7 +71,14 @@ export default async function handler(req, res) {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: "invalid_url", message: "Missing board URL" });
 
-  const parsed = parsePinterestUrl(url);
+  let resolvedUrl = url;
+  try {
+    resolvedUrl = await resolveUrl(url);
+  } catch {
+    return res.status(400).json({ error: "invalid_url", message: "That doesn't look like a Pinterest board URL. Use: pinterest.com/username/boardname" });
+  }
+
+  const parsed = parsePinterestUrl(resolvedUrl);
   if (!parsed) {
     return res.status(400).json({ error: "invalid_url", message: "That doesn't look like a Pinterest board URL. Use: pinterest.com/username/boardname" });
   }
