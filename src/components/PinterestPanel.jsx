@@ -293,13 +293,13 @@ export default function PinterestPanel({ isOpen, onClose, onAddImages, width, on
                   key={pin.id}
                   onClick={e => handlePinClick(e, pin, idx)}
                   title={pin.title || undefined}
-                  style={{ aspectRatio: "1", borderRadius: 6, overflow: "hidden", background: isSel ? "#cc0020" : "#f0f0f0", cursor: "pointer", position: "relative", outline: isSel ? "2.5px solid #E60023" : "none", outlineOffset: -2 }}
+                  style={{ borderRadius: 6, overflow: "hidden", background: isSel ? "#cc0020" : "#f0f0f0", cursor: "pointer", position: "relative", outline: isSel ? "2.5px solid #E60023" : "none", outlineOffset: -2 }}
                 >
                   <img
                     src={pin.image_url}
                     alt={pin.title || ""}
                     loading="lazy"
-                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: isSel ? 0.65 : 1 }}
+                    style={{ width: "100%", height: "auto", display: "block", opacity: isSel ? 0.65 : 1 }}
                     onError={e => { e.currentTarget.style.display = "none"; }}
                   />
                   {isSel && (

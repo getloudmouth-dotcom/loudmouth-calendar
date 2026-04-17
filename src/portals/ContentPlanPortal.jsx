@@ -366,7 +366,7 @@ export default function ContentPlanPortal({
                         onMouseEnter={e => e.currentTarget.querySelector("button").style.display = "flex"}
                         onMouseLeave={e => e.currentTarget.querySelector("button").style.display = "none"}
                       >
-                        <img src={url} alt="" style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8, display: "block" }} />
+                        <img src={url} alt="" style={{ width: 120, height: "auto", borderRadius: 8, display: "block" }} />
                         <button
                           onClick={() => removeCPReferenceImage(i)}
                           style={{ display: "none", position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.65)", border: "none", color: "white", borderRadius: "50%", width: 20, height: 20, fontSize: 11, cursor: "pointer", alignItems: "center", justifyContent: "center", padding: 0 }}
@@ -538,7 +538,7 @@ export default function ContentPlanPortal({
                   <div style={{ fontSize: 11, fontWeight: 800, color: "#aaa", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>📌 Shot Plan / References</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                     {cpReferenceImages.map((url, i) => (
-                      <img key={i} src={url} alt="" style={{ width: 110, height: 110, objectFit: "cover", borderRadius: 8, display: "block" }} />
+                      <img key={i} src={url} alt="" style={{ width: 120, height: "auto", borderRadius: 8, display: "block" }} />
                     ))}
                   </div>
                 </div>
