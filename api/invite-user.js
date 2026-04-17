@@ -159,6 +159,17 @@ export default async function handler(req, res) {
   const inviteUrl = data.properties?.action_link;
   if (!inviteUrl) return res.status(500).json({ error: "Failed to generate invite link" });
 
+  // Create the profile row immediately so admins can see the pending invite
+  await sbAdmin.from("profiles").upsert({
+    id: data.user.id,
+    email,
+    name,
+    role,
+    job_title,
+    status: "invited",
+    invited_by: user.id,
+  }, { onConflict: "id" });
+
   try {
     await sendInviteEmail(email, name, inviteUrl);
   } catch (emailErr) {

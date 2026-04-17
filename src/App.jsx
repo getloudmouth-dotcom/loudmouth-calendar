@@ -940,6 +940,11 @@ useEffect(() => {
       supabase.from("profiles").select("*").eq("id", userId).single(),
       supabase.from("user_tool_access").select("*").eq("user_id", userId),
     ]);
+    // Invited user is logging in for the first time — mark them active
+    if (profile?.status === "invited") {
+      await supabase.from("profiles").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", userId);
+      profile.status = "active";
+    }
     setUserProfile(profile || null);
     setUserToolAccess(access || []);
   }

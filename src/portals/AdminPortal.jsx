@@ -116,8 +116,8 @@ export default function AdminPortal({
                         form[`tool_${key}`] = override ? override.granted : defaultOn;
                       }
                       setEditUserForm(form);
-                    }} style={{ background: "white", borderRadius: 12, padding: "18px 20px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1a1a2e", color: "#D7FA06", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
+                    }} style={{ background: u.status === "invited" ? "#fafafa" : "white", borderRadius: 12, padding: "18px 20px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: `1.5px solid ${u.status === "invited" ? "#e0e0e0" : "#e8e8e8"}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 16, opacity: u.status === "invited" ? 0.55 : 1 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: u.status === "invited" ? "#d0d0d0" : "#1a1a2e", color: u.status === "invited" ? "#fff" : "#D7FA06", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
                         {(u.name || u.email || "?")[0].toUpperCase()}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -126,8 +126,9 @@ export default function AdminPortal({
                       </div>
                       <div style={{ display: "flex", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
                         <span style={{ background: u.role === "admin" ? "#1a1a2e" : "#f0f0ee", color: u.role === "admin" ? "#D7FA06" : "#555", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{u.role}</span>
+                        {u.status === "invited" && <span style={{ background: "#f0f0ee", color: "#888", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.03em" }}>Invite Sent</span>}
                         {u.status === "inactive" && <span style={{ background: "#ffe5e5", color: "#c00", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>Inactive</span>}
-                        {ALL_TOOLS.filter(t => effectiveTools.has(t.key)).map(t => (
+                        {u.status !== "invited" && ALL_TOOLS.filter(t => effectiveTools.has(t.key)).map(t => (
                           <span key={t.key} style={{ background: "#f5fbda", color: "#5a7a00", border: "1px solid #D7FA06", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>{t.label}</span>
                         ))}
                       </div>
