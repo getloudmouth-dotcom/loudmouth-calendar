@@ -84,7 +84,7 @@ export default function AdminPortal({
             <label style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, display: "block", marginBottom: 4 }}>Job Title</label>
             <input type="text" value={inviteForm.job_title} onChange={e => setInviteForm(f => ({ ...f, job_title: e.target.value }))} placeholder="Social Media Manager" style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 14 }} />
             <label style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, display: "block", marginBottom: 4 }}>Role</label>
-            <select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 20, background: "white" }}>
+            <select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 20, background: "white", color: "#1a1a2e" }}>
               <option value="smm">SMM (Social Media Manager)</option>
               <option value="account_manager">Account Manager</option>
               <option value="graphic_designer">Graphic Designer</option>
@@ -117,7 +117,7 @@ export default function AdminPortal({
             <label style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, display: "block", marginBottom: 4 }}>Job Title</label>
             <input value={editUserForm.job_title || ""} onChange={e => setEditUserForm(f => ({ ...f, job_title: e.target.value }))} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 14 }} />
             <label style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, display: "block", marginBottom: 4 }}>Role</label>
-            <select value={editUserForm.role || "smm"} onChange={e => setEditUserForm(f => ({ ...f, role: e.target.value }))} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 14, background: "white" }}>
+            <select value={editUserForm.role || "smm"} onChange={e => setEditUserForm(f => ({ ...f, role: e.target.value }))} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 14, background: "white", color: "#1a1a2e" }}>
               <option value="smm">SMM (Social Media Manager)</option>
               <option value="account_manager">Account Manager</option>
               <option value="graphic_designer">Graphic Designer</option>
@@ -128,7 +128,7 @@ export default function AdminPortal({
               <option value="admin">Admin</option>
             </select>
             <label style={{ fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, display: "block", marginBottom: 4 }}>Status</label>
-            <select value={editUserForm.status || "active"} onChange={e => setEditUserForm(f => ({ ...f, status: e.target.value }))} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 20, background: "white" }}>
+            <select value={editUserForm.status || "active"} onChange={e => setEditUserForm(f => ({ ...f, status: e.target.value }))} style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 20, background: "white", color: "#1a1a2e" }}>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
