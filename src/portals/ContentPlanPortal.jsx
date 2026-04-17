@@ -393,8 +393,11 @@ export default function ContentPlanPortal({
                 </button>
                 <button
                   onClick={async () => {
-                    if (!currentCPId) { await saveContentPlan(false); }
-                    try { await getOrCreateShareToken(currentCPId); } catch (e) { showToast("Failed to generate share link", "error"); }
+                    try {
+                      const planId = currentCPId || await saveContentPlan(false);
+                      if (!planId) { showToast("Save the plan first", "error"); return; }
+                      await getOrCreateShareToken(planId);
+                    } catch (e) { showToast("Failed to generate share link", "error"); }
                   }}
                   style={{ ...primaryBtn }}
                 >

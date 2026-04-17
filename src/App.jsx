@@ -1414,6 +1414,7 @@ useEffect(() => {
       }
       if (!silent) showToast("Content plan saved!", "success");
       loadAllContentPlans();
+      return planId;
     } catch (e) {
       if (!silent) showToast("Save failed: " + e.message, "error");
     } finally {
