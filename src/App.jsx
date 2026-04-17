@@ -21,6 +21,7 @@ import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
 import AuthView from "./views/AuthView";
 import ProfileSetupView from "./views/ProfileSetupView";
+import InviteSetupView from "./views/InviteSetupView";
 import PrivacyPolicyView from "./views/PrivacyPolicyView";
 import { AppContext } from "./AppContext";
 import CalendarBuilder from "./portals/CalendarBuilder";
@@ -207,6 +208,13 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [profilePhone, setProfilePhone] = useState("");
   const [profileSmsConsent, setProfileSmsConsent] = useState(false);
   const [profileInput, setProfileInput] = useState("");
+  const [showInviteSetup, setShowInviteSetup] = useState(() => window.location.hash.includes("type=invite"));
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [invitePasswordConfirm, setInvitePasswordConfirm] = useState("");
+  const [inviteSetupBusy, setInviteSetupBusy] = useState(false);
+  const [inviteSetupError, setInviteSetupError] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [wasOffline, setWasOffline] = useState(false);
@@ -822,13 +830,19 @@ useEffect(() => {
       if (session?.user) {
         const name = session.user.user_metadata?.display_name || "";
         setProfileName(name);
-        if (!name) setShowProfileSetup(true);
-        loadAllCalendars();
-        loadAllContentPlans();
-        loadClients();
-        loadScheduledPosts();
-        loadUserProfile(session.user.id);
-        loadRoleToolDefaults();
+        if (window.location.hash.includes("type=invite")) {
+          setInviteName(name);
+          setInviteEmail(session.user.email || "");
+          setShowInviteSetup(true);
+        } else {
+          if (!name) setShowProfileSetup(true);
+          loadAllCalendars();
+          loadAllContentPlans();
+          loadClients();
+          loadScheduledPosts();
+          loadUserProfile(session.user.id);
+          loadRoleToolDefaults();
+        }
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -836,13 +850,19 @@ useEffect(() => {
       if (session?.user) {
         const name = session.user.user_metadata?.display_name || "";
         setProfileName(name);
-        if (!name) setShowProfileSetup(true);
-        loadAllCalendars();
-        loadAllContentPlans();
-        loadClients();
-        loadScheduledPosts();
-        loadUserProfile(session.user.id);
-        loadRoleToolDefaults();
+        if (window.location.hash.includes("type=invite")) {
+          setInviteName(name);
+          setInviteEmail(session.user.email || "");
+          setShowInviteSetup(true);
+        } else if (!showInviteSetup) {
+          if (!name) setShowProfileSetup(true);
+          loadAllCalendars();
+          loadAllContentPlans();
+          loadClients();
+          loadScheduledPosts();
+          loadUserProfile(session.user.id);
+          loadRoleToolDefaults();
+        }
       }
     });
     return () => subscription.unsubscribe();
@@ -872,6 +892,43 @@ useEffect(() => {
     if (error) setAuthError(error.message);
     else setAuthError("Password reset email sent! Check your inbox.");
     setAuthBusy(false);
+  }
+
+  async function saveInviteSetup() {
+    setInviteSetupError("");
+    if (!inviteName.trim()) return setInviteSetupError("Name is required.");
+    if (invitePassword.length < 8) return setInviteSetupError("Password must be at least 8 characters.");
+    if (invitePassword !== invitePasswordConfirm) return setInviteSetupError("Passwords don't match.");
+    setInviteSetupBusy(true);
+    const { error } = await supabase.auth.updateUser({
+      email: inviteEmail.trim() || undefined,
+      password: invitePassword,
+      data: { display_name: inviteName.trim() },
+    });
+    if (error) {
+      setInviteSetupError(error.message);
+      setInviteSetupBusy(false);
+      return;
+    }
+    // Sync name + email to profile row
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      await supabase.from("profiles").update({
+        name: inviteName.trim(),
+        email: inviteEmail.trim(),
+        updated_at: new Date().toISOString(),
+      }).eq("id", currentUser.id);
+    }
+    window.history.replaceState(null, "", window.location.pathname);
+    setProfileName(inviteName.trim());
+    setShowInviteSetup(false);
+    setInviteSetupBusy(false);
+    loadAllCalendars();
+    loadAllContentPlans();
+    loadClients();
+    loadScheduledPosts();
+    loadUserProfile(currentUser.id);
+    loadRoleToolDefaults();
   }
 
   async function saveProfile() {
@@ -1585,6 +1642,21 @@ useEffect(() => {
         authPassword={authPassword} setAuthPassword={setAuthPassword}
         authError={authError} authBusy={authBusy}
         signIn={signIn} signUp={signUp} resetPassword={resetPassword}
+      />
+    </ErrorBoundary>
+  );
+
+  if (showInviteSetup && user) return (
+    <ErrorBoundary>
+      <InviteSetupView
+        inviteName={inviteName} setInviteName={setInviteName}
+        inviteEmail={inviteEmail} setInviteEmail={setInviteEmail}
+        invitePassword={invitePassword} setInvitePassword={setInvitePassword}
+        invitePasswordConfirm={invitePasswordConfirm} setInvitePasswordConfirm={setInvitePasswordConfirm}
+        inviteRole={user?.user_metadata?.role}
+        saveInviteSetup={saveInviteSetup}
+        inviteSetupBusy={inviteSetupBusy}
+        inviteSetupError={inviteSetupError}
       />
     </ErrorBoundary>
   );
