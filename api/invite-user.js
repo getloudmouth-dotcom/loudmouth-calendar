@@ -22,8 +22,8 @@ function buildInviteEmail(name, inviteUrl) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>You're invited to Loudmouth</title>
 </head>
-<body style="margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d0d0d;padding:48px 16px;">
+<body style="margin:0;padding:0;background:#f4f4f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f0;padding:48px 16px;">
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
@@ -31,15 +31,15 @@ function buildInviteEmail(name, inviteUrl) {
           <!-- Logo -->
           <tr>
             <td align="center" style="padding-bottom:40px;">
-              <span style="font-size:28px;font-weight:900;letter-spacing:-1px;color:#863bff;">LOUDMOUTH</span>
+              <span style="font-size:28px;font-weight:900;letter-spacing:-1px;color:#1a1a2e;">LOUDMOUTH</span>
             </td>
           </tr>
 
           <!-- Card -->
           <tr>
-            <td style="background:#1a1a1a;border-radius:16px;padding:48px 40px;">
+            <td style="background:#1a1a2e;border-radius:16px;padding:48px 40px;">
 
-              <p style="margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#863bff;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#D7FA06;">
                 You're invited
               </p>
 
@@ -47,7 +47,7 @@ function buildInviteEmail(name, inviteUrl) {
                 Someone thinks you're kind of a big deal.
               </h1>
 
-              <p style="margin:0 0 32px;font-size:16px;line-height:1.6;color:#a0a0a0;">
+              <p style="margin:0 0 32px;font-size:16px;line-height:1.6;color:rgba(255,255,255,0.6);">
                 Hey ${displayName} — you've been officially added to the Loudmouth crew.
                 Click the button below, set your password, and let's get to work.
                 (We're not a cult. Probably.)
@@ -55,17 +55,17 @@ function buildInviteEmail(name, inviteUrl) {
 
               <table cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
                 <tr>
-                  <td style="border-radius:10px;background:#863bff;">
+                  <td style="border-radius:10px;background:#D7FA06;">
                     <a href="${inviteUrl}"
-                       style="display:inline-block;padding:16px 36px;font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.3px;">
+                       style="display:inline-block;padding:16px 36px;font-size:16px;font-weight:800;color:#1a1a2e;text-decoration:none;letter-spacing:0.04em;">
                       Accept Your Invite →
                     </a>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0;font-size:13px;color:#555555;line-height:1.5;">
-                This invite expires in <strong style="color:#777777;">24 hours</strong>.
+              <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.35);line-height:1.5;">
+                This invite expires in <strong style="color:rgba(255,255,255,0.55);">24 hours</strong>.
                 Don't ghost us — we'll know.
               </p>
 
@@ -75,9 +75,9 @@ function buildInviteEmail(name, inviteUrl) {
           <!-- Footer -->
           <tr>
             <td align="center" style="padding-top:32px;">
-              <p style="margin:0;font-size:12px;color:#444444;">
+              <p style="margin:0;font-size:12px;color:#999999;">
                 Sent by The Loudmouth Team &nbsp;·&nbsp;
-                <a href="https://getloudmouth.work" style="color:#555555;text-decoration:none;">getloudmouth.work</a>
+                <a href="https://getloudmouth.work" style="color:#777777;text-decoration:none;">getloudmouth.work</a>
               </p>
             </td>
           </tr>
