@@ -19,6 +19,7 @@ export default function DashboardPortal({
   sharePermission, setSharePermission,
   scheduledPosts, removeScheduledPost, toggleNotify,
   adminUsers, adminLoading,
+  roleToolDefaults, rolePermsBusy, saveRoleToolDefaults,
   inviteModal, setInviteModal, inviteForm, setInviteForm,
   inviteBusy, inviteError, setInviteError, doInviteUser,
   editingUser, setEditingUser, editUserForm, setEditUserForm,
@@ -36,7 +37,7 @@ export default function DashboardPortal({
   cpShareBusy, setCpShareBusy, cpShareError, setCpShareError,
   cpShareSuccess, setCpShareSuccess,
   doSendContentPlan,
-  loadAdminUsers,
+  loadAdminUsers, loadRoleToolDefaults,
   loadAllContentPlans,
   signOut,
   toast,
@@ -163,7 +164,7 @@ export default function DashboardPortal({
         })()}
         {/* Admin Portal */}
         {can("admin_portal") && (
-          <div onClick={() => { setActivePortal("admin"); if (adminUsers.length === 0) loadAdminUsers(); }} style={{ background: "white", borderRadius: 16, padding: "32px 28px 28px", width: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", flexDirection: "column", gap: 0, transition: "box-shadow 0.15s, transform 0.15s" }}
+          <div onClick={() => { setActivePortal("admin"); if (adminUsers.length === 0) loadAdminUsers(); if (!roleToolDefaults) loadRoleToolDefaults(); }} style={{ background: "white", borderRadius: 16, padding: "32px 28px 28px", width: 300, boxShadow: "0 4px 20px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer", display: "flex", flexDirection: "column", gap: 0, transition: "box-shadow 0.15s, transform 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "none"; }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1a1a2e", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
@@ -254,6 +255,7 @@ export default function DashboardPortal({
   {activePortal === "admin" && can("admin_portal") && (
     <AdminPortal
       adminUsers={adminUsers} adminLoading={adminLoading}
+      roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}
       inviteModal={inviteModal} setInviteModal={setInviteModal}
       inviteForm={inviteForm} setInviteForm={setInviteForm}
       inviteBusy={inviteBusy} inviteError={inviteError} setInviteError={setInviteError}

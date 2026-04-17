@@ -220,6 +220,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [showAdminView, setShowAdminView] = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [roleToolDefaults, setRoleToolDefaults] = useState(null); // null = not loaded yet
+  const [rolePermsBusy, setRolePermsBusy] = useState(false);
   const [inviteModal, setInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: "", name: "", role: "smm", job_title: "" });
   const [inviteBusy, setInviteBusy] = useState(false);
@@ -468,16 +470,17 @@ useEffect(() => {
   const firstDay = getFirstDayOfMonth(year, month);
   const sortedDays = useMemo(() => [...selectedDays].sort((a, b) => a - b), [selectedDays]);
 
-  // Effective permissions: role defaults + per-user overrides
+  // Effective permissions: role defaults (DB or fallback) + per-user overrides
   const permissions = useMemo(() => {
     if (!userProfile) return new Set();
-    const base = new Set(ROLE_TOOLS[userProfile.role] || []);
+    const dbDefaults = roleToolDefaults?.[userProfile.role];
+    const base = new Set(dbDefaults ?? (ROLE_TOOLS[userProfile.role] || []));
     for (const t of userToolAccess) {
       if (t.granted) base.add(t.tool_key);
       else base.delete(t.tool_key);
     }
     return base;
-  }, [userProfile, userToolAccess]);
+  }, [userProfile, userToolAccess, roleToolDefaults]);
   const can = (tool) => permissions.has(tool);
 
   const allPosts = useMemo(() =>
@@ -820,6 +823,7 @@ useEffect(() => {
         loadClients();
         loadScheduledPosts();
         loadUserProfile(session.user.id);
+        loadRoleToolDefaults();
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -833,6 +837,7 @@ useEffect(() => {
         loadClients();
         loadScheduledPosts();
         loadUserProfile(session.user.id);
+        loadRoleToolDefaults();
       }
     });
     return () => subscription.unsubscribe();
@@ -948,6 +953,35 @@ useEffect(() => {
     setAdminLoading(false);
   }
 
+  async function loadRoleToolDefaults() {
+    const { data } = await supabase.from("role_tool_defaults").select("role, tool_key");
+    if (!data) return;
+    const map = {};
+    for (const { role, tool_key } of data) {
+      if (!map[role]) map[role] = [];
+      map[role].push(tool_key);
+    }
+    setRoleToolDefaults(map);
+  }
+
+  async function saveRoleToolDefaults(newMap) {
+    setRolePermsBusy(true);
+    try {
+      // Build desired rows
+      const desired = [];
+      for (const [role, tools] of Object.entries(newMap)) {
+        for (const tool_key of tools) desired.push({ role, tool_key });
+      }
+      // Delete all existing rows then insert new ones
+      await supabase.from("role_tool_defaults").delete().neq("role", "___never___");
+      if (desired.length > 0) await supabase.from("role_tool_defaults").insert(desired);
+      setRoleToolDefaults(newMap);
+    } catch (e) {
+      alert("Failed to save role permissions: " + e.message);
+    }
+    setRolePermsBusy(false);
+  }
+
   async function doInviteUser() {
     setInviteBusy(true); setInviteError("");
     try {
@@ -973,7 +1007,7 @@ useEffect(() => {
     try {
       const { id, role, job_title, status } = editUserForm;
       await supabase.from("profiles").update({ role, job_title, status, updated_at: new Date().toISOString() }).eq("id", id);
-      const defaultTools = ROLE_TOOLS[role] || [];
+      const defaultTools = (roleToolDefaults?.[role] ?? ROLE_TOOLS[role]) || [];
       for (const { key: toolKey } of ALL_TOOLS) {
         const isDefaultOn = defaultTools.includes(toolKey);
         const isChecked = editUserForm[`tool_${toolKey}`] ?? isDefaultOn;
@@ -1541,9 +1575,10 @@ useEffect(() => {
         shareModal={shareModal} shareEmail={shareEmail} shareError={shareError}
         shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
         sharePermission={sharePermission} setSharePermission={setSharePermission}
-        loadAdminUsers={loadAdminUsers} loadAllContentPlans={loadAllContentPlans}
+        loadAdminUsers={loadAdminUsers} loadRoleToolDefaults={loadRoleToolDefaults} loadAllContentPlans={loadAllContentPlans}
         scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost} toggleNotify={toggleNotify}
         adminUsers={adminUsers} adminLoading={adminLoading}
+        roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}
         inviteModal={inviteModal} setInviteModal={setInviteModal}
         inviteForm={inviteForm} setInviteForm={setInviteForm}
         inviteBusy={inviteBusy} inviteError={inviteError} setInviteError={setInviteError}
