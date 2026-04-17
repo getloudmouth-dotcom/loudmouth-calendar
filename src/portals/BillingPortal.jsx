@@ -99,6 +99,9 @@ export default function BillingPortal({ setActivePortal }) {
   const [savingInvoice, setSavingInvoice] = useState(false);
   const [invoiceError, setInvoiceError] = useState("");
 
+  // ── SMS opt-in ────────────────────────────────────────────────────────────
+  const [optinSending, setOptinSending] = useState(null); // client id currently sending
+
   // ── Send modal ────────────────────────────────────────────────────────────
   const [sendModal, setSendModal]     = useState(null); // invoice object
   const [sendMethod, setSendMethod]   = useState("email");
@@ -220,6 +223,18 @@ export default function BillingPortal({ setActivePortal }) {
       setSyncResult({ error: err.message });
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function sendSmsOptin(clientId) {
+    setOptinSending(clientId);
+    try {
+      await apiFetch("/api/billing/sms-optin", { method: "POST", body: JSON.stringify({ client_id: clientId }) });
+      await loadClients();
+    } catch (e) {
+      alert("Failed to send opt-in email: " + e.message);
+    } finally {
+      setOptinSending(null);
     }
   }
 
@@ -499,17 +514,33 @@ export default function BillingPortal({ setActivePortal }) {
                     {c.email && <div style={{ color: "#666", fontSize: 12, display: "flex", gap: 8 }}><span style={{ color: "#333" }}>Email</span>{c.email}</div>}
                     {c.phone && <div style={{ color: "#666", fontSize: 12, display: "flex", gap: 8 }}><span style={{ color: "#333" }}>Phone</span>{c.phone}</div>}
                   </div>
-                  <div style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {c.freshbooks_contact_id ? (
-                        <span style={{ fontSize: 10, color: "#D7FA06", background: "#1a2e0a", border: "1px solid #2a4e0a", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>FB SYNCED</span>
-                      ) : (
-                        <span style={{ fontSize: 10, color: "#555", background: "#111", border: "1px solid #222", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>NOT SYNCED</span>
-                      )}
+                  <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {c.freshbooks_contact_id ? (
+                          <span style={{ fontSize: 10, color: "#D7FA06", background: "#1a2e0a", border: "1px solid #2a4e0a", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>FB SYNCED</span>
+                        ) : (
+                          <span style={{ fontSize: 10, color: "#555", background: "#111", border: "1px solid #222", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>NOT SYNCED</span>
+                        )}
+                        {c.sms_consent_at ? (
+                          <span style={{ fontSize: 10, color: "#4ade80", background: "#052e16", border: "1px solid #166534", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>SMS OPTED IN</span>
+                        ) : (
+                          <span style={{ fontSize: 10, color: "#666", background: "#111", border: "1px solid #222", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>SMS NOT OPTED IN</span>
+                        )}
+                      </div>
+                      <button onClick={() => openEditClient(c)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 6, color: "#555", fontSize: 11, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
+                        Edit
+                      </button>
                     </div>
-                    <button onClick={() => openEditClient(c)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 6, color: "#555", fontSize: 11, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
-                      Edit
-                    </button>
+                    {!c.sms_consent_at && c.email && (
+                      <button
+                        onClick={() => sendSmsOptin(c.id)}
+                        disabled={optinSending === c.id}
+                        style={{ width: "100%", padding: "7px 0", background: "transparent", border: "1px solid #2a2a2a", borderRadius: 6, color: optinSending === c.id ? "#444" : "#888", fontSize: 11, cursor: optinSending === c.id ? "default" : "pointer", fontWeight: 600, letterSpacing: "0.03em" }}
+                      >
+                        {optinSending === c.id ? "Sending..." : "Send SMS Opt-In Email"}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

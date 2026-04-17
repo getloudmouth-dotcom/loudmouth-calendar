@@ -29,6 +29,18 @@
     },
     "api/billing/process-recurring.js": {
       "maxDuration": 60
+    },
+    "api/billing/sms-optin.js": {
+      "maxDuration": 10
+    },
+    "api/billing/sms-optin-confirm.js": {
+      "maxDuration": 10
+    },
+    "api/twilio/voice.js": {
+      "maxDuration": 10
+    },
+    "api/twilio/sms.js": {
+      "maxDuration": 10
     }
   },
   "crons": [

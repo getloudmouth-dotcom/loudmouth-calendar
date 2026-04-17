@@ -21,6 +21,7 @@ import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
 import AuthView from "./views/AuthView";
 import ProfileSetupView from "./views/ProfileSetupView";
+import PrivacyPolicyView from "./views/PrivacyPolicyView";
 import { AppContext } from "./AppContext";
 import CalendarBuilder from "./portals/CalendarBuilder";
 import DashboardPortal from "./portals/DashboardPortal";
@@ -203,6 +204,8 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
   const [profileName, setProfileName] = useState("");
   const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileSmsConsent, setProfileSmsConsent] = useState(false);
   const [profileInput, setProfileInput] = useState("");
   const [editingProfile, setEditingProfile] = useState(false);
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
@@ -863,10 +866,19 @@ useEffect(() => {
     if (!name) return;
     const { error } = await supabase.auth.updateUser({ data: { display_name: name } });
     if (error) return alert("Failed to save: " + error.message);
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      await supabase.from("profiles").update({
+        phone: profilePhone.trim() || null,
+        ...(profileSmsConsent ? { sms_consent_at: new Date().toISOString() } : {}),
+      }).eq("id", currentUser.id);
+    }
     setProfileName(name);
     setShowProfileSetup(false);
     setEditingProfile(false);
     setProfileInput("");
+    setProfilePhone("");
+    setProfileSmsConsent(false);
   }
 
   async function signOut() {
@@ -1457,6 +1469,8 @@ useEffect(() => {
 
   console.log("[App] render", { authLoading, user: !!user, showProfileSetup, showDashboard, exportMode, cpPublicToken: !!cpPublicToken, cpExportToken: !!cpExportToken });
 
+  if (window.location.pathname === "/privacy-policy") return <PrivacyPolicyView />;
+
   if (cpPublicToken) return <ErrorBoundary><ContentPlanPublicView token={cpPublicToken} /></ErrorBoundary>;
   if (cpExportToken) return <ContentPlanExportView token={cpExportToken} />;
   if (billingExportToken) return <BillingInvoiceExportView token={billingExportToken} />;
@@ -1481,6 +1495,10 @@ useEffect(() => {
         profileInput={profileInput}
         setProfileInput={setProfileInput}
         saveProfile={saveProfile}
+        profilePhone={profilePhone}
+        setProfilePhone={setProfilePhone}
+        profileSmsConsent={profileSmsConsent}
+        setProfileSmsConsent={setProfileSmsConsent}
       />
     </ErrorBoundary>
   );
