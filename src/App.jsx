@@ -1474,7 +1474,7 @@ useEffect(() => {
       .select()
       .single()).data;
     if (!share) throw new Error("Failed to create share token");
-    const url = `${window.location.origin}/?contentPlanToken=${share.token}`;
+    const url = `${window.location.origin}/?cp=${share.token}`;
     setCpShareModal({ planId, token: share.token, url, client: plan?.clients || null });
     setCpShareMethod("email");
     setCpShareError("");

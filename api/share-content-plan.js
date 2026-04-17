@@ -92,7 +92,7 @@ export default async function handler(req, res) {
   if (shareErr) return res.status(500).json({ error: shareErr.message });
 
   const siteUrl = process.env.SITE_URL || process.env.APP_URL || "https://getloudmouth.work";
-  const publicUrl = `${siteUrl}/?contentPlanToken=${share.token}`;
+  const publicUrl = `${siteUrl}/?cp=${share.token}`;
   const monthName = MONTHS[plan.month];
 
   const { data: senderProfile } = await sb.from("profiles").select("name").eq("id", user.id).single();

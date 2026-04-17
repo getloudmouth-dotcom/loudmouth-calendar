@@ -7,7 +7,8 @@ export function readExportToken() {
 
 export function readContentPlanToken() {
   if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get("contentPlanToken");
+  const p = new URLSearchParams(window.location.search);
+  return p.get("cp") || p.get("contentPlanToken");
 }
 
 export function readCPExportToken() {
