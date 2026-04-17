@@ -9,7 +9,6 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 async function resolveUrl(raw) {
   const full = raw.startsWith("http") ? raw : `https://${raw}`;
   const parsed = new URL(full);
-  // Follow pin.it shortlinks to get the real pinterest.com URL
   if (parsed.hostname === "pin.it" || parsed.hostname === "www.pin.it") {
     const resp = await fetch(full, { method: "HEAD", redirect: "follow", headers: { "User-Agent": UA } });
     return resp.url;
@@ -46,21 +45,65 @@ function extractPins(data) {
     pins.push({ id: String(pin.id), title: pin.title || pin.description || "", image_url: imageUrl });
   }
 
-  // Format: resource_response.data (array of pins or board object with pins)
   const rdata = data?.resource_response?.data;
   if (Array.isArray(rdata)) { rdata.forEach(tryPin); return pins; }
   if (rdata?.pins) { rdata.pins.forEach(tryPin); return pins; }
-
-  // Format: top-level array
   if (Array.isArray(data)) { data.forEach(tryPin); return pins; }
 
-  // Deep search for pins array in any nested object
   function search(obj, depth = 0) {
-    if (depth > 6 || !obj || typeof obj !== "object") return;
-    if (Array.isArray(obj)) { obj.forEach(item => { if (item?.id && item?.images) tryPin(item); else search(item, depth + 1); }); return; }
+    if (depth > 8 || !obj || typeof obj !== "object") return;
+    if (Array.isArray(obj)) {
+      obj.forEach(item => { if (item?.id && (item?.images || item?.image_url)) tryPin(item); else search(item, depth + 1); });
+      return;
+    }
     for (const val of Object.values(obj)) search(val, depth + 1);
   }
   search(data);
+
+  return pins;
+}
+
+// Parse pins out of Pinterest's server-rendered HTML page (embedded JSON blobs)
+function extractPinsFromHtml(html) {
+  const pins = [];
+  const seen = new Set();
+
+  // Pinterest embeds data in multiple script tags — scan all of them
+  const scriptRe = /<script[^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = scriptRe.exec(html)) !== null) {
+    const content = match[1];
+    // Look for objects that have image URLs in Pinterest's CDN
+    const pinRe = /"id"\s*:\s*"(\d+)"[\s\S]{0,500}?"https:\/\/i\.pinimg\.com\/[^"]+"/g;
+    if (!pinRe.test(content)) continue;
+
+    try {
+      // Try to parse any JSON object in this script block
+      const jsonRe = /\{[\s\S]+\}/g;
+      let jMatch;
+      while ((jMatch = jsonRe.exec(content)) !== null) {
+        try {
+          const obj = JSON.parse(jMatch[0]);
+          extractPins(obj).forEach(p => {
+            if (!seen.has(p.id)) { seen.add(p.id); pins.push(p); }
+          });
+        } catch { /* not valid JSON, skip */ }
+        if (pins.length > 0) break;
+      }
+    } catch { /* skip */ }
+    if (pins.length > 0) break;
+  }
+
+  // Fallback: extract image URLs directly from pinimg CDN references in the HTML
+  if (pins.length === 0) {
+    const imgRe = /"(https:\/\/i\.pinimg\.com\/\d+x\/[^"]+\.jpg)"/g;
+    const idRe = /"id"\s*:\s*"(\d+)"/g;
+    const imgUrls = [...html.matchAll(/"(https:\/\/i\.pinimg\.com\/736x\/[^"]+\.jpg)"/g)].map(m => m[1]);
+    imgUrls.forEach((url, i) => {
+      const id = String(i + 1);
+      if (!seen.has(id)) { seen.add(id); pins.push({ id, title: "", image_url: url }); }
+    });
+  }
 
   return pins;
 }
@@ -92,38 +135,45 @@ export default async function handler(req, res) {
 
   const { username, board } = parsed;
   const boardPath = `/${username}/${board}/`;
+  const boardPageUrl = `https://www.pinterest.com${boardPath}`;
 
-  // Try Pinterest's internal resource endpoint (most reliable for public boards)
-  const resourceUrl = `https://www.pinterest.com/resource/BoardFeedResource/get/?source_url=${encodeURIComponent(boardPath)}&data=${encodeURIComponent(JSON.stringify({ options: { board_url: boardPath, page_size: 50, prepend: false }, context: {} }))}&_=${Date.now()}`;
+  const headers = {
+    "User-Agent": UA,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Upgrade-Insecure-Requests": "1",
+  };
 
   try {
-    const resp = await fetch(resourceUrl, {
-      headers: {
-        "User-Agent": UA,
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Accept-Language": "en-US,en;q=0.9",
-        "X-Requested-With": "XMLHttpRequest",
-        "Referer": `https://www.pinterest.com${boardPath}`,
-        "X-APP-VERSION": "db7f950",
-        "X-Pinterest-AppState": "active",
-      },
-    });
+    // Fetch the public board page HTML
+    const resp = await fetch(boardPageUrl, { headers, redirect: "follow" });
 
     if (resp.status === 404) {
-      return res.status(404).json({ error: "not_found", message: "Couldn't load that board — it may be private or the URL is incorrect." });
+      return res.status(404).json({ error: "not_found", message: "Couldn't find that board — check the URL and try again." });
     }
     if (resp.status === 401 || resp.status === 403) {
-      return res.status(403).json({ error: "private", message: "Couldn't load that board — it may be private or the URL is incorrect." });
+      return res.status(403).json({ error: "private", message: "Couldn't load that board — it may be private or require login." });
     }
     if (!resp.ok) {
       throw new Error(`Pinterest returned ${resp.status}`);
     }
 
-    const data = await resp.json();
-    const pins = extractPins(data);
+    const html = await resp.text();
+
+    // Pinterest 404s redirect to the homepage — detect by missing board content
+    if (!html.includes("pinimg.com") && !html.includes(username)) {
+      return res.status(404).json({ error: "not_found", message: "Couldn't find that board — it may have been deleted or made private." });
+    }
+
+    const pins = extractPinsFromHtml(html);
 
     if (pins.length === 0) {
-      return res.status(200).json({ pins: [], empty: true, message: "This board appears to be empty." });
+      return res.status(200).json({ pins: [], empty: true, message: "No images found on this board. It may be empty or Pinterest may be limiting access — try the OAuth option instead." });
     }
 
     return res.status(200).json({ pins });
