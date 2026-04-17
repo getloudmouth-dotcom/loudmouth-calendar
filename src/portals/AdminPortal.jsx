@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ROLE_TOOLS, ALL_TOOLS } from "../constants";
 
 const ROLES = [
@@ -23,9 +23,11 @@ export default function AdminPortal({
   editUserForm, setEditUserForm,
   editUserBusy,
   doUpdateUser,
+  doDeleteUser, deleteUserBusy, currentUserId,
   setActivePortal,
 }) {
   const [tab, setTab] = useState("team"); // "team" | "roles"
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Local editable copy of role-tool matrix
   const [localPerms, setLocalPerms] = useState(null);
@@ -106,6 +108,7 @@ export default function AdminPortal({
                   return (
                     <div key={u.id} onClick={() => {
                       setEditingUser(u);
+                      setConfirmDelete(false);
                       const form = { ...u };
                       for (const { key } of ALL_TOOLS) {
                         const defaultOn = roleDefaults.includes(key);
@@ -229,7 +232,7 @@ export default function AdminPortal({
       {/* ── Edit User Modal ── */}
       {editingUser && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => e.target === e.currentTarget && setEditingUser(null)}>
+          onClick={e => { if (e.target === e.currentTarget) { setEditingUser(null); setConfirmDelete(false); } }}>
           <div style={{ background: "white", borderRadius: 14, width: 460, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.2)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 2 }}>{editingUser.name || editingUser.email}</div>
             <div style={{ fontSize: 12, color: "#aaa", marginBottom: 24 }}>{editingUser.email}</div>
@@ -274,8 +277,43 @@ export default function AdminPortal({
               <button onClick={doUpdateUser} disabled={editUserBusy} style={{ flex: 1, padding: "11px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: editUserBusy ? "default" : "pointer" }}>
                 {editUserBusy ? "Saving..." : "Save Changes"}
               </button>
-              <button onClick={() => setEditingUser(null)} style={{ padding: "11px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setEditingUser(null); setConfirmDelete(false); }} style={{ padding: "11px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
             </div>
+
+            {editingUser.id !== currentUserId && (
+              <div style={{ marginTop: 24, borderTop: "1.5px solid #f0f0ee", paddingTop: 20 }}>
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    style={{ width: "100%", padding: "10px 0", background: "none", color: "#c0392b", border: "1.5px solid #f5c6c2", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  >
+                    Delete User
+                  </button>
+                ) : (
+                  <div style={{ background: "#fff5f5", border: "1.5px solid #f5c6c2", borderRadius: 10, padding: "16px" }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#c0392b", marginBottom: 4 }}>Are you sure?</div>
+                    <div style={{ fontSize: 12, color: "#888", marginBottom: 14 }}>
+                      This permanently deletes <strong>{editingUser.name || editingUser.email}</strong> and all their data. No take-backs.
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => doDeleteUser(editingUser.id)}
+                        disabled={deleteUserBusy}
+                        style={{ flex: 1, padding: "10px 0", background: "#c0392b", color: "white", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: deleteUserBusy ? "default" : "pointer", opacity: deleteUserBusy ? 0.6 : 1 }}
+                      >
+                        {deleteUserBusy ? "Deleting..." : "Yes, Delete"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        style={{ padding: "10px 16px", background: "#f0f0f0", color: "#555", border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -229,6 +229,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [editingUser, setEditingUser] = useState(null);
   const [editUserForm, setEditUserForm] = useState({});
   const [editUserBusy, setEditUserBusy] = useState(false);
+  const [deleteUserBusy, setDeleteUserBusy] = useState(false);
   // ── Collaborators ──
   const [calCollaborators, setCalCollaborators] = useState({}); // calId → [{user_id, name, email, permission}]
   const [shareModal, setShareModal] = useState(null); // null | { cal }
@@ -1034,6 +1035,25 @@ useEffect(() => {
     setEditUserBusy(false);
   }
 
+  async function doDeleteUser(userId) {
+    setDeleteUserBusy(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+        body: JSON.stringify({ userId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to delete user");
+      setEditingUser(null);
+      await loadAdminUsers();
+    } catch (e) {
+      alert("Failed to delete user: " + e.message);
+    }
+    setDeleteUserBusy(false);
+  }
+
   // ── Calendars ──
   async function loadAllCalendars() {
     const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
@@ -1603,6 +1623,7 @@ useEffect(() => {
         editingUser={editingUser} setEditingUser={setEditingUser}
         editUserForm={editUserForm} setEditUserForm={setEditUserForm}
         editUserBusy={editUserBusy} doUpdateUser={doUpdateUser}
+        doDeleteUser={doDeleteUser} deleteUserBusy={deleteUserBusy} currentUserId={user?.id}
         currentCPId={currentCPId} setCurrentCPId={setCurrentCPId}
         activeCPStep={activeCPStep} setActiveCPStep={setActiveCPStep}
         cpClientName={cpClientName} setCpClientName={setCpClientName}
