@@ -1580,14 +1580,19 @@ useEffect(() => {
     return share;
   }
 
-  async function doSendContentPlan() {
+  async function doSendContentPlan(overridePhone, overrideEmail) {
     setCpShareBusy(true); setCpShareError(""); setCpShareSuccess("");
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch("/api/share-content-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ planId: cpShareModal.planId, method: cpShareMethod }),
+        body: JSON.stringify({
+          planId: cpShareModal.planId,
+          method: cpShareMethod,
+          ...(overridePhone ? { overridePhone } : {}),
+          ...(overrideEmail ? { overrideEmail } : {}),
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to send");

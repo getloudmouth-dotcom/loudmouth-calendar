@@ -60,7 +60,7 @@ export default async function handler(req, res) {
   const { data: { user }, error: authError } = await sb.auth.getUser(token);
   if (authError || !user) return res.status(401).json({ error: "Invalid token" });
 
-  const { planId, method = "email" } = req.body || {};
+  const { planId, method = "email", overridePhone, overrideEmail } = req.body || {};
   if (!planId) return res.status(400).json({ error: "planId is required" });
   if (!["email", "sms", "both"].includes(method)) return res.status(400).json({ error: "method must be email, sms, or both" });
 
@@ -75,10 +75,10 @@ export default async function handler(req, res) {
   if (plan.user_id !== user.id) return res.status(403).json({ error: "You do not own this plan" });
 
   const client = plan.clients;
-  if ((method === "email" || method === "both") && !client?.email) {
+  if ((method === "email" || method === "both") && !client?.email && !overrideEmail) {
     return res.status(400).json({ error: "Client has no email address on file" });
   }
-  if ((method === "sms" || method === "both") && !client?.phone) {
+  if ((method === "sms" || method === "both") && !client?.phone && !overridePhone) {
     return res.status(400).json({ error: "Client has no phone number on file" });
   }
 
@@ -103,7 +103,7 @@ export default async function handler(req, res) {
   if (method === "email" || method === "both") {
     try {
       await sendEmail({
-        to: client.email,
+        to: overrideEmail || client.email,
         subject: `${senderName} shared a content plan with you`,
         text: `${senderName} has shared the ${plan.client_name} content plan for ${monthName} ${plan.year} with you.\n\nReview it here (no login required):\n${publicUrl}\n\nYou can approve, deny, and add notes on each item.`,
         html: `
@@ -131,7 +131,7 @@ export default async function handler(req, res) {
   if (method === "sms" || method === "both") {
     try {
       await sendSms({
-        to: client.phone,
+        to: overridePhone || client.phone,
         body: `Loudmouth Creative\nYour ${monthName} ${plan.year} content plan is ready for review.\n${publicUrl}\n\nReply STOP to opt out.`,
       });
     } catch (e) {

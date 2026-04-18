@@ -38,6 +38,8 @@ export default function ContentPlanPortal({
 }) {
   const { showToast, user } = useApp();
   const [creators, setCreators] = useState([]);
+  const [overridePhone, setOverridePhone] = useState("");
+  const [overrideEmail, setOverrideEmail] = useState("");
 
   useEffect(() => {
     const fetchCreators = async () => {
@@ -504,7 +506,7 @@ export default function ContentPlanPortal({
         const activeMethod = methods.find(m => m.value === cpShareMethod);
         return (
           <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-            onClick={e => e.target === e.currentTarget && setCpShareModal(null)}>
+            onClick={e => { if (e.target === e.currentTarget) { setCpShareModal(null); setOverridePhone(""); setOverrideEmail(""); } }}>
             <div style={{ background: "white", borderRadius: 16, width: 460, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 2 }}>Send Content Plan</div>
               <div style={{ fontSize: 12, color: "#aaa", marginBottom: 20 }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
@@ -533,19 +535,50 @@ export default function ContentPlanPortal({
                     ))}
                   </div>
                   {activeMethod && !activeMethod.disabled && (
-                    <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>To: <span style={{ color: "#1a1a2e", fontWeight: 600 }}>{activeMethod.tip}</span></div>
+                    <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                      {(cpShareMethod === "email" || cpShareMethod === "both") && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Send email to</div>
+                          <input
+                            type="email"
+                            value={overrideEmail || client.email || ""}
+                            onChange={e => setOverrideEmail(e.target.value)}
+                            placeholder={client.email || "Email address..."}
+                            style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }}
+                          />
+                          {overrideEmail && overrideEmail !== client.email && (
+                            <div style={{ fontSize: 11, color: "#E8001C", marginTop: 3 }}>Using override — client's saved email unchanged</div>
+                          )}
+                        </div>
+                      )}
+                      {(cpShareMethod === "sms" || cpShareMethod === "both") && (
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Send SMS to</div>
+                          <input
+                            type="tel"
+                            value={overridePhone || client.phone || ""}
+                            onChange={e => setOverridePhone(e.target.value)}
+                            placeholder={client.phone || "Phone number..."}
+                            style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#1a1a2e", outline: "none", boxSizing: "border-box" }}
+                          />
+                          {overridePhone && overridePhone !== client.phone && (
+                            <div style={{ fontSize: 11, color: "#E8001C", marginTop: 3 }}>Using override — client's saved number unchanged</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                   {cpShareSuccess && <div style={{ fontSize: 13, color: "#22aa66", fontWeight: 700, marginBottom: 10 }}>{cpShareSuccess}</div>}
                   {cpShareError && <div style={{ fontSize: 12, color: "#E8001C", marginBottom: 10 }}>{cpShareError}</div>}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
-                      onClick={doSendContentPlan}
+                      onClick={() => doSendContentPlan(overridePhone || null, overrideEmail || null)}
                       disabled={cpShareBusy || (activeMethod?.disabled)}
                       style={{ flex: 1, padding: "11px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: cpShareBusy || activeMethod?.disabled ? "default" : "pointer", opacity: activeMethod?.disabled ? 0.4 : 1 }}
                     >
                       {cpShareBusy ? "Sending..." : `Send via ${cpShareMethod === "both" ? "Email & SMS" : cpShareMethod === "email" ? "Email" : "SMS"}`}
                     </button>
-                    <button onClick={() => setCpShareModal(null)} style={{ ...secondaryBtn, padding: "11px 16px" }}>Close</button>
+                    <button onClick={() => { setCpShareModal(null); setOverridePhone(""); setOverrideEmail(""); }} style={{ ...secondaryBtn, padding: "11px 16px" }}>Close</button>
                   </div>
                 </>
               )}
