@@ -21,7 +21,7 @@ export default function PrivacyPolicyView() {
         <div style={S.sub}>by Loudmouth Creative, LLC</div>
 
         <h1 style={S.h1}>Privacy Policy & Terms of Service</h1>
-        <p style={S.updated}>Last updated: April 16, 2026</p>
+        <p style={S.updated}>Last updated: April 18, 2026</p>
 
         {/* ── PRIVACY POLICY ── */}
         <h2 style={S.h2}>1. Who We Are</h2>
@@ -46,20 +46,30 @@ export default function PrivacyPolicyView() {
         <h2 style={S.h2}>4. SMS Opt-Out</h2>
         <p style={S.p}>You can opt out of SMS notifications at any time by replying <span style={S.kbd}>STOP</span> to any message you receive from us. You can also contact us directly to request removal. After opting out, you will not receive further SMS messages unless you re-consent.</p>
 
-        <h2 style={S.h2}>5. Data Sharing</h2>
+        <h2 style={S.h2}>5. Pinterest Integration</h2>
+        <p style={S.p}>Loudmouth Calendar integrates with the Pinterest API to allow clients to browse their own Pinterest boards and saved pins as visual references within their content planning workflow. The following applies to this integration:</p>
+        <ul style={{ listStyle: "disc", paddingLeft: 0 }}>
+          <li style={S.li}><span style={S.strong}>Authentication:</span> Pinterest data is only accessed after a user explicitly authenticates via Pinterest's official OAuth flow. We never access Pinterest data without your direct consent.</li>
+          <li style={S.li}><span style={S.strong}>Data accessed:</span> We request read-only access to your Pinterest boards and pins (<span style={S.kbd}>boards:read</span>, <span style={S.kbd}>pins:read</span>, <span style={S.kbd}>user_accounts:read</span>). We do not request write permissions and do not post to Pinterest on your behalf.</li>
+          <li style={S.li}><span style={S.strong}>How it's used:</span> Pinterest board and pin data is displayed within your Loudmouth content calendar session solely as visual inspiration and reference material. It is not stored on our servers beyond your active session.</li>
+          <li style={S.li}><span style={S.strong}>No data selling or sharing:</span> We do not sell, transfer, or share your Pinterest data with any third party.</li>
+          <li style={S.li}><span style={S.strong}>Revoking access:</span> You can revoke Loudmouth's access to your Pinterest account at any time via <span style={S.strong}>Pinterest Settings → Security → Apps with access to your Pinterest account</span>.</li>
+        </ul>
+
+        <h2 style={S.h2}>7. Data Sharing</h2>
         <p style={S.p}>We do not sell, rent, or share your personal information with third parties for marketing purposes. We use Twilio to deliver SMS messages and Supabase to store platform data — both operate under their own privacy and security policies.</p>
 
-        <h2 style={S.h2}>6. Data Retention</h2>
+        <h2 style={S.h2}>8. Data Retention</h2>
         <p style={S.p}>We retain your information for as long as your account is active or as needed to provide services. You may request deletion of your data by contacting us at the address below.</p>
 
-        <h2 style={S.h2}>7. Contact</h2>
+        <h2 style={S.h2}>9. Contact</h2>
         <p style={S.p}>For questions about this policy or to request data deletion: <span style={S.strong}>hello@getloudmouth.work</span></p>
 
         <hr style={S.divider} />
 
         {/* ── TERMS & CONDITIONS ── */}
         <h1 style={{ ...S.h1, fontSize: 22, marginBottom: 8 }}>SMS Terms & Conditions</h1>
-        <p style={{ ...S.updated, marginBottom: 24 }}>Last updated: April 16, 2026</p>
+        <p style={{ ...S.updated, marginBottom: 24 }}>Last updated: April 18, 2026</p>
 
         <h2 style={S.h2}>Program Name</h2>
         <p style={S.p}>Loudmouth SMS Notifications</p>
