@@ -223,7 +223,7 @@ export default function ContentPlanPortal({
                     <col style={{ width: "19%" }} />
                   </colgroup>
                   <thead>
-                    <tr style={{ background: "#1a1a2e" }}>
+                    <tr style={{ background: "#1a1a2e", borderBottom: "2px solid rgba(215, 250, 6, 0.25)" }}>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>LINK</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>WHAT'S NEEDED</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>CREATOR</th>
