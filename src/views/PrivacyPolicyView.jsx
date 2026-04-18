@@ -56,13 +56,39 @@ export default function PrivacyPolicyView() {
           <li style={S.li}><span style={S.strong}>Revoking access:</span> You can revoke Loudmouth's access to your Pinterest account at any time via <span style={S.strong}>Pinterest Settings → Security → Apps with access to your Pinterest account</span>.</li>
         </ul>
 
-        <h2 style={S.h2}>7. Data Sharing</h2>
-        <p style={S.p}>We do not sell, rent, or share your personal information with third parties for marketing purposes. We use Twilio to deliver SMS messages and Supabase to store platform data — both operate under their own privacy and security policies.</p>
+        <h2 style={S.h2}>6. Google Drive Integration</h2>
+        <p style={S.p}>Loudmouth Calendar integrates with Google Drive to allow team members to attach files, export content plans, and share assets within the platform workflow.</p>
+        <ul style={{ listStyle: "disc", paddingLeft: 0 }}>
+          <li style={S.li}><span style={S.strong}>Authentication:</span> Google Drive is accessed only after you authenticate via Google's official OAuth flow. We request only the permissions necessary to read and upload files on your behalf.</li>
+          <li style={S.li}><span style={S.strong}>Data accessed:</span> We access files you explicitly select or export through the platform. We do not scan, index, or read the contents of your broader Google Drive.</li>
+          <li style={S.li}><span style={S.strong}>How it's used:</span> Files are attached to content calendar entries or used for PDF/document exports. We do not store your Google Drive credentials on our servers.</li>
+          <li style={S.li}><span style={S.strong}>Revoking access:</span> You can revoke Loudmouth's Google access at any time via <span style={S.strong}>Google Account Settings → Security → Third-party apps with account access</span>.</li>
+          <li style={S.li}><span style={S.strong}>Google's policy:</span> Google's privacy policy applies to all data processed through their services: <span style={S.strong}>policies.google.com/privacy</span></li>
+        </ul>
 
-        <h2 style={S.h2}>8. Data Retention</h2>
+        <h2 style={S.h2}>7. FreshBooks Integration</h2>
+        <p style={S.p}>Loudmouth Calendar integrates with FreshBooks to sync client and billing information for invoicing and payment tracking within the platform.</p>
+        <ul style={{ listStyle: "disc", paddingLeft: 0 }}>
+          <li style={S.li}><span style={S.strong}>Authentication:</span> FreshBooks is connected via OAuth using your FreshBooks account credentials. We never store your FreshBooks password.</li>
+          <li style={S.li}><span style={S.strong}>Data accessed:</span> We sync client names, contact details, invoice records, and payment statuses from your FreshBooks account to display billing information within Loudmouth.</li>
+          <li style={S.li}><span style={S.strong}>How it's used:</span> Synced data is used solely to display billing status and client records inside the Loudmouth platform. We do not use your FreshBooks data for any other purpose.</li>
+          <li style={S.li}><span style={S.strong}>No data selling:</span> FreshBooks billing data is never sold, rented, or shared with any third party.</li>
+          <li style={S.li}><span style={S.strong}>Revoking access:</span> You can disconnect Loudmouth from FreshBooks via <span style={S.strong}>FreshBooks Settings → Connected Apps</span>.</li>
+          <li style={S.li}><span style={S.strong}>FreshBooks' policy:</span> FreshBooks' privacy policy applies to all data in their system: <span style={S.strong}>freshbooks.com/policies/privacy-policy</span></li>
+        </ul>
+
+        <h2 style={S.h2}>8. Third-Party Services</h2>
+        <p style={S.p}>We do not sell, rent, or share your personal information with third parties for marketing purposes. The following services process data on our behalf to operate the platform:</p>
+        <ul style={{ listStyle: "disc", paddingLeft: 0 }}>
+          <li style={S.li}><span style={S.strong}>Supabase:</span> Stores all platform data including user accounts, content calendars, and billing records. Data is encrypted at rest and in transit. Privacy policy: <span style={S.strong}>supabase.com/privacy</span></li>
+          <li style={S.li}><span style={S.strong}>Twilio:</span> Delivers SMS notifications. Your phone number and message content are transmitted to Twilio solely to deliver messages you have consented to receive. Privacy policy: <span style={S.strong}>twilio.com/en-us/legal/privacy</span></li>
+          <li style={S.li}><span style={S.strong}>Resend:</span> Delivers transactional emails such as invitations, password resets, and account notifications. Your email address and message content are transmitted to Resend for delivery only. Privacy policy: <span style={S.strong}>resend.com/legal/privacy-policy</span></li>
+        </ul>
+
+        <h2 style={S.h2}>9. Data Retention</h2>
         <p style={S.p}>We retain your information for as long as your account is active or as needed to provide services. You may request deletion of your data by contacting us at the address below.</p>
 
-        <h2 style={S.h2}>9. Contact</h2>
+        <h2 style={S.h2}>10. Contact</h2>
         <p style={S.p}>For questions about this policy or to request data deletion: <span style={S.strong}>hello@getloudmouth.work</span></p>
 
         <hr style={S.divider} />
