@@ -41,6 +41,9 @@
     },
     "api/twilio/sms.js": {
       "maxDuration": 10
+    },
+    "api/cloudinary-audit.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -54,6 +57,10 @@
     {
       "path": "/api/billing/process-recurring",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cloudinary-audit",
+      "schedule": "0 3 * * 0"
     }
   ],
   "headers": [
