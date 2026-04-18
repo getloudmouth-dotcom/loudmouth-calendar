@@ -38,52 +38,18 @@ export default function ContentPlanPortal({
 }) {
   const { showToast, user } = useApp();
   const [creators, setCreators] = useState([]);
-  const [showCreatorMgmt, setShowCreatorMgmt] = useState(false);
-  const [newCreatorName, setNewCreatorName] = useState("");
-  const [creatorLoading, setCreatorLoading] = useState(false);
 
   useEffect(() => {
     const fetchCreators = async () => {
       const { data, error } = await supabase
-        .from("content_creators")
-        .select("*")
+        .from("profiles")
+        .select("id, name")
+        .eq("status", "active")
         .order("name");
       if (!error && data) setCreators(data);
     };
     fetchCreators();
   }, []);
-
-  const addCreator = async () => {
-    if (!newCreatorName.trim()) return;
-    setCreatorLoading(true);
-    const { data, error } = await supabase
-      .from("content_creators")
-      .insert({ name: newCreatorName.trim() })
-      .select();
-    if (!error && data) {
-      setCreators(prev => [...prev, ...data].sort((a, b) => a.name.localeCompare(b.name)));
-      setNewCreatorName("");
-      showToast("Creator added", "success");
-    } else {
-      showToast("Failed to add creator", "error");
-    }
-    setCreatorLoading(false);
-  };
-
-  const deleteCreator = async (id) => {
-    setCreatorLoading(true);
-    const { error } = await supabase
-      .from("content_creators")
-      .delete()
-      .eq("id", id);
-    if (!error) {
-      setCreators(prev => prev.filter(c => c.id !== id));
-      showToast("Creator deleted", "success");
-    } else {
-      showToast("Failed to delete creator", "error");
-    }
-    setCreatorLoading(false);
-  };
 
   const onPlansList = !currentCPId && activeCPStep === null;
   const onSetup = !currentCPId && activeCPStep === 1;
@@ -267,16 +233,7 @@ export default function ContentPlanPortal({
                     <tr style={{ background: "#1a1a2e" }}>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>PRODUCED VIDEO</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>WHAT'S NEEDED</th>
-                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 6 }}>
-                        CREATOR
-                        <button
-                          onClick={() => setShowCreatorMgmt(true)}
-                          style={{ background: "none", border: "none", color: "#D7FA06", cursor: "pointer", fontSize: 12, padding: 0, lineHeight: 1 }}
-                          title="Manage creators"
-                        >
-                          ⚙
-                        </button>
-                      </th>
+                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>CREATOR</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>APPROVAL</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}></th>
                     </tr>
@@ -547,64 +504,6 @@ export default function ContentPlanPortal({
           </div>
         )}
       </div>
-
-      {/* ── Creator Management Modal ── */}
-      {showCreatorMgmt && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => e.target === e.currentTarget && setShowCreatorMgmt(false)}
-        >
-          <div style={{ background: "white", borderRadius: 16, width: 400, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
-            <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 20 }}>Manage Creators</div>
-            <div style={{ marginBottom: 20, maxHeight: 200, overflowY: "auto" }}>
-              {creators.length === 0 ? (
-                <div style={{ color: "#aaa", fontSize: 13, textAlign: "center", padding: "20px 0" }}>No creators yet. Add one below.</div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {creators.map(creator => (
-                    <div key={creator.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: "#f8f8f8", borderRadius: 8, border: "1px solid #e8e8e8" }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#333" }}>{creator.name}</span>
-                      <button
-                        onClick={() => deleteCreator(creator.id)}
-                        disabled={creatorLoading}
-                        style={{ background: "none", border: "none", color: "#E8001C", cursor: "pointer", fontSize: 16, padding: 0, lineHeight: 1 }}
-                        title="Delete creator"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <input
-                autoFocus
-                type="text"
-                value={newCreatorName}
-                onChange={e => setNewCreatorName(e.target.value)}
-                placeholder="Creator name..."
-                onKeyDown={e => e.key === "Enter" && addCreator()}
-                style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 12, outline: "none" }}
-                disabled={creatorLoading}
-              />
-              <button
-                onClick={addCreator}
-                disabled={creatorLoading || !newCreatorName.trim()}
-                style={{ ...primaryBtn, padding: "9px 16px", fontSize: 12 }}
-              >
-                Add
-              </button>
-            </div>
-            <button
-              onClick={() => setShowCreatorMgmt(false)}
-              style={{ width: "100%", ...secondaryBtn, padding: "10px 16px" }}
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ── Content Plan Share / Send Modal ── */}
       {cpShareModal && (() => {
