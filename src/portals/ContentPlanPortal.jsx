@@ -208,13 +208,7 @@ export default function ContentPlanPortal({
                   <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>SHOOT DATE: {cpShootDate}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button
-                    onClick={() => setPinterestOpen(o => !o)}
-                    style={{ background: pinterestOpen ? "#E60023" : "#f5f5f5", color: pinterestOpen ? "white" : "#E60023", border: "1.5px solid #E60023", padding: "10px 16px", borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
-                  >
-                    📌 {pinterestOpen ? "Close" : "References"}
-                  </button>
-                  <button onClick={() => saveContentPlan(false)} disabled={cpSaving} style={{ ...secondaryBtn, padding: "10px 18px" }}>
+                  <button onClick={() => saveContentPlan(false)} disabled={cpSaving} style={{ ...secondaryBtn, padding: "10px 18px", border: "1.5px solid #ccc" }}>
                     {cpSaving ? "Saving..." : "Save"}
                   </button>
                   <button onClick={() => setActiveCPStep(3)} style={{ ...primaryBtn, padding: "10px 18px" }}>Preview & Export →</button>
@@ -223,29 +217,27 @@ export default function ContentPlanPortal({
               <div style={{ overflowX: "auto", marginBottom: 24 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", tableLayout: "fixed" }}>
                   <colgroup>
-                    <col style={{ width: "22%" }} />
-                    <col style={{ width: "28%" }} />
-                    <col style={{ width: "14%" }} />
-                    <col style={{ width: "12%" }} />
-                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "25%" }} />
+                    <col style={{ width: "38%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "19%" }} />
                   </colgroup>
                   <thead>
                     <tr style={{ background: "#1a1a2e" }}>
-                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>PRODUCED VIDEO</th>
+                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>LINK</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>WHAT'S NEEDED</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>CREATOR</th>
                       <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>APPROVAL</th>
-                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {producedItems.length > 0 && (
-                      <tr><td colSpan={5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
+                      <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
                     )}
                     {producedItems.map((item, idx) => (
                       <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>PRODUCED VIDEO #{item.item_number}</div>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>#{item.item_number}</div>
                           <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
@@ -263,19 +255,16 @@ export default function ContentPlanPortal({
                             <option value="approved">Approved</option>
                             <option value="denied">Denied</option>
                           </select>
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "center", verticalAlign: "middle" }}>
-                          <span style={{ color: "#ddd", fontSize: 14 }}>···</span>
                         </td>
                       </tr>
                     ))}
                     {organicItems.length > 0 && (
-                      <tr><td colSpan={5} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
+                      <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
                     )}
                     {organicItems.map((item, idx) => (
                       <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>ORGANIC VIDEO #{item.item_number}</div>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>#{item.item_number}</div>
                           <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
@@ -293,9 +282,6 @@ export default function ContentPlanPortal({
                             <option value="approved">Approved</option>
                             <option value="denied">Denied</option>
                           </select>
-                        </td>
-                        <td style={{ padding: "10px 8px", textAlign: "center", verticalAlign: "middle" }}>
-                          <span style={{ color: "#ddd", fontSize: 14 }}>···</span>
                         </td>
                       </tr>
                     ))}
