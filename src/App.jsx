@@ -1590,8 +1590,8 @@ useEffect(() => {
         body: JSON.stringify({
           planId: cpShareModal.planId,
           method: cpShareMethod,
-          ...(overridePhone ? { overridePhone } : {}),
-          ...(overrideEmail ? { overrideEmail } : {}),
+          ...(overridePhone !== null ? { overridePhone } : {}),
+          ...(overrideEmail !== null ? { overrideEmail } : {}),
         }),
       });
       const json = await res.json();
