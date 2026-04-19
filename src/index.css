@@ -1,52 +1,46 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* ── Verge-inspired dark design system, Loudmouth branded ── */
+  --canvas: #131313;
+  --surface: #1e1e1e;
+  --surface-2: #2d2d2d;
+  --border: #ffffff;
+  --border-subtle: rgba(255,255,255,0.12);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --text: #949494;
+  --text-h: #ffffff;
+  --text-muted: #e9e9e9;
+  --text-inv: #000000;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
+  --bg: var(--canvas);
+  --code-bg: #1e1e1e;
+
+  /* Brand: chartreuse replaces Verge's mint */
+  --accent: #CCFF00;
+  --accent-hover: rgba(204,255,0,0.15);
+  --accent-bg: rgba(204, 255, 0, 0.1);
+  --accent-border: rgba(204, 255, 0, 0.5);
+
+  --social-bg: rgba(45, 45, 45, 0.5);
+  --shadow: none;
+
+  /* Typography */
+  --display: 'Bebas Neue', Impact, Helvetica, sans-serif;
+  --sans: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --heading: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'Space Mono', 'Courier New', Courier, monospace;
+
+  font: 16px/150% var(--sans);
+  letter-spacing: 0.15px;
+  color-scheme: dark;
   color: var(--text);
-  background: var(--bg);
+  background: var(--canvas);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
   @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    font-size: 15px;
   }
 }
 
@@ -58,26 +52,27 @@
   }
 }
 
-/* Focus rings for keyboard navigation — overrides inline outline:none */
+/* Focus rings for keyboard navigation */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #1a1a2e !important;
+  outline: none !important;
   outline-offset: 0 !important;
-  border-color: #1a1a2e !important;
+  border-color: var(--accent) !important;
 }
 
-/* Dashboard calendar card hover */
+/* Dashboard portal card hover — border highlight, no lift */
 .cal-card {
-  transition: box-shadow 0.15s, border-color 0.15s;
+  transition: border-color 0.15s;
 }
 .cal-card:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.11) !important;
-  border-color: #bbb !important;
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
 }
 
 body {
   margin: 0;
+  background: var(--canvas);
 }
 
 #root {
@@ -85,7 +80,7 @@ body {
   max-width: 100%;
   margin: 0 auto;
   text-align: center;
-  border-inline: 1px solid var(--border);
+  border-inline: 1px solid rgba(255,255,255,0.08);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -95,13 +90,13 @@ body {
 h1,
 h2 {
   font-family: var(--heading);
-  font-weight: 500;
+  font-weight: 700;
   color: var(--text-h);
 }
 
 h1 {
   font-size: 56px;
-  letter-spacing: -1.68px;
+  letter-spacing: -0.5px;
   margin: 32px 0;
   @media (max-width: 1024px) {
     font-size: 36px;
