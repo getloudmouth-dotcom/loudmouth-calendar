@@ -29,16 +29,16 @@ function portalCard(onClick, icon, title, desc, badge, ctaLabel, onMouseEnter, o
       style={{ background: C.surface, borderRadius: 20, padding: "28px 24px 24px", width: 280, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", flexDirection: "column", gap: 0 }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}>
-      <div style={{ width: 48, height: 48, borderRadius: 14, background: C.canvas, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 14, background: C.canvas, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
         {icon}
       </div>
-      <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 6, display: "flex", alignItems: "center", gap: 8, fontFamily: SANS }}>
+      <div style={{ fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 8, display: "flex", alignItems: "center", gap: 8, fontFamily: SANS, lineHeight: 1.1 }}>
         {title}
         {badge != null && badge > 0 && (
           <span style={{ background: C.accent, color: "#000", borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, fontFamily: MONO, letterSpacing: "1px" }}>{badge}</span>
         )}
       </div>
-      <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, flex: 1, fontFamily: SANS }}>{desc}</div>
+      <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, flex: 1, fontFamily: SANS }}>{desc}</div>
       <div style={{ marginTop: 20 }}>
         <span style={{ background: C.accent, color: "#000", borderRadius: 24, padding: "8px 18px", fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>{ctaLabel} →</span>
       </div>
@@ -92,8 +92,8 @@ export default function DashboardPortal({
       {/* ── Top nav ── */}
       <div style={{ background: C.canvas, borderBottom: `1px solid ${C.border}`, padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start" }}>
-          <div style={{ color: C.accent, fontWeight: 900, fontSize: 18, letterSpacing: "0.12em", fontFamily: "'Bebas Neue', Impact, sans-serif", whiteSpace: "nowrap" }}>LOUDMOUTH HQ</div>
-          <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, letterSpacing: "0.12em", fontFamily: MONO, whiteSpace: "nowrap", textTransform: "uppercase" }}>by Loudmouth</div>
+          <div style={{ color: C.accent, fontWeight: 900, fontSize: 52, letterSpacing: "0.06em", fontFamily: "'Bebas Neue', Impact, sans-serif", whiteSpace: "nowrap", lineHeight: 1 }}>LOUDMOUTH HQ</div>
+          <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, letterSpacing: "0.14em", fontFamily: MONO, whiteSpace: "nowrap", textTransform: "uppercase", marginTop: 2 }}>by Loudmouth</div>
         </div>
         {activePortal && activePortal !== "content-plan" && (
           <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", fontWeight: 600, padding: 0, fontFamily: MONO, letterSpacing: "1px", textTransform: "uppercase" }}>← Home</button>
@@ -155,12 +155,12 @@ export default function DashboardPortal({
       {/* ── Hub: portal selector ── */}
       {activePortal === null && (
         <div style={{ padding: "56px 48px 80px", maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ marginBottom: 48 }}>
-            <div style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: "1.8px", marginBottom: 10, fontFamily: MONO }}>
+          <div style={{ marginBottom: 56 }}>
+            <div style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 12, fontFamily: MONO }}>
               Welcome back{profileName ? `, ${profileName.split(" ")[0]}` : ""}
             </div>
-            <div style={{ fontSize: 36, fontWeight: 900, color: C.text, letterSpacing: "-0.5px", fontFamily: "'Bebas Neue', Impact, sans-serif", lineHeight: 1 }}>
-              SELECT A PORTAL
+            <div style={{ fontSize: 96, fontWeight: 900, color: C.text, letterSpacing: "0.02em", fontFamily: "'Bebas Neue', Impact, sans-serif", lineHeight: 0.88 }}>
+              SELECT A<br /><span style={{ color: C.accent }}>PORTAL</span>
             </div>
           </div>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
