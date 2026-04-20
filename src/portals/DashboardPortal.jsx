@@ -3,6 +3,7 @@ import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import Toast from "../components/Toast";
 import NavProfileMenu from "../components/NavProfileMenu";
+import CollabAvatars from "../components/CollabAvatars";
 import CalendarListPortal from "./CalendarListPortal";
 import SchedulingPortal from "./SchedulingPortal";
 import AdminPortal from "./AdminPortal";
@@ -59,6 +60,13 @@ const icons = {
       <rect x="5" y="14" width="4" height="2" rx="0.5" fill="currentColor"/>
     </svg>
   ),
+  home: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M3 12L12 3l9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 10v11h14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M9 21V15h6v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
 };
 
 const NAV_ITEMS = [
@@ -71,6 +79,7 @@ const NAV_ITEMS = [
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, can, signOut, setProfileInput, setEditingProfile, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults }) {
+  const { user } = useApp();
   const today = new Date();
   const upcomingCount = scheduledPosts.filter(r => r.post_date >= today.toISOString().slice(0, 10)).length;
 
@@ -85,12 +94,28 @@ function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, c
 
   return (
     <div style={{ width: 220, flexShrink: 0, height: "100vh", background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", position: "sticky", top: 0 }}>
-      {/* Logo */}
-      <div onClick={() => setActivePortal(null)} style={{ padding: "20px 20px 16px", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
-        <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
-        <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: 4 }}>
-          {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+      {/* Profile */}
+      <div style={{ borderBottom: `1px solid ${C.border}`, padding: "10px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <NavProfileMenu
+            profileName={profileName}
+            userEmail={user?.email}
+            currentCalendarId={null}
+            onMyCalendars={() => setActivePortal(null)}
+            onHistory={() => {}}
+            onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
+            onSignOut={signOut}
+          />
         </div>
+        <button
+          onClick={() => setActivePortal(null)}
+          title="Home"
+          style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 7, width: 32, alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: "#949494", transition: "background 0.15s" }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+          onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+        >
+          {icons.home}
+        </button>
       </div>
 
       {/* Nav items */}
@@ -121,16 +146,12 @@ function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, c
         })}
       </nav>
 
-      {/* Profile */}
-      <div style={{ borderTop: `1px solid ${C.border}`, padding: "12px 16px" }}>
-        <NavProfileMenu
-          profileName={profileName}
-          currentCalendarId={null}
-          onMyCalendars={() => setActivePortal(null)}
-          onHistory={() => {}}
-          onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
-          onSignOut={signOut}
-        />
+      {/* Logo */}
+      <div onClick={() => setActivePortal(null)} style={{ padding: "16px 20px 20px", borderTop: `1px solid ${C.border}`, cursor: "pointer" }}>
+        <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
+        <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: -2 }}>
+          {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        </div>
       </div>
     </div>
   );
@@ -148,8 +169,9 @@ function SectionHeader({ label, action }) {
 }
 
 // ── Hub ───────────────────────────────────────────────────────────────────────
-function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, scheduledPosts, newCalendar, openCalendar, can, loadAllContentPlans }) {
+function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, allContentPlans, scheduledPosts, newCalendar, openCalendar, can, loadAllContentPlans }) {
   const today = new Date();
+  const { user } = useApp();
   const firstName = profileName ? profileName.split(" ")[0] : null;
 
   const DAY_GREETINGS = [
@@ -177,13 +199,10 @@ function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, sche
   const statusColor = { approved: "#CCFF00", pending: C.meta, denied: "#ff4444" };
 
   return (
-    <div style={{ padding: "40px 48px 80px", maxWidth: 960, margin: "0 auto" }}>
+    <div style={{ padding: "40px 48px 80px" }}>
       {/* Greeting */}
       <div style={{ marginBottom: 48 }}>
-        <div style={{ fontFamily: MONO, fontSize: 10, color: C.meta, textTransform: "uppercase", letterSpacing: "1.8px", marginBottom: 10 }}>
-          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-        </div>
-        <div style={{ fontFamily: DISP, fontSize: 56, lineHeight: 0.9, letterSpacing: 1, color: C.text }}>
+        <div style={{ fontFamily: DISP, fontSize: 72, lineHeight: 0.88, letterSpacing: 1, color: C.text }}>
           {line1}<br />
           <span style={{ color: C.accent }}>{line2}</span>
         </div>
@@ -200,18 +219,30 @@ function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, sche
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
           {recentCals.map(cal => (
             <div key={cal.id} onClick={() => openCalendar(cal)}
-              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "border-color 0.15s" }}
+              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
               onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
-                <span style={{ fontFamily: MONO, fontSize: 7, color: "rgba(0,0,0,0.5)", lineHeight: 1.2 }}>{cal.year}</span>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
-                <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
-                  {cal.updated_at ? new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 7, color: "rgba(0,0,0,0.5)", lineHeight: 1.2 }}>{cal.year}</span>
                 </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                    {cal.user_id !== user?.id && (
+                      <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", background: "rgba(68,102,204,0.15)", color: "#7799ff", borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>SHARED</span>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
+                    {MONTHS[cal.month].slice(0, 3)} {cal.year}
+                  </div>
+                </div>
+              </div>
+              <CollabAvatars collaborators={calCollaborators?.[cal.id]} />
+              <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, letterSpacing: 0.5 }}>
+                {cal.updated_at ? `Saved ${new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
+                {cal.last_updated_by ? ` · ${cal.last_updated_by}` : ""}
               </div>
             </div>
           ))}
@@ -240,15 +271,26 @@ function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, sche
                   style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
                   onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {plan.client_name || plan.clients?.name || "Untitled"}
                   </div>
                   <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
                     {plan.month != null ? `${MONTHS[plan.month].slice(0, 3)} ${plan.year}` : "—"}
                   </div>
-                  <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: statusColor[planStatus] ?? C.meta, background: planStatus === "approved" ? "rgba(204,255,0,0.1)" : "rgba(255,255,255,0.05)", borderRadius: 20, padding: "2px 8px" }}>
-                    {planStatus}
-                  </span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 4 }}>
+                    <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: statusColor[planStatus] ?? C.meta, background: planStatus === "approved" ? "rgba(204,255,0,0.1)" : "rgba(255,255,255,0.05)", borderRadius: 20, padding: "2px 8px" }}>
+                      {planStatus}
+                    </span>
+                    {plan.shoot_date && (
+                      <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", borderRadius: 20, padding: "2px 8px", color: plan.shoot_date === "PENDING" ? "#ff6b6b" : "#7fd99e", background: plan.shoot_date === "PENDING" ? "rgba(255,68,68,0.12)" : "rgba(34,170,102,0.12)" }}>
+                        {plan.shoot_date === "PENDING" ? "SHOOT PENDING" : `SHOOT: ${plan.shoot_date}`}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, letterSpacing: 0.5 }}>
+                    {plan.updated_at ? `Saved ${new Date(plan.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
+                    {plan.last_updated_by ? ` · ${plan.last_updated_by}` : ""}
+                  </div>
                 </div>
               );
             })}
@@ -386,6 +428,7 @@ export default function DashboardPortal({
             setActivePortal={setActivePortal}
             profileName={profileName}
             allCalendars={allCalendars}
+            calCollaborators={calCollaborators}
             allContentPlans={allContentPlans}
             scheduledPosts={scheduledPosts}
             newCalendar={newCalendar}

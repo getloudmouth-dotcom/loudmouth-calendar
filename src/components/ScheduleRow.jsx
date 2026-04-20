@@ -1,6 +1,20 @@
 import { useState } from "react";
 import { supabase } from "../supabase";
 
+const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
+const MONO = "'Space Mono', 'Courier New', monospace";
+const DISP = "'Anton', Impact, Helvetica, sans-serif";
+
+const C = {
+  canvas:  "#131313",
+  surface: "#1e1e1e",
+  surface2:"#2a2a2a",
+  accent:  "#CCFF00",
+  text:    "#ffffff",
+  meta:    "#949494",
+  border:  "rgba(255,255,255,0.14)",
+};
+
 export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUserId, optedInUsers = [] }) {
   const [removing, setRemoving] = useState(false);
   const [showOptedIn, setShowOptedIn] = useState(false);
@@ -46,88 +60,121 @@ export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUser
   }
 
   return (
-    <div style={{ background: "white", borderRadius: 10, border: "1.5px solid #e8e8e8", overflow: "hidden" }}>
-      <div style={{ padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-            <span style={{ fontWeight: 800, fontSize: 14, color: "#1a1a2e" }}>{row.client_name}</span>
-            {row.email_sent_at && <span style={{ fontSize: 10, background: "#e8f8e8", color: "#3a8a3a", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>Sent</span>}
-            {!iAmNotified && <span style={{ fontSize: 10, background: "#f5f5f5", color: "#aaa", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>Muted</span>}
+    <div style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, overflow: "hidden", transition: "border-color 0.15s" }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.28)"}
+      onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+      <div style={{ padding: "14px 18px", height: 80, boxSizing: "border-box", overflow: "hidden", display: "flex", alignItems: "center", gap: 12 }}>
+        {/* Date badge */}
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minWidth: 36, gap: 1 }}>
+          <div style={{ fontFamily: DISP, fontSize: 24, color: C.accent, lineHeight: 1 }}>
+            {new Date(row.post_date + "T12:00:00").getDate()}
           </div>
-          <div style={{ fontSize: 12, color: "#888", marginBottom: 6 }}>{dateStr} · {types}</div>
+          <div style={{ fontFamily: MONO, fontSize: 8, color: C.meta, textTransform: "uppercase", letterSpacing: "0.5px", lineHeight: 1 }}>
+            {new Date(row.post_date + "T12:00:00").toLocaleDateString("en-US", { month: "short" })}
+          </div>
+        </div>
+        <div style={{ width: 1, alignSelf: "stretch", background: C.border, flexShrink: 0, margin: "6px 0" }} />
+
+        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "nowrap", overflow: "hidden" }}>
+            <span style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1 }}>{row.client_name}</span>
+            {row.email_sent_at && (
+              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: "#7fd99e", borderRadius: 20, padding: "1px 5px", flexShrink: 0, lineHeight: 1 }}>Sent</span>
+            )}
+            {!iAmNotified && (
+              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(255,255,255,0.05)", color: C.meta, borderRadius: 20, padding: "1px 5px", flexShrink: 0, lineHeight: 1 }}>Muted</span>
+            )}
+          </div>
+          <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1 }}>{dateStr} · {types}</div>
           {links.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
-              {links.map((l, i) => (
-                <a key={i} href={l} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#555", textDecoration: "none", wordBreak: "break-all" }} onMouseEnter={e => e.currentTarget.style.color = "#1a1a2e"} onMouseLeave={e => e.currentTarget.style.color = "#555"}>
-                  {l.length > 60 ? l.slice(0, 60) + "…" : l}
-                </a>
-              ))}
-            </div>
+            <a href={links[0]} target="_blank" rel="noopener noreferrer"
+              style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textDecoration: "none", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.3px", lineHeight: 1 }}
+              onMouseEnter={e => e.currentTarget.style.color = C.accent}
+              onMouseLeave={e => e.currentTarget.style.color = C.meta}>
+              {links[0].length > 60 ? links[0].slice(0, 60) + "…" : links[0]}
+              {links.length > 1 && <span style={{ color: C.meta, opacity: 0.6 }}> +{links.length - 1} more</span>}
+            </a>
           )}
           {hasCollaborators && (
             <button
               onClick={() => setShowOptedIn(v => !v)}
-              style={{ background: "none", border: "none", padding: 0, fontSize: 11, color: "#888", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              style={{ background: "none", border: "none", padding: 0, marginTop: 4, fontFamily: MONO, fontSize: 9, color: C.meta, cursor: "pointer", display: "flex", alignItems: "center", gap: 4, textTransform: "uppercase", letterSpacing: "0.5px", lineHeight: 1 }}
             >
-              <span>👤 {activeOptIns.length} opted in</span>
-              <span style={{ fontSize: 9, color: "#bbb" }}>{showOptedIn ? "▲" : "▼"}</span>
+              <span>{activeOptIns.length} opted in</span>
+              <span style={{ fontSize: 8, lineHeight: 1 }}>{showOptedIn ? "▲" : "▼"}</span>
             </button>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+
+        <div style={{ display: "flex", gap: 6, flexShrink: 0, alignItems: "center" }}>
           {iAmNotified ? (
             <button
               onClick={() => onToggleNotify(row.id, false)}
-              style={{ background: "none", border: "1.5px solid #eee", color: "#aaa", borderRadius: 7, padding: "5px 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap" }}
+              title="Unsubscribe from email reminders"
+              style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.meta, borderRadius: 20, padding: "4px 10px", fontFamily: MONO, fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer", whiteSpace: "nowrap", transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.color = C.text; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}
             >
-              Unsubscribe
+              Mute
             </button>
           ) : (
             <button
               onClick={() => onToggleNotify(row.id, true)}
-              style={{ background: "#f5fbda", border: "1.5px solid #D7FA06", color: "#5a7a00", borderRadius: 7, padding: "5px 10px", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap", fontWeight: 700 }}
+              title="Re-subscribe to email reminders"
+              style={{ background: "rgba(204,255,0,0.1)", border: `1px solid ${C.accent}`, color: C.accent, borderRadius: 20, padding: "4px 10px", fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer", whiteSpace: "nowrap" }}
             >
-              Re-subscribe
+              Unmute
             </button>
           )}
-          <button onClick={handleRemove} disabled={removing} style={{ background: "none", border: "1.5px solid #eee", color: "#ccc", borderRadius: 7, padding: "5px 10px", fontSize: 12, cursor: removing ? "default" : "pointer" }}>
-            {removing ? "…" : "Remove"}
-          </button>
           <button
             onClick={handleTestEmail}
             disabled={testStatus === "sending"}
             title="Send a test reminder email right now"
             style={{
-              background: testStatus === "sent" ? "#e8f8e8" : testStatus === "error" ? "#fde8e8" : "none",
-              border: `1.5px solid ${testStatus === "sent" ? "#b0e0b0" : testStatus === "error" ? "#f0b0b0" : "#eee"}`,
-              color: testStatus === "sent" ? "#3a8a3a" : testStatus === "error" ? "#c03030" : "#aaa",
-              borderRadius: 7,
-              padding: "5px 10px",
-              fontSize: 11,
+              background: testStatus === "sent" ? "rgba(127,217,158,0.12)" : testStatus === "error" ? "rgba(255,68,68,0.1)" : "transparent",
+              border: `1px solid ${testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? "#ff4444" : C.border}`,
+              color: testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? "#ff4444" : C.meta,
+              borderRadius: 20,
+              padding: "4px 10px",
+              fontFamily: MONO,
+              fontSize: 9,
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "1px",
               cursor: testStatus === "sending" ? "default" : "pointer",
               whiteSpace: "nowrap",
             }}
           >
-            {testStatus === "sending" ? "…" : testStatus === "sent" ? "Sent!" : testStatus === "error" ? "Error" : "Test"}
+            {testStatus === "sending" ? "…" : testStatus === "sent" ? "Sent!" : testStatus === "error" ? "Err" : "Test"}
+          </button>
+          <button
+            onClick={handleRemove}
+            disabled={removing}
+            title="Remove from schedule"
+            style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.meta, borderRadius: "50%", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, lineHeight: 1, cursor: removing ? "default" : "pointer", flexShrink: 0, transition: "all 0.15s" }}
+            onMouseEnter={e => { if (!removing) { e.currentTarget.style.borderColor = "#ff4444"; e.currentTarget.style.color = "#ff4444"; } }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}
+          >
+            {removing ? "…" : "×"}
           </button>
         </div>
       </div>
 
       {showOptedIn && hasCollaborators && (
-        <div style={{ borderTop: "1px solid #f0f0f0", padding: "10px 16px", background: "#fafafa" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Who's opted in</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ borderTop: `1px solid ${C.border}`, padding: "10px 18px", background: C.canvas }}>
+          <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10, lineHeight: 1 }}>Who's opted in</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {optedInUsers.map(u => (
-              <div key={u.userId} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#e8e8e8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#888", flexShrink: 0 }}>
+              <div key={u.userId} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "#000", flexShrink: 0, fontFamily: MONO, lineHeight: 1 }}>
                   {displayName(u).charAt(0).toUpperCase() || "?"}
                 </div>
-                <span style={{ fontSize: 12, color: u.notify !== false ? "#1a1a2e" : "#bbb", flex: 1 }}>
+                <span style={{ fontFamily: SANS, fontSize: 12, color: u.notify !== false ? C.text : C.meta, flex: 1, lineHeight: 1 }}>
                   {displayName(u)}{u.userId === currentUserId ? " (you)" : ""}
                 </span>
                 {u.notify !== false
-                  ? <span style={{ fontSize: 10, background: "#e8f8e8", color: "#3a8a3a", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>✓ on</span>
-                  : <span style={{ fontSize: 10, background: "#f5f5f5", color: "#bbb", borderRadius: 4, padding: "1px 6px", fontWeight: 700 }}>off</span>
+                  ? <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: "#7fd99e", borderRadius: 20, padding: "1px 6px", lineHeight: 1 }}>On</span>
+                  : <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(255,255,255,0.05)", color: C.meta, borderRadius: 20, padding: "1px 6px", lineHeight: 1 }}>Off</span>
                 }
               </div>
             ))}
