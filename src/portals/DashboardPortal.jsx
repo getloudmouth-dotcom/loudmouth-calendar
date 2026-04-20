@@ -150,9 +150,18 @@ function SectionHeader({ label, action }) {
 // ── Hub ───────────────────────────────────────────────────────────────────────
 function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, scheduledPosts, newCalendar, openCalendar, can, loadAllContentPlans }) {
   const today = new Date();
-  const hour = today.getHours();
-  const greeting = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   const firstName = profileName ? profileName.split(" ")[0] : null;
+
+  const DAY_GREETINGS = [
+    ["YOU OPENED THE APP",  "ON A SUNDAY. BOLD."],       // Sun
+    ["THE ALGORITHM",       "ALSO HATES MONDAYS."],      // Mon
+    ["WE BOTH KNOW",        "THIS ISN'T URGENT."],       // Tue
+    ["HALFWAY THERE.",      "WE'RE NOT SURE WHERE."],    // Wed
+    ["ALMOST FRIDAY.",      "DON'T BLOW IT NOW."],       // Thu
+    ["IT'S FRIDAY.",        "THIS APP IS JUDGING YOU."], // Fri
+    ["RESPECTFULLY,",       "GO TOUCH GRASS."],          // Sat
+  ];
+  const [line1, line2] = DAY_GREETINGS[today.getDay()];
 
   const recentCals = [...allCalendars]
     .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
@@ -175,9 +184,14 @@ function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, sche
           {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
         </div>
         <div style={{ fontFamily: DISP, fontSize: 56, lineHeight: 0.9, letterSpacing: 1, color: C.text }}>
-          GOOD {greeting.toUpperCase()}{firstName ? `,` : "."}<br />
-          {firstName && <span style={{ color: C.accent }}>{firstName.toUpperCase()}.</span>}
+          {line1}<br />
+          <span style={{ color: C.accent }}>{line2}</span>
         </div>
+        {firstName && (
+          <div style={{ marginTop: 12, fontFamily: SANS, fontWeight: 300, fontSize: 15, color: C.meta, letterSpacing: 0.5 }}>
+            What's good, {firstName}.
+          </div>
+        )}
       </div>
 
       {/* Recently Edited Calendars */}
