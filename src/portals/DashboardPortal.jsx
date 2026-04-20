@@ -154,12 +154,10 @@ function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, sche
   const firstName = profileName ? profileName.split(" ")[0] : null;
 
   const recentCals = [...allCalendars]
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    .slice(0, 4);
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
   const recentPlans = [...allContentPlans]
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
-    .slice(0, 4);
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
   const upcomingPosts = scheduledPosts
     .filter(r => r.post_date >= today.toISOString().slice(0, 10))
@@ -183,83 +181,71 @@ function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, sche
 
       {/* Recently Edited Calendars */}
       <div style={{ marginBottom: 40 }}>
-        <SectionHeader
-          label="Recently Edited Calendars"
-          action={
-            <button onClick={newCalendar}
-              style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 14px", fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, cursor: "pointer", transition: "all 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}>
-              + New
-            </button>
-          }
-        />
-        {recentCals.length === 0 ? (
-          <div style={{ fontFamily: MONO, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "24px 0" }}>No calendars yet</div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
-            {recentCals.map(cal => (
-              <div key={cal.id} onClick={() => openCalendar(cal)}
-                style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "border-color 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
-                onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 7, color: "rgba(0,0,0,0.5)", lineHeight: 1.2 }}>{cal.year}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
-                    {cal.updated_at ? new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
-                  </div>
+        <SectionHeader label="Recently Edited Calendars" />
+        <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+          {recentCals.map(cal => (
+            <div key={cal.id} onClick={() => openCalendar(cal)}
+              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "border-color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
+                <span style={{ fontFamily: MONO, fontSize: 7, color: "rgba(0,0,0,0.5)", lineHeight: 1.2 }}>{cal.year}</span>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
+                  {cal.updated_at ? new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
+          {/* Dashed "New Calendar" card */}
+          <div onClick={newCalendar}
+            style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
+            <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+            <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Calendar</span>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Recent Content Plans */}
       {can("content_plan_creator") && (
         <div style={{ marginBottom: 40 }}>
-          <SectionHeader
-            label="Recent Content Plans"
-            action={
-              <button onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
-                style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 14px", fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, cursor: "pointer", transition: "all 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}>
-                View all
-              </button>
-            }
-          />
-          {recentPlans.length === 0 ? (
-            <div style={{ fontFamily: MONO, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "24px 0" }}>No content plans yet</div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
-              {recentPlans.map(plan => {
-                const planStatus = plan.items
-                  ? (plan.items.every(i => i.approval_status === "approved") ? "approved" : "pending")
-                  : "pending";
-                return (
-                  <div key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
-                    style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
-                    onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {plan.client_name || plan.clients?.name || "Untitled"}
-                    </div>
-                    <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                      {plan.month != null ? `${MONTHS[plan.month].slice(0, 3)} ${plan.year}` : "—"}
-                    </div>
-                    <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: statusColor[planStatus] ?? C.meta, background: planStatus === "approved" ? "rgba(204,255,0,0.1)" : "rgba(255,255,255,0.05)", borderRadius: 20, padding: "2px 8px" }}>
-                      {planStatus}
-                    </span>
+          <SectionHeader label="Recent Content Plans" />
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+            {recentPlans.map(plan => {
+              const planStatus = plan.items
+                ? (plan.items.every(i => i.approval_status === "approved") ? "approved" : "pending")
+                : "pending";
+              return (
+                <div key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+                  style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {plan.client_name || plan.clients?.name || "Untitled"}
                   </div>
-                );
-              })}
+                  <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                    {plan.month != null ? `${MONTHS[plan.month].slice(0, 3)} ${plan.year}` : "—"}
+                  </div>
+                  <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: statusColor[planStatus] ?? C.meta, background: planStatus === "approved" ? "rgba(204,255,0,0.1)" : "rgba(255,255,255,0.05)", borderRadius: 20, padding: "2px 8px" }}>
+                    {planStatus}
+                  </span>
+                </div>
+              );
+            })}
+            {/* Dashed "New Plan" card */}
+            <div onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+              style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 90, transition: "all 0.15s", color: C.meta }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
+              <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+              <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Plan</span>
             </div>
-          )}
+          </div>
         </div>
       )}
 
