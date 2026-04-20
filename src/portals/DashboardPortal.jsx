@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import Toast from "../components/Toast";
@@ -8,39 +9,162 @@ import AdminPortal from "./AdminPortal";
 import ContentPlanPortal from "./ContentPlanPortal";
 import BillingPortal from "./BillingPortal";
 
-const MONO = "'Space Mono', monospace";
-const SANS = "'Space Grotesk', sans-serif";
+const DISP = "'Anton', Impact, Helvetica, sans-serif";
+const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
+const MONO = "'Space Mono', 'Courier New', monospace";
 
-/* Design tokens */
 const C = {
-  canvas:   "#131313",
-  surface:  "#1e1e1e",
-  surface2: "#2d2d2d",
-  accent:   "#CCFF00",
-  text:     "#ffffff",
-  muted:    "#949494",
-  border:   "rgba(255,255,255,0.12)",
+  canvas:  "#131313",
+  surface: "#1e1e1e",
+  surface2:"#2a2a2a",
+  accent:  "#CCFF00",   // brand chartreuse (replaces design's #D7FA06)
+  text:    "#ffffff",
+  meta:    "#949494",
+  border:  "rgba(255,255,255,0.14)",
 };
 
-function portalCard(onClick, icon, title, desc, badge, ctaLabel, onMouseEnter, onMouseLeave) {
+// Portal tile colors matching the design (user's chartreuse replaces mint slot)
+const PORTAL_TILES = [
+  { key:"calendar_creator",     label:"Calendar Creator",     desc:"Build content calendars and export PDFs for clients.",       tile: C.accent,  textColor:"#000" },
+  { key:"content_scheduling",   label:"Content Scheduling",   desc:"Schedule posting dates and get daily email reminders.",      tile:"#5200ff",  textColor:"#fff" },
+  { key:"content_plan_creator", label:"Content Plan Creator", desc:"Build shoot-ready content plans and share with clients.",    tile:"#3cffd0",  textColor:"#000" },
+  { key:"admin_portal",         label:"Admin Portal",         desc:"Manage team members, roles, and tool access permissions.",   tile:"#ff3c6e",  textColor:"#fff" },
+  { key:"billing",              label:"Billing",              desc:"Create invoices, track payments, and manage client billing.", tile:"#ff7a00",  textColor:"#000" },
+];
+
+const PORTAL_KEY_MAP = {
+  calendar_creator:     "calendar",
+  content_scheduling:   "scheduling",
+  content_plan_creator: "content-plan",
+  admin_portal:         "admin",
+  billing:              "billing",
+};
+
+function MonoLabel({ children, color = C.meta, size = 11, tracking = 1.5, style = {} }) {
   return (
-    <div onClick={onClick}
-      className="cal-card"
-      style={{ background: C.surface, borderRadius: 20, padding: "28px 24px 24px", width: 280, border: `1px solid ${C.border}`, cursor: "pointer", display: "flex", flexDirection: "column", gap: 0 }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}>
-      <div style={{ width: 48, height: 48, borderRadius: 14, background: C.canvas, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
-        {icon}
+    <div style={{ fontFamily: MONO, fontSize: size, fontWeight: 600, textTransform: "uppercase", letterSpacing: tracking, color, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function DashboardHub({ setActivePortal, profileName, allCalendars, allContentPlans, scheduledPosts, newCalendar, can, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults }) {
+  const today = new Date();
+  const greeting = today.getHours() < 12 ? "morning" : today.getHours() < 17 ? "afternoon" : "evening";
+  const recentCals = [...allCalendars].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 3);
+  const upcomingCount = scheduledPosts.filter(r => r.post_date >= today.toISOString().slice(0, 10)).length;
+
+  const badgeMap = {
+    content_scheduling:   upcomingCount,
+    content_plan_creator: 0,
+    calendar_creator:     0,
+    admin_portal:         0,
+    billing:              0,
+  };
+  const countMap = {
+    calendar_creator:     `${allCalendars.length} calendar${allCalendars.length !== 1 ? "s" : ""}`,
+    content_scheduling:   `${upcomingCount} upcoming`,
+    content_plan_creator: `${allContentPlans.length} plan${allContentPlans.length !== 1 ? "s" : ""}`,
+    admin_portal:         "team",
+    billing:              "invoices",
+  };
+
+  function openPortal(key) {
+    const navKey = PORTAL_KEY_MAP[key];
+    if (key === "content_plan_creator") loadAllContentPlans();
+    if (key === "admin_portal") {
+      if (adminUsers.length === 0) loadAdminUsers();
+      if (!roleToolDefaults) loadRoleToolDefaults();
+    }
+    setActivePortal(navKey);
+  }
+
+  const visibleTiles = PORTAL_TILES.filter(p => can(p.key));
+
+  return (
+    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 48px 80px" }}>
+
+      {/* ── Masthead ── */}
+      <div style={{ marginBottom: 48, paddingBottom: 32, borderBottom: `1px solid ${C.border}` }}>
+        <MonoLabel color={C.accent} style={{ marginBottom: 12 }}>
+          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+        </MonoLabel>
+        <div style={{ fontFamily: DISP, fontSize: 72, lineHeight: 0.9, letterSpacing: 1, color: C.text }}>
+          LOUDMOUTH<br /><span style={{ color: C.accent }}>HQ</span>
+        </div>
+        <div style={{ marginTop: 16, fontFamily: SANS, fontWeight: 300, fontSize: 16, color: C.meta, letterSpacing: 0.5 }}>
+          Good {greeting}{profileName ? `, ${profileName.split(" ")[0]}` : ""}.
+        </div>
       </div>
-      <div style={{ fontWeight: 700, fontSize: 22, color: C.text, marginBottom: 8, display: "flex", alignItems: "center", gap: 8, fontFamily: SANS, lineHeight: 1.1 }}>
-        {title}
-        {badge != null && badge > 0 && (
-          <span style={{ background: C.accent, color: "#000", borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700, fontFamily: MONO, letterSpacing: "1px" }}>{badge}</span>
-        )}
-      </div>
-      <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.6, flex: 1, fontFamily: SANS }}>{desc}</div>
-      <div style={{ marginTop: 20 }}>
-        <span style={{ background: C.accent, color: "#000", borderRadius: 24, padding: "8px 18px", fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>{ctaLabel} →</span>
+
+      {/* ── Recently Edited ── */}
+      {allCalendars.length > 0 && (
+        <>
+          <MonoLabel style={{ marginBottom: 14 }}>Recently Edited</MonoLabel>
+          <div style={{ display: "flex", gap: 12, marginBottom: 48, flexWrap: "wrap" }}>
+            {recentCals.map(cal => (
+              <div key={cal.id} onClick={() => setActivePortal("calendar")}
+                style={{ flex: "1 1 200px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "border-color 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+                onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: 1, color: "#000", lineHeight: 1 }}>{MONTHS[cal.month].slice(0, 3)}</span>
+                  <span style={{ fontFamily: MONO, fontWeight: 400, fontSize: 8, color: "rgba(0,0,0,0.5)", letterSpacing: 0.5, lineHeight: 1.4 }}>{cal.year}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                  <MonoLabel style={{ marginTop: 2 }}>{MONTHS[cal.month]} {cal.year}</MonoLabel>
+                </div>
+                <MonoLabel>
+                  {cal.updated_at ? new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+                </MonoLabel>
+              </div>
+            ))}
+            <div onClick={newCalendar}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "16px 28px", border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 16, cursor: "pointer", color: C.meta, transition: "all 0.15s", fontFamily: MONO, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5, whiteSpace: "nowrap" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
+              + New Calendar
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Portal tiles ── */}
+      <MonoLabel style={{ marginBottom: 14 }}>Portals</MonoLabel>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+        {visibleTiles.map((p, i) => {
+          const badge = badgeMap[p.key];
+          const count = countMap[p.key];
+          return (
+            <div key={p.key} onClick={() => openPortal(p.key)}
+              style={{ background: p.tile, borderRadius: 20, padding: "28px 26px 22px", cursor: "pointer", display: "flex", flexDirection: "column", transition: "filter 0.15s", animationDelay: `${i * 0.07}s` }}
+              onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
+              onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+                <MonoLabel color={p.textColor === "#000" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)"} size={11} tracking={1.8}>
+                  {count}
+                </MonoLabel>
+                {badge > 0 && (
+                  <span style={{ background: "#000", color: p.tile, fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderRadius: 20, padding: "2px 8px", letterSpacing: 1 }}>
+                    {badge} new
+                  </span>
+                )}
+              </div>
+              <div style={{ fontFamily: DISP, fontSize: 38, lineHeight: 0.9, letterSpacing: 0.5, color: p.textColor, marginBottom: 14 }}>
+                {p.label.toUpperCase()}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 400, color: p.textColor === "#000" ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.65)", lineHeight: 1.55, flex: 1, fontFamily: SANS }}>
+                {p.desc}
+              </div>
+              <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+                <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: p.textColor, opacity: 0.7 }}>
+                  Open →
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -89,26 +213,31 @@ export default function DashboardPortal({
   return (
     <div style={{ minHeight: "100vh", background: C.canvas, fontFamily: SANS }}>
 
-      {/* ── Top nav ── */}
-      <div style={{ background: C.canvas, borderBottom: `1px solid ${C.border}`, padding: "14px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1, alignItems: "flex-start" }}>
-          <div style={{ color: C.accent, fontWeight: 900, fontSize: 52, letterSpacing: "0.06em", fontFamily: "'Bebas Neue', Impact, sans-serif", whiteSpace: "nowrap", lineHeight: 1 }}>LOUDMOUTH HQ</div>
-          <div style={{ color: "rgba(255,255,255,0.25)", fontSize: 9, letterSpacing: "0.14em", fontFamily: MONO, whiteSpace: "nowrap", textTransform: "uppercase", marginTop: 2 }}>by Loudmouth</div>
+      {/* ── Nav ── */}
+      <nav style={{ background: C.canvas, borderBottom: `1px solid ${C.border}`, padding: "0 32px", display: "flex", alignItems: "stretch", height: 56, position: "sticky", top: 0, zIndex: 100 }}>
+        <div onClick={() => setActivePortal(null)} style={{ cursor: "pointer", display: "flex", alignItems: "center", paddingRight: 32, borderRight: `1px solid ${C.border}`, flexShrink: 0 }}>
+          <div style={{ fontFamily: DISP, fontSize: 22, letterSpacing: 1, lineHeight: 1, color: C.accent }}>LOUDMOUTH HQ</div>
         </div>
-        {activePortal && activePortal !== "content-plan" && (
-          <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", color: C.muted, fontSize: 12, cursor: "pointer", fontWeight: 600, padding: 0, fontFamily: MONO, letterSpacing: "1px", textTransform: "uppercase" }}>← Home</button>
-        )}
-        <NavProfileMenu
-          profileName={profileName}
-          currentCalendarId={null}
-          onMyCalendars={() => setActivePortal(null)}
-          onHistory={() => {}}
-          onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
-          onSignOut={signOut}
-        />
-      </div>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 24, borderLeft: `1px solid ${C.border}` }}>
+          {activePortal && activePortal !== "content-plan" && (
+            <button onClick={() => setActivePortal(null)}
+              style={{ background: "none", border: "none", color: C.meta, fontSize: 11, cursor: "pointer", fontFamily: MONO, letterSpacing: "1.2px", textTransform: "uppercase", fontWeight: 600, padding: 0 }}>
+              ← Home
+            </button>
+          )}
+          <NavProfileMenu
+            profileName={profileName}
+            currentCalendarId={null}
+            onMyCalendars={() => setActivePortal(null)}
+            onHistory={() => {}}
+            onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
+            onSignOut={signOut}
+          />
+        </div>
+      </nav>
 
-      {/* ── Export progress overlay ── */}
+      {/* ── Export overlay ── */}
       {exporting && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
           <svg width="48" height="48" viewBox="0 0 48 48">
@@ -128,7 +257,7 @@ export default function DashboardPortal({
                 : exportElapsed < 15 ? `Rendering your calendar... (${exportElapsed}s)`
                 : `Almost there... (${exportElapsed}s)`}
             </div>
-            <div style={{ color: C.muted, fontSize: 12, fontFamily: SANS }}>
+            <div style={{ color: C.meta, fontSize: 12, fontFamily: SANS }}>
               {exportElapsed < 8 ? "This may take a few seconds" : "Hang tight — loading all images"}
             </div>
           </div>
@@ -141,108 +270,33 @@ export default function DashboardPortal({
           onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
           <div style={{ background: C.surface, borderRadius: 20, width: 360, padding: 28, border: `1px solid ${C.border}` }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 4, fontFamily: SANS }}>Edit Profile</div>
-            <div style={{ fontSize: 12, color: C.muted, marginBottom: 18, fontFamily: SANS }}>This name appears in calendar footers and your account.</div>
+            <div style={{ fontSize: 12, color: C.meta, marginBottom: 18, fontFamily: SANS }}>This name appears in calendar footers and your account.</div>
             <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..."
-              style={{ width: "100%", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, background: "#131313", color: C.text, fontFamily: SANS }} />
+              style={{ width: "100%", padding: "10px 14px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, background: C.canvas, color: C.text, fontFamily: SANS }} />
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 12, cursor: "pointer", letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>Save</button>
-              <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: C.surface2, color: C.text, border: "none", borderRadius: 24, fontSize: 13, cursor: "pointer", fontFamily: SANS }}>Cancel</button>
+              <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: "pointer", letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>Save</button>
+              <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "transparent", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontSize: 11, cursor: "pointer", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", fontWeight: 600 }}>Cancel</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Hub: portal selector ── */}
+      {/* ── Hub ── */}
       {activePortal === null && (
-        <div style={{ padding: "56px 48px 80px", maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ marginBottom: 56 }}>
-            <div style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: "2px", marginBottom: 12, fontFamily: MONO }}>
-              Welcome back{profileName ? `, ${profileName.split(" ")[0]}` : ""}
-            </div>
-            <div style={{ fontSize: 96, fontWeight: 900, color: C.text, letterSpacing: "0.02em", fontFamily: "'Bebas Neue', Impact, sans-serif", lineHeight: 0.88 }}>
-              SELECT A<br /><span style={{ color: C.accent }}>PORTAL</span>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-            {can("calendar_creator") && portalCard(
-              () => setActivePortal("calendar"),
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="4" width="18" height="17" rx="2" stroke={C.accent} strokeWidth="2"/>
-                <path d="M3 9h18" stroke={C.accent} strokeWidth="2"/>
-                <path d="M8 2v4M16 2v4" stroke={C.accent} strokeWidth="2" strokeLinecap="round"/>
-                <rect x="7" y="13" width="3" height="3" rx="0.5" fill={C.accent}/>
-                <rect x="11" y="13" width="3" height="3" rx="0.5" fill={C.accent}/>
-              </svg>,
-              "Calendar Creator",
-              "Build social media content calendars and export them to PDF for your clients.",
-              null,
-              `${allCalendars.length} calendar${allCalendars.length !== 1 ? "s" : ""}  ·  Open`,
-              e => { e.currentTarget.style.borderColor = C.accent; },
-              e => { e.currentTarget.style.borderColor = C.border; }
-            )}
-            {can("content_scheduling") && (() => {
-              const upcomingCount = scheduledPosts.filter(r => r.post_date >= new Date().toISOString().slice(0, 10)).length;
-              return portalCard(
-                () => setActivePortal("scheduling"),
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="12" r="9" stroke={C.accent} strokeWidth="2"/>
-                  <path d="M12 7v5l3 3" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>,
-                "Content Scheduling",
-                "Schedule posting dates and receive daily email reminders for each client.",
-                upcomingCount,
-                `${upcomingCount} upcoming  ·  Open`,
-                e => { e.currentTarget.style.borderColor = C.accent; },
-                e => { e.currentTarget.style.borderColor = C.border; }
-              );
-            })()}
-            {can("content_plan_creator") && portalCard(
-              () => { setActivePortal("content-plan"); loadAllContentPlans(); },
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="4" y="3" width="16" height="18" rx="2" stroke={C.accent} strokeWidth="2"/>
-                <path d="M8 8h8M8 12h8M8 16h5" stroke={C.accent} strokeWidth="2" strokeLinecap="round"/>
-                <circle cx="19" cy="19" r="4" fill={C.canvas} stroke={C.accent} strokeWidth="1.5"/>
-                <path d="M17.5 19l1 1 2-2" stroke={C.accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>,
-              "Content Plan Creator",
-              "Build shoot-ready content plans and share them with clients for approval.",
-              null,
-              `${allContentPlans.length} plan${allContentPlans.length !== 1 ? "s" : ""}  ·  Open`,
-              e => { e.currentTarget.style.borderColor = C.accent; },
-              e => { e.currentTarget.style.borderColor = C.border; }
-            )}
-            {can("admin_portal") && portalCard(
-              () => { setActivePortal("admin"); if (adminUsers.length === 0) loadAdminUsers(); if (!roleToolDefaults) loadRoleToolDefaults(); },
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <circle cx="9" cy="8" r="3" stroke={C.accent} strokeWidth="2"/>
-                <path d="M3 20c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke={C.accent} strokeWidth="2" strokeLinecap="round"/>
-                <path d="M17 11l1.5 1.5L21 10" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="18" cy="8" r="3" stroke={C.accent} strokeWidth="2"/>
-              </svg>,
-              "Admin Portal",
-              "Manage team members, assign roles, and control tool access for your organization.",
-              null,
-              "Open",
-              e => { e.currentTarget.style.borderColor = C.accent; },
-              e => { e.currentTarget.style.borderColor = C.border; }
-            )}
-            {can("billing") && portalCard(
-              () => setActivePortal("billing"),
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="5" width="20" height="14" rx="2" stroke={C.accent} strokeWidth="2"/>
-                <path d="M2 10h20" stroke={C.accent} strokeWidth="2"/>
-                <rect x="5" y="14" width="4" height="2" rx="0.5" fill={C.accent}/>
-                <rect x="11" y="14" width="6" height="2" rx="0.5" fill={C.accent}/>
-              </svg>,
-              "Billing",
-              "Create and send branded invoices, track payments, and manage client billing.",
-              null,
-              "Open",
-              e => { e.currentTarget.style.borderColor = C.accent; },
-              e => { e.currentTarget.style.borderColor = C.border; }
-            )}
-          </div>
-        </div>
+        <DashboardHub
+          setActivePortal={setActivePortal}
+          profileName={profileName}
+          allCalendars={allCalendars}
+          allContentPlans={allContentPlans}
+          scheduledPosts={scheduledPosts}
+          newCalendar={newCalendar}
+          can={can}
+          loadAllContentPlans={loadAllContentPlans}
+          loadAdminUsers={loadAdminUsers}
+          loadRoleToolDefaults={loadRoleToolDefaults}
+          adminUsers={adminUsers}
+          roleToolDefaults={roleToolDefaults}
+        />
       )}
 
       {activePortal === "calendar" && (
@@ -299,7 +353,8 @@ export default function DashboardPortal({
           addingClient={addingClient} setAddingClient={setAddingClient}
           newClientInput={newClientInput} setNewClientInput={setNewClientInput}
           newContentPlan={newContentPlan} openContentPlan={openContentPlan}
-          saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
+          saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan}
+          generateCPItems={generateCPItems} updateCPItem={updateCPItem}
           getOrCreateShareToken={getOrCreateShareToken}
           cpClientId={cpClientId} setCpClientId={setCpClientId}
           cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
@@ -329,31 +384,33 @@ export default function DashboardPortal({
           onClick={e => e.target === e.currentTarget && setShareModal(null)}>
           <div style={{ background: C.surface, borderRadius: 20, width: 420, padding: 28, border: `1px solid ${C.border}`, maxHeight: "80vh", overflowY: "auto" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 4, fontFamily: SANS }}>Share Calendar</div>
-            <div style={{ fontSize: 11, color: C.muted, marginBottom: 20, fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px" }}>{shareModal.cal.client_name} — {MONTHS[shareModal.cal.month]} {shareModal.cal.year}</div>
+            <div style={{ fontSize: 11, color: C.meta, marginBottom: 20, fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px" }}>
+              {shareModal.cal.client_name} — {MONTHS[shareModal.cal.month]} {shareModal.cal.year}
+            </div>
             {(calCollaborators[shareModal.cal.id] || []).length > 0 && (
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO }}>Shared with</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO }}>Shared with</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {(calCollaborators[shareModal.cal.id] || []).map(c => (
-                    <div key={c.user_id} style={{ display: "flex", alignItems: "center", gap: 10, background: "#131313", borderRadius: 12, padding: "8px 12px", border: `1px solid ${C.border}` }}>
+                    <div key={c.user_id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.canvas, borderRadius: 12, padding: "8px 12px", border: `1px solid ${C.border}` }}>
                       <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.accent, color: "#000", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: MONO }}>{(c.name || "?")[0].toUpperCase()}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: SANS }}>{c.name}</div>
-                        <div style={{ fontSize: 11, color: C.muted, fontFamily: SANS }}>{c.email}</div>
+                        <div style={{ fontSize: 11, color: C.meta, fontFamily: SANS }}>{c.email}</div>
                       </div>
-                      <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: c.permission === "editor" ? "#CCFF00" : C.muted, background: c.permission === "editor" ? "rgba(204,255,0,0.12)" : "#1e1e1e", borderRadius: 20, padding: "2px 8px", fontFamily: MONO }}>{c.permission}</span>
-                      <button onClick={() => removeCollaborator(shareModal.cal.id, c.user_id)} style={{ background: "none", border: "none", color: C.muted, fontSize: 16, cursor: "pointer", padding: "0 4px" }} title="Remove">×</button>
+                      <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: c.permission === "editor" ? C.accent : C.meta, background: c.permission === "editor" ? "rgba(204,255,0,0.12)" : C.surface2, borderRadius: 20, padding: "2px 8px", fontFamily: MONO }}>{c.permission}</span>
+                      <button onClick={() => removeCollaborator(shareModal.cal.id, c.user_id)} style={{ background: "none", border: "none", color: C.meta, fontSize: 16, cursor: "pointer", padding: "0 4px" }}>×</button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO }}>Add collaborator</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO }}>Add collaborator</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               <input value={shareEmail} onChange={e => setShareEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && addCollaborator(shareModal.cal)} placeholder="colleague@example.com"
-                style={{ flex: 1, padding: "9px 12px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4, fontSize: 13, outline: "none", background: "#131313", color: C.text, fontFamily: SANS }} />
+                style={{ flex: 1, padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 13, outline: "none", background: C.canvas, color: C.text, fontFamily: SANS }} />
               <select value={sharePermission} onChange={e => setSharePermission(e.target.value)}
-                style={{ padding: "9px 10px", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 4, fontSize: 12, outline: "none", background: "#131313", color: C.text, fontFamily: SANS }}>
+                style={{ padding: "9px 10px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, outline: "none", background: C.canvas, color: C.text, fontFamily: SANS }}>
                 <option value="editor">Editor</option>
                 <option value="viewer">Viewer</option>
               </select>
@@ -365,7 +422,9 @@ export default function DashboardPortal({
                 {shareBusy ? "Adding..." : "Add"}
               </button>
               <button onClick={() => { setShareModal(null); setShareEmail(""); setShareError(""); }}
-                style={{ padding: "10px 16px", background: C.surface2, color: C.text, border: "none", borderRadius: 24, fontSize: 13, cursor: "pointer", fontFamily: SANS }}>Done</button>
+                style={{ padding: "10px 16px", background: "transparent", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontSize: 11, cursor: "pointer", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", fontWeight: 600 }}>
+                Done
+              </button>
             </div>
           </div>
         </div>
