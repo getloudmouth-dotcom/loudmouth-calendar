@@ -139,8 +139,9 @@ function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, c
 // ── Section header ─────────────────────────────────────────────────────────────
 function SectionHeader({ label, action }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-      <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>{label}</div>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+      <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta, whiteSpace: "nowrap" }}>{label}</div>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
       {action}
     </div>
   );
