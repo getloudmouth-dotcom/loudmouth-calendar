@@ -17,159 +17,306 @@ const C = {
   canvas:  "#131313",
   surface: "#1e1e1e",
   surface2:"#2a2a2a",
-  accent:  "#CCFF00",   // brand chartreuse (replaces design's #D7FA06)
+  accent:  "#CCFF00",
   text:    "#ffffff",
   meta:    "#949494",
   border:  "rgba(255,255,255,0.14)",
 };
 
-// Portal tile colors matching the design (user's chartreuse replaces mint slot)
-const PORTAL_TILES = [
-  { key:"calendar_creator",     label:"Calendar Creator",     desc:"Build content calendars and export PDFs for clients.",       tile: C.accent,  textColor:"#000" },
-  { key:"content_scheduling",   label:"Content Scheduling",   desc:"Schedule posting dates and get daily email reminders.",      tile:"#5200ff",  textColor:"#fff" },
-  { key:"content_plan_creator", label:"Content Plan Creator", desc:"Build shoot-ready content plans and share with clients.",    tile:"#3cffd0",  textColor:"#000" },
-  { key:"admin_portal",         label:"Admin Portal",         desc:"Manage team members, roles, and tool access permissions.",   tile:"#ff3c6e",  textColor:"#fff" },
-  { key:"billing",              label:"Billing",              desc:"Create invoices, track payments, and manage client billing.", tile:"#ff7a00",  textColor:"#000" },
-];
-
-const PORTAL_KEY_MAP = {
-  calendar_creator:     "calendar",
-  content_scheduling:   "scheduling",
-  content_plan_creator: "content-plan",
-  admin_portal:         "admin",
-  billing:              "billing",
+// ── Icons ─────────────────────────────────────────────────────────────────────
+const icons = {
+  calendar: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" strokeWidth="2"/>
+      <path d="M3 9h18" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 2v4M16 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  contentPlan: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
+      <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  scheduling: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+      <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  admin: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="2"/>
+      <path d="M3 20c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M17 11l1.5 1.5L21 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="18" cy="8" r="3" stroke="currentColor" strokeWidth="2"/>
+    </svg>
+  ),
+  billing: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+      <path d="M2 10h20" stroke="currentColor" strokeWidth="2"/>
+      <rect x="5" y="14" width="4" height="2" rx="0.5" fill="currentColor"/>
+    </svg>
+  ),
 };
 
-function MonoLabel({ children, color = C.meta, size = 11, tracking = 1.5, style = {} }) {
-  return (
-    <div style={{ fontFamily: MONO, fontSize: size, fontWeight: 600, textTransform: "uppercase", letterSpacing: tracking, color, ...style }}>
-      {children}
-    </div>
-  );
-}
+const NAV_ITEMS = [
+  { key: "calendar",     permission: "calendar_creator",     label: "Calendar Creator",    icon: icons.calendar },
+  { key: "content-plan", permission: "content_plan_creator", label: "Content Plans",       icon: icons.contentPlan },
+  { key: "scheduling",   permission: "content_scheduling",   label: "Scheduling",          icon: icons.scheduling },
+  { key: "admin",        permission: "admin_portal",         label: "Admin",               icon: icons.admin },
+  { key: "billing",      permission: "billing",              label: "Billing",             icon: icons.billing },
+];
 
-function DashboardHub({ setActivePortal, profileName, allCalendars, allContentPlans, scheduledPosts, newCalendar, can, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults }) {
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, can, signOut, setProfileInput, setEditingProfile, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults }) {
   const today = new Date();
-  const greeting = today.getHours() < 12 ? "morning" : today.getHours() < 17 ? "afternoon" : "evening";
-  const recentCals = [...allCalendars].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 3);
   const upcomingCount = scheduledPosts.filter(r => r.post_date >= today.toISOString().slice(0, 10)).length;
 
-  const badgeMap = {
-    content_scheduling:   upcomingCount,
-    content_plan_creator: 0,
-    calendar_creator:     0,
-    admin_portal:         0,
-    billing:              0,
-  };
-  const countMap = {
-    calendar_creator:     `${allCalendars.length} calendar${allCalendars.length !== 1 ? "s" : ""}`,
-    content_scheduling:   `${upcomingCount} upcoming`,
-    content_plan_creator: `${allContentPlans.length} plan${allContentPlans.length !== 1 ? "s" : ""}`,
-    admin_portal:         "team",
-    billing:              "invoices",
-  };
-
-  function openPortal(key) {
-    const navKey = PORTAL_KEY_MAP[key];
-    if (key === "content_plan_creator") loadAllContentPlans();
-    if (key === "admin_portal") {
+  function navigate(key, permission) {
+    if (permission === "content_plan_creator") loadAllContentPlans();
+    if (permission === "admin_portal") {
       if (adminUsers.length === 0) loadAdminUsers();
       if (!roleToolDefaults) loadRoleToolDefaults();
     }
-    setActivePortal(navKey);
+    setActivePortal(key);
   }
 
-  const visibleTiles = PORTAL_TILES.filter(p => can(p.key));
-
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "48px 48px 80px" }}>
-
-      {/* ── Masthead ── */}
-      <div style={{ marginBottom: 48, paddingBottom: 32, borderBottom: `1px solid ${C.border}` }}>
-        <MonoLabel color={C.accent} style={{ marginBottom: 12 }}>
-          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-        </MonoLabel>
-        <div style={{ fontFamily: DISP, fontSize: 72, lineHeight: 0.9, letterSpacing: 1, color: C.text }}>
-          LOUDMOUTH<br /><span style={{ color: C.accent }}>HQ</span>
-        </div>
-        <div style={{ marginTop: 16, fontFamily: SANS, fontWeight: 300, fontSize: 16, color: C.meta, letterSpacing: 0.5 }}>
-          Good {greeting}{profileName ? `, ${profileName.split(" ")[0]}` : ""}.
+    <div style={{ width: 220, flexShrink: 0, height: "100vh", background: C.surface, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", position: "sticky", top: 0 }}>
+      {/* Logo */}
+      <div onClick={() => setActivePortal(null)} style={{ padding: "20px 20px 16px", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
+        <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
+        <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: 4 }}>
+          {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         </div>
       </div>
 
-      {/* ── Recently Edited ── */}
-      {allCalendars.length > 0 && (
-        <>
-          <MonoLabel style={{ marginBottom: 14 }}>Recently Edited</MonoLabel>
-          <div style={{ display: "flex", gap: 12, marginBottom: 48, flexWrap: "wrap" }}>
-            {recentCals.map(cal => (
-              <div key={cal.id} onClick={() => setActivePortal("calendar")}
-                style={{ flex: "1 1 200px", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer", transition: "border-color 0.15s" }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
-                onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 9, textTransform: "uppercase", letterSpacing: 1, color: "#000", lineHeight: 1 }}>{MONTHS[cal.month].slice(0, 3)}</span>
-                  <span style={{ fontFamily: MONO, fontWeight: 400, fontSize: 8, color: "rgba(0,0,0,0.5)", letterSpacing: 0.5, lineHeight: 1.4 }}>{cal.year}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
-                  <MonoLabel style={{ marginTop: 2 }}>{MONTHS[cal.month]} {cal.year}</MonoLabel>
-                </div>
-                <MonoLabel>
-                  {cal.updated_at ? new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
-                </MonoLabel>
-              </div>
-            ))}
-            <div onClick={newCalendar}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "16px 28px", border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 16, cursor: "pointer", color: C.meta, transition: "all 0.15s", fontFamily: MONO, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5, whiteSpace: "nowrap" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = "#fff"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
-              + New Calendar
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ── Portal tiles ── */}
-      <MonoLabel style={{ marginBottom: 14 }}>Portals</MonoLabel>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-        {visibleTiles.map((p, i) => {
-          const badge = badgeMap[p.key];
-          const count = countMap[p.key];
+      {/* Nav items */}
+      <nav style={{ flex: 1, padding: "10px 0", overflowY: "auto" }}>
+        {NAV_ITEMS.filter(item => can(item.permission)).map(item => {
+          const isActive = activePortal === item.key;
+          const badge = item.key === "scheduling" && upcomingCount > 0 ? upcomingCount : null;
           return (
-            <div key={p.key} onClick={() => openPortal(p.key)}
-              style={{ background: p.tile, borderRadius: 20, padding: "28px 26px 22px", cursor: "pointer", display: "flex", flexDirection: "column", transition: "filter 0.15s", animationDelay: `${i * 0.07}s` }}
-              onMouseEnter={e => e.currentTarget.style.filter = "brightness(1.08)"}
-              onMouseLeave={e => e.currentTarget.style.filter = "brightness(1)"}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
-                <MonoLabel color={p.textColor === "#000" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.5)"} size={11} tracking={1.8}>
-                  {count}
-                </MonoLabel>
-                {badge > 0 && (
-                  <span style={{ background: "#000", color: p.tile, fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", borderRadius: 20, padding: "2px 8px", letterSpacing: 1 }}>
-                    {badge} new
-                  </span>
-                )}
-              </div>
-              <div style={{ fontFamily: DISP, fontSize: 38, lineHeight: 0.9, letterSpacing: 0.5, color: p.textColor, marginBottom: 14 }}>
-                {p.label.toUpperCase()}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 400, color: p.textColor === "#000" ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.65)", lineHeight: 1.55, flex: 1, fontFamily: SANS }}>
-                {p.desc}
-              </div>
-              <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
-                <div style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, color: p.textColor, opacity: 0.7 }}>
-                  Open →
-                </div>
-              </div>
+            <div key={item.key} onClick={() => navigate(item.key, item.permission)}
+              style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
+                cursor: "pointer", transition: "background 0.12s",
+                background: isActive ? "rgba(204,255,0,0.08)" : "transparent",
+                borderLeft: isActive ? `2px solid ${C.accent}` : "2px solid transparent",
+                color: isActive ? C.accent : C.meta,
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}>
+              <span style={{ flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: isActive ? 600 : 400, flex: 1 }}>{item.label}</span>
+              {badge && (
+                <span style={{ background: C.accent, color: "#000", borderRadius: 20, padding: "1px 7px", fontSize: 10, fontWeight: 700, fontFamily: MONO }}>
+                  {badge}
+                </span>
+              )}
             </div>
           );
         })}
+      </nav>
+
+      {/* Profile */}
+      <div style={{ borderTop: `1px solid ${C.border}`, padding: "12px 16px" }}>
+        <NavProfileMenu
+          profileName={profileName}
+          currentCalendarId={null}
+          onMyCalendars={() => setActivePortal(null)}
+          onHistory={() => {}}
+          onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
+          onSignOut={signOut}
+        />
       </div>
     </div>
   );
 }
 
+// ── Section header ─────────────────────────────────────────────────────────────
+function SectionHeader({ label, action }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+      <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>{label}</div>
+      {action}
+    </div>
+  );
+}
+
+// ── Hub ───────────────────────────────────────────────────────────────────────
+function Hub({ setActivePortal, profileName, allCalendars, allContentPlans, scheduledPosts, newCalendar, openCalendar, can, loadAllContentPlans }) {
+  const today = new Date();
+  const hour = today.getHours();
+  const greeting = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  const firstName = profileName ? profileName.split(" ")[0] : null;
+
+  const recentCals = [...allCalendars]
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    .slice(0, 4);
+
+  const recentPlans = [...allContentPlans]
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    .slice(0, 4);
+
+  const upcomingPosts = scheduledPosts
+    .filter(r => r.post_date >= today.toISOString().slice(0, 10))
+    .sort((a, b) => a.post_date.localeCompare(b.post_date))
+    .slice(0, 5);
+
+  const statusColor = { approved: "#CCFF00", pending: C.meta, denied: "#ff4444" };
+
+  return (
+    <div style={{ padding: "40px 48px 80px", maxWidth: 960, margin: "0 auto" }}>
+      {/* Greeting */}
+      <div style={{ marginBottom: 48 }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, color: C.meta, textTransform: "uppercase", letterSpacing: "1.8px", marginBottom: 10 }}>
+          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+        </div>
+        <div style={{ fontFamily: DISP, fontSize: 56, lineHeight: 0.9, letterSpacing: 1, color: C.text }}>
+          GOOD {greeting.toUpperCase()}{firstName ? `,` : "."}<br />
+          {firstName && <span style={{ color: C.accent }}>{firstName.toUpperCase()}.</span>}
+        </div>
+      </div>
+
+      {/* Recently Edited Calendars */}
+      <div style={{ marginBottom: 40 }}>
+        <SectionHeader
+          label="Recently Edited Calendars"
+          action={
+            <button onClick={newCalendar}
+              style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 14px", fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, cursor: "pointer", transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}>
+              + New
+            </button>
+          }
+        />
+        {recentCals.length === 0 ? (
+          <div style={{ fontFamily: MONO, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "24px 0" }}>No calendars yet</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+            {recentCals.map(cal => (
+              <div key={cal.id} onClick={() => openCalendar(cal)}
+                style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", transition: "border-color 0.15s" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+                onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 7, color: "rgba(0,0,0,0.5)", lineHeight: 1.2 }}>{cal.year}</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
+                    {cal.updated_at ? new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Content Plans */}
+      {can("content_plan_creator") && (
+        <div style={{ marginBottom: 40 }}>
+          <SectionHeader
+            label="Recent Content Plans"
+            action={
+              <button onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+                style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 14px", fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, cursor: "pointer", transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}>
+                View all
+              </button>
+            }
+          />
+          {recentPlans.length === 0 ? (
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "24px 0" }}>No content plans yet</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+              {recentPlans.map(plan => {
+                const planStatus = plan.items
+                  ? (plan.items.every(i => i.approval_status === "approved") ? "approved" : "pending")
+                  : "pending";
+                return (
+                  <div key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+                    style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {plan.client_name || plan.clients?.name || "Untitled"}
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+                      {plan.month != null ? `${MONTHS[plan.month].slice(0, 3)} ${plan.year}` : "—"}
+                    </div>
+                    <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: statusColor[planStatus] ?? C.meta, background: planStatus === "approved" ? "rgba(204,255,0,0.1)" : "rgba(255,255,255,0.05)", borderRadius: 20, padding: "2px 8px" }}>
+                      {planStatus}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upcoming Scheduled Posts */}
+      {can("content_scheduling") && (
+        <div>
+          <SectionHeader
+            label="Upcoming Scheduled Posts"
+            action={
+              <button onClick={() => setActivePortal("scheduling")}
+                style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 14px", fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, cursor: "pointer", transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}>
+                View all
+              </button>
+            }
+          />
+          {upcomingPosts.length === 0 ? (
+            <div style={{ fontFamily: MONO, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "24px 0" }}>No upcoming posts</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {upcomingPosts.map(post => (
+                <div key={post.id} onClick={() => setActivePortal("scheduling")}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "border-color 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+                  <div style={{ flexShrink: 0, textAlign: "center", minWidth: 44 }}>
+                    <div style={{ fontFamily: DISP, fontSize: 22, color: C.accent, lineHeight: 1 }}>
+                      {new Date(post.post_date + "T12:00:00").getDate()}
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: 8, color: C.meta, textTransform: "uppercase", letterSpacing: 1 }}>
+                      {new Date(post.post_date + "T12:00:00").toLocaleDateString("en-US", { month: "short" })}
+                    </div>
+                  </div>
+                  <div style={{ width: 1, height: 32, background: C.border, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS }}>{post.client_name}</div>
+                    {post.content_types?.length > 0 && (
+                      <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
+                        {post.content_types.join(" · ")}
+                      </div>
+                    )}
+                  </div>
+                  {post.notify && (
+                    <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: C.accent, background: "rgba(204,255,0,0.1)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>Notify</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
 export default function DashboardPortal({
   activePortal, setActivePortal,
   profileName, profileInput, setProfileInput, saveProfile, editingProfile, setEditingProfile,
@@ -211,31 +358,121 @@ export default function DashboardPortal({
   const { can } = useApp();
 
   return (
-    <div style={{ minHeight: "100vh", background: C.canvas, fontFamily: SANS }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: C.canvas, fontFamily: SANS }}>
 
-      {/* ── Nav ── */}
-      <nav style={{ background: C.canvas, borderBottom: `1px solid ${C.border}`, padding: "0 32px", display: "flex", alignItems: "stretch", height: 56, position: "sticky", top: 0, zIndex: 100 }}>
-        <div onClick={() => setActivePortal(null)} style={{ cursor: "pointer", display: "flex", alignItems: "center", paddingRight: 32, borderRight: `1px solid ${C.border}`, flexShrink: 0 }}>
-          <div style={{ fontFamily: DISP, fontSize: 22, letterSpacing: 1, lineHeight: 1, color: C.accent }}>LOUDMOUTH HQ</div>
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 24, borderLeft: `1px solid ${C.border}` }}>
-          {activePortal && activePortal !== "content-plan" && (
-            <button onClick={() => setActivePortal(null)}
-              style={{ background: "none", border: "none", color: C.meta, fontSize: 11, cursor: "pointer", fontFamily: MONO, letterSpacing: "1.2px", textTransform: "uppercase", fontWeight: 600, padding: 0 }}>
-              ← Home
-            </button>
-          )}
-          <NavProfileMenu
+      {/* ── Sidebar ── */}
+      <Sidebar
+        activePortal={activePortal}
+        setActivePortal={setActivePortal}
+        profileName={profileName}
+        scheduledPosts={scheduledPosts}
+        can={can}
+        signOut={signOut}
+        setProfileInput={setProfileInput}
+        setEditingProfile={setEditingProfile}
+        loadAllContentPlans={loadAllContentPlans}
+        loadAdminUsers={loadAdminUsers}
+        loadRoleToolDefaults={loadRoleToolDefaults}
+        adminUsers={adminUsers}
+        roleToolDefaults={roleToolDefaults}
+      />
+
+      {/* ── Main content ── */}
+      <div style={{ flex: 1, overflowY: "auto", background: C.canvas }}>
+
+        {activePortal === null && (
+          <Hub
+            setActivePortal={setActivePortal}
             profileName={profileName}
-            currentCalendarId={null}
-            onMyCalendars={() => setActivePortal(null)}
-            onHistory={() => {}}
-            onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
-            onSignOut={signOut}
+            allCalendars={allCalendars}
+            allContentPlans={allContentPlans}
+            scheduledPosts={scheduledPosts}
+            newCalendar={newCalendar}
+            openCalendar={openCalendar}
+            can={can}
+            loadAllContentPlans={loadAllContentPlans}
           />
-        </div>
-      </nav>
+        )}
+
+        {activePortal === "calendar" && (
+          <CalendarListPortal
+            allCalendars={allCalendars} calCollaborators={calCollaborators}
+            schedulingCalId={schedulingCalId} openCalendar={openCalendar}
+            newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
+            setShareModal={setShareModal} setShareEmail={setShareEmail} setShareError={setShareError}
+            setActivePortal={setActivePortal}
+            scheduledPosts={scheduledPosts}
+          />
+        )}
+
+        {activePortal === "scheduling" && (
+          <SchedulingPortal
+            scheduledPosts={scheduledPosts}
+            removeScheduledPost={removeScheduledPost}
+            toggleNotify={toggleNotify}
+            setActivePortal={setActivePortal}
+          />
+        )}
+
+        {activePortal === "admin" && can("admin_portal") && (
+          <AdminPortal
+            adminUsers={adminUsers} adminLoading={adminLoading}
+            roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}
+            inviteModal={inviteModal} setInviteModal={setInviteModal}
+            inviteForm={inviteForm} setInviteForm={setInviteForm}
+            inviteBusy={inviteBusy} inviteError={inviteError} setInviteError={setInviteError}
+            doInviteUser={doInviteUser}
+            editingUser={editingUser} setEditingUser={setEditingUser}
+            editUserForm={editUserForm} setEditUserForm={setEditUserForm}
+            editUserBusy={editUserBusy}
+            doUpdateUser={doUpdateUser}
+            doDeleteUser={doDeleteUser} deleteUserBusy={deleteUserBusy} currentUserId={currentUserId}
+            setActivePortal={setActivePortal}
+          />
+        )}
+
+        {activePortal === "content-plan" && can("content_plan_creator") && (
+          <ContentPlanPortal
+            currentCPId={currentCPId} setCurrentCPId={setCurrentCPId}
+            activeCPStep={activeCPStep} setActiveCPStep={setActiveCPStep}
+            cpClientName={cpClientName} setCpClientName={setCpClientName}
+            cpMonth={cpMonth} setCpMonth={setCpMonth}
+            cpYear={cpYear} setCpYear={setCpYear}
+            cpShootDate={cpShootDate} setCpShootDate={setCpShootDate}
+            cpProducedCount={cpProducedCount} setCpProducedCount={setCpProducedCount}
+            cpOrganicCount={cpOrganicCount} setCpOrganicCount={setCpOrganicCount}
+            cpItems={cpItems} setCpItems={setCpItems}
+            cpSaving={cpSaving}
+            allContentPlans={allContentPlans}
+            clients={clients} setClients={setClients}
+            addingClient={addingClient} setAddingClient={setAddingClient}
+            newClientInput={newClientInput} setNewClientInput={setNewClientInput}
+            newContentPlan={newContentPlan} openContentPlan={openContentPlan}
+            saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan}
+            generateCPItems={generateCPItems} updateCPItem={updateCPItem}
+            getOrCreateShareToken={getOrCreateShareToken}
+            cpClientId={cpClientId} setCpClientId={setCpClientId}
+            cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
+            cpShareEmail={cpShareEmail} setCpShareEmail={setCpShareEmail}
+            cpShareMethod={cpShareMethod} setCpShareMethod={setCpShareMethod}
+            cpShareBusy={cpShareBusy} setCpShareBusy={setCpShareBusy}
+            cpShareError={cpShareError} setCpShareError={setCpShareError}
+            cpShareSuccess={cpShareSuccess} setCpShareSuccess={setCpShareSuccess}
+            doSendContentPlan={doSendContentPlan}
+            cpReferenceImages={cpReferenceImages}
+            addCPReferenceImages={addCPReferenceImages}
+            removeCPReferenceImage={removeCPReferenceImage}
+            pinterestToken={pinterestToken} setPinterestToken={setPinterestToken}
+            pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
+            pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
+            setActivePortal={setActivePortal}
+          />
+        )}
+
+        {activePortal === "billing" && can("billing") && (
+          <BillingPortal setActivePortal={setActivePortal} />
+        )}
+      </div>
 
       {/* ── Export overlay ── */}
       {exporting && (
@@ -279,103 +516,6 @@ export default function DashboardPortal({
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── Hub ── */}
-      {activePortal === null && (
-        <DashboardHub
-          setActivePortal={setActivePortal}
-          profileName={profileName}
-          allCalendars={allCalendars}
-          allContentPlans={allContentPlans}
-          scheduledPosts={scheduledPosts}
-          newCalendar={newCalendar}
-          can={can}
-          loadAllContentPlans={loadAllContentPlans}
-          loadAdminUsers={loadAdminUsers}
-          loadRoleToolDefaults={loadRoleToolDefaults}
-          adminUsers={adminUsers}
-          roleToolDefaults={roleToolDefaults}
-        />
-      )}
-
-      {activePortal === "calendar" && (
-        <CalendarListPortal
-          allCalendars={allCalendars} calCollaborators={calCollaborators}
-          schedulingCalId={schedulingCalId} openCalendar={openCalendar}
-          newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
-          setShareModal={setShareModal} setShareEmail={setShareEmail} setShareError={setShareError}
-          setActivePortal={setActivePortal}
-          scheduledPosts={scheduledPosts}
-        />
-      )}
-
-      {activePortal === "scheduling" && (
-        <SchedulingPortal
-          scheduledPosts={scheduledPosts}
-          removeScheduledPost={removeScheduledPost}
-          toggleNotify={toggleNotify}
-          setActivePortal={setActivePortal}
-        />
-      )}
-
-      {activePortal === "admin" && can("admin_portal") && (
-        <AdminPortal
-          adminUsers={adminUsers} adminLoading={adminLoading}
-          roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}
-          inviteModal={inviteModal} setInviteModal={setInviteModal}
-          inviteForm={inviteForm} setInviteForm={setInviteForm}
-          inviteBusy={inviteBusy} inviteError={inviteError} setInviteError={setInviteError}
-          doInviteUser={doInviteUser}
-          editingUser={editingUser} setEditingUser={setEditingUser}
-          editUserForm={editUserForm} setEditUserForm={setEditUserForm}
-          editUserBusy={editUserBusy}
-          doUpdateUser={doUpdateUser}
-          doDeleteUser={doDeleteUser} deleteUserBusy={deleteUserBusy} currentUserId={currentUserId}
-          setActivePortal={setActivePortal}
-        />
-      )}
-
-      {activePortal === "content-plan" && can("content_plan_creator") && (
-        <ContentPlanPortal
-          currentCPId={currentCPId} setCurrentCPId={setCurrentCPId}
-          activeCPStep={activeCPStep} setActiveCPStep={setActiveCPStep}
-          cpClientName={cpClientName} setCpClientName={setCpClientName}
-          cpMonth={cpMonth} setCpMonth={setCpMonth}
-          cpYear={cpYear} setCpYear={setCpYear}
-          cpShootDate={cpShootDate} setCpShootDate={setCpShootDate}
-          cpProducedCount={cpProducedCount} setCpProducedCount={setCpProducedCount}
-          cpOrganicCount={cpOrganicCount} setCpOrganicCount={setCpOrganicCount}
-          cpItems={cpItems} setCpItems={setCpItems}
-          cpSaving={cpSaving}
-          allContentPlans={allContentPlans}
-          clients={clients} setClients={setClients}
-          addingClient={addingClient} setAddingClient={setAddingClient}
-          newClientInput={newClientInput} setNewClientInput={setNewClientInput}
-          newContentPlan={newContentPlan} openContentPlan={openContentPlan}
-          saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan}
-          generateCPItems={generateCPItems} updateCPItem={updateCPItem}
-          getOrCreateShareToken={getOrCreateShareToken}
-          cpClientId={cpClientId} setCpClientId={setCpClientId}
-          cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
-          cpShareEmail={cpShareEmail} setCpShareEmail={setCpShareEmail}
-          cpShareMethod={cpShareMethod} setCpShareMethod={setCpShareMethod}
-          cpShareBusy={cpShareBusy} setCpShareBusy={setCpShareBusy}
-          cpShareError={cpShareError} setCpShareError={setCpShareError}
-          cpShareSuccess={cpShareSuccess} setCpShareSuccess={setCpShareSuccess}
-          doSendContentPlan={doSendContentPlan}
-          cpReferenceImages={cpReferenceImages}
-          addCPReferenceImages={addCPReferenceImages}
-          removeCPReferenceImage={removeCPReferenceImage}
-          pinterestToken={pinterestToken} setPinterestToken={setPinterestToken}
-          pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
-          pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
-          setActivePortal={setActivePortal}
-        />
-      )}
-
-      {activePortal === "billing" && can("billing") && (
-        <BillingPortal setActivePortal={setActivePortal} />
       )}
 
       {/* ── Share modal ── */}
