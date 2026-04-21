@@ -4,6 +4,7 @@
 // Access: admin + account_manager roles only (enforced server-side; gated client-side via can("billing")).
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { SANS, MONO, C, INPUT, LABEL } from "../theme";
 import { supabase } from "../supabase";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -40,23 +41,6 @@ function fmtDate(str) {
 function emptyLine() {
   return { _id: Math.random(), description: "", quantity: 1, unit_price: "" };
 }
-
-// ── Input style ───────────────────────────────────────────────────────────────
-const INPUT = {
-  width: "100%",
-  padding: "10px 14px",
-  background: "#131313",
-  border: "1.5px solid rgba(255,255,255,0.14)",
-  borderRadius: 8,
-  color: "#fff",
-  fontSize: 13,
-  outline: "none",
-  boxSizing: "border-box",
-  fontFamily: "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif",
-  lineHeight: 1,
-};
-
-const LABEL = { fontSize: 10, color: "#949494", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 4, display: "block", fontFamily: "'Space Mono', monospace", fontWeight: 600, lineHeight: 1 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 

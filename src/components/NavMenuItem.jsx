@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
+import { SANS } from "../theme";
 
 export default function NavMenuItem({ onClick, color, children }) {
   const [hovered, setHovered] = useState(false);

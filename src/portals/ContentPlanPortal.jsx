@@ -4,37 +4,7 @@ import { useApp } from "../AppContext";
 import { useState, useEffect } from "react";
 import PinterestPanel from "../components/PinterestPanel";
 
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
-const MONO = "'Space Mono', 'Courier New', monospace";
-const C = {
-  canvas:  "#131313",
-  surface: "#1e1e1e",
-  surface2:"#2a2a2a",
-  accent:  "#CCFF00",
-  text:    "#ffffff",
-  meta:    "#949494",
-  border:  "rgba(255,255,255,0.14)",
-};
-
-const INPUT = {
-  width: "100%", padding: "10px 14px", border: `1.5px solid ${C.border}`,
-  borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box",
-  background: C.canvas, color: C.text, fontFamily: SANS, lineHeight: 1,
-};
-const LABEL = {
-  fontSize: 10, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px",
-  display: "block", marginBottom: 4, fontWeight: 600, fontFamily: MONO, lineHeight: 1,
-};
-const primaryBtn = {
-  background: C.accent, color: "#000", border: "none", borderRadius: 24,
-  padding: "10px 20px", fontSize: 11, fontWeight: 700, cursor: "pointer",
-  fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1,
-};
-const ghostBtn = {
-  background: "transparent", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24,
-  padding: "6px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer",
-  fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1, transition: "all 0.15s",
-};
+import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn } from "../theme";
 
 const approvalStyle = status => ({
   background: status === "approved" ? "rgba(204,255,0,0.1)" : status === "denied" ? "rgba(255,68,68,0.12)" : C.surface2,

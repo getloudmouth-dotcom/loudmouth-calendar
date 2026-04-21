@@ -1,19 +1,7 @@
 import { useState } from "react";
 import { supabase } from "../supabase";
 
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
-const MONO = "'Space Mono', 'Courier New', monospace";
-const DISP = "'Anton', Impact, Helvetica, sans-serif";
-
-const C = {
-  canvas:  "#131313",
-  surface: "#1e1e1e",
-  surface2:"#2a2a2a",
-  accent:  "#CCFF00",
-  text:    "#ffffff",
-  meta:    "#949494",
-  border:  "rgba(255,255,255,0.14)",
-};
+import { SANS, MONO, C, DISP } from "../theme";
 
 export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUserId, optedInUsers = [], allCalendars = [], openCalendar }) {
   const [removing, setRemoving] = useState(false);

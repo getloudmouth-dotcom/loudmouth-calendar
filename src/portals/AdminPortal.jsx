@@ -1,19 +1,7 @@
 import { useState, useEffect } from "react";
 import { ROLE_TOOLS, ALL_TOOLS } from "../constants";
 
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
-const MONO = "'Space Mono', 'Courier New', monospace";
-
-const C = {
-  canvas:  "#131313",
-  surface: "#1e1e1e",
-  surface2:"#2a2a2a",
-  accent:  "#CCFF00",
-  text:    "#ffffff",
-  meta:    "#949494",
-  border:  "rgba(255,255,255,0.14)",
-  error:   "#E8001C",
-};
+import { SANS, MONO, C } from "../theme";
 
 const ROLES = [
   { key: "admin",           label: "Admin" },

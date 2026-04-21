@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useApp } from "../AppContext";
 import { MONTHS, CONTENT_TYPES, newPost } from "../constants";
 import { getDayName, formatDate } from "../utils";
-import { labelStyle, inputStyle, primaryBtn, secondaryBtn } from "../styles";
+import { LABEL as labelStyle, INPUT as inputStyle, primaryBtn, ghostBtn as secondaryBtn } from "../theme";
 import DatePicker from "../components/DatePicker";
 import NavProfileMenu from "../components/NavProfileMenu";
 import SaveMenu from "../components/SaveMenu";
-import Toast from "../components/Toast";
+import { Toaster } from "@/components/ui/sonner";
 import DrivePanel from "../components/DrivePanel";
 import CarouselManager from "../components/CarouselManager";
 import DropZone from "../components/DropZone";
@@ -43,7 +43,6 @@ export default function CalendarBuilder({
   shareModal, setShareModal, shareEmail, setShareEmail, shareError, setShareError,
   sharePermission, setSharePermission, shareBusy, addCollaborator, removeCollaborator,
   calCollaborators,
-  toast,
 }) {
   const { isOnline } = useApp();
   const [dragOver, setDragOver] = useState(null);
@@ -622,7 +621,7 @@ updatePost(day, postIdx, "urls", [post.url]);
       .cal-page { page-break-after: always; box-shadow: none !important; margin: 0 !important; border-radius: 0 !important; border: none !important; }
     }
   `}</style>
-  <Toast toast={toast} />
+  <Toaster theme="dark" position="bottom-right" richColors />
 </div>
   );
 }

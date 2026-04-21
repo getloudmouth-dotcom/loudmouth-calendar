@@ -1,33 +1,37 @@
-:root {
-  /* ── Verge-inspired dark design system, Loudmouth branded ── */
-  --canvas: #131313;
-  --surface: #1e1e1e;
-  --surface-2: #2d2d2d;
-  --border: #ffffff;
-  --border-subtle: rgba(255,255,255,0.12);
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-  --text: #949494;
-  --text-h: #ffffff;
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ── Loudmouth dark design system ── */
+  --canvas:  #131313;
+  --surface: #1e1e1e;
+  --surface-2: #2a2a2a;
+  --border-subtle: rgba(255,255,255,0.14);
+
+  --text:     #949494;
+  --text-h:   #ffffff;
   --text-muted: #e9e9e9;
   --text-inv: #000000;
 
-  --bg: var(--canvas);
-  --code-bg: #1e1e1e;
+  --bg:       var(--canvas);
+  --code-bg:  #1e1e1e;
 
-  /* Brand: chartreuse replaces Verge's mint */
-  --accent: #CCFF00;
-  --accent-hover: rgba(204,255,0,0.15);
-  --accent-bg: rgba(204, 255, 0, 0.1);
-  --accent-border: rgba(204, 255, 0, 0.5);
+  /* Brand chartreuse */
+  --brand:         #CCFF00;
+  --accent-hover:  rgba(204,255,0,0.15);
+  --accent-bg:     rgba(204,255,0,0.1);
+  --accent-border: rgba(204,255,0,0.5);
 
-  --social-bg: rgba(45, 45, 45, 0.5);
-  --shadow: none;
+  --social-bg: rgba(45,45,45,0.5);
+  --shadow:    none;
 
   /* Typography */
   --display: 'Anton', Impact, Helvetica, sans-serif;
-  --sans: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
-  --heading: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
-  --mono: 'Space Mono', 'Courier New', Courier, monospace;
+  --sans:    'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --mono:    'Space Mono', 'Courier New', Courier, monospace;
 
   font: 16px/150% var(--sans);
   letter-spacing: 0.15px;
@@ -39,12 +43,65 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  @media (max-width: 1024px) {
-    font-size: 15px;
-  }
+  @media (max-width: 1024px) { font-size: 15px; }
+
+  /* ── shadcn/ui token remapping → always dark ── */
+  --background:            #131313;
+  --foreground:            #ffffff;
+  --card:                  #1e1e1e;
+  --card-foreground:       #ffffff;
+  --popover:               #1e1e1e;
+  --popover-foreground:    #ffffff;
+  --primary:               #CCFF00;
+  --primary-foreground:    #000000;
+  --secondary:             #2a2a2a;
+  --secondary-foreground:  #ffffff;
+  --muted:                 #2a2a2a;
+  --muted-foreground:      #949494;
+  --accent:                #2a2a2a;
+  --accent-foreground:     #ffffff;
+  --destructive:           #E8001C;
+  --destructive-foreground:#ffffff;
+  --border:                rgba(255,255,255,0.14);
+  --input:                 rgba(255,255,255,0.14);
+  --ring:                  #CCFF00;
+  --radius:                0.625rem;
 }
 
-/* Respect reduced motion preference */
+@theme inline {
+  --font-sans:    'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono:    'Space Mono', 'Courier New', monospace;
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-popover:            var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary:            var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary:          var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
+  --color-destructive:        var(--destructive);
+  --color-border:             var(--border);
+  --color-input:              var(--input);
+  --color-ring:               var(--ring);
+  --radius-sm:  calc(var(--radius) * 0.6);
+  --radius-md:  calc(var(--radius) * 0.8);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+  html { @apply font-sans; }
+}
+
+/* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -52,28 +109,16 @@
   }
 }
 
-/* Focus rings for keyboard navigation */
+/* Focus rings */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none !important;
   outline-offset: 0 !important;
-  border-color: var(--accent) !important;
+  border-color: var(--brand) !important;
 }
 
-/* Dashboard portal card hover — border highlight, no lift */
-.cal-card {
-  transition: border-color 0.15s;
-}
-.cal-card:hover {
-  border-color: var(--accent) !important;
-  box-shadow: none !important;
-}
-
-body {
-  margin: 0;
-  background: var(--canvas);
-}
+body { margin: 0; background: var(--canvas); }
 
 #root {
   width: 100%;
@@ -83,44 +128,16 @@ body {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 700;
-  color: var(--text-h);
-}
+h1, h2 { font-family: var(--sans); font-weight: 700; color: var(--text-h); }
+h1 { font-size: 56px; letter-spacing: -0.5px; margin: 32px 0; }
+h2 { font-size: 24px; line-height: 118%; letter-spacing: -0.24px; margin: 0 0 8px; }
+p  { margin: 0; }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -0.5px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
+code {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
   color: var(--text-h);
-}
-
-code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;

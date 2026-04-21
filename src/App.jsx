@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, Component } from "react";
+import { toast as sonnerToast } from "sonner";
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -269,9 +270,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const [pinterestPanelWidth, setPinterestPanelWidth] = useState(300);
   const cpAutoSaveTimerRef = useRef(null);
-  // ── Toast ──
-  const [toast, setToast] = useState(null); // null | { msg, type }
-  const toastTimerRef = useRef(null);
+  // toast state removed — using sonner globally
   // ── Realtime ──
   const realtimeChannelRef = useRef(null);
 // Warm up the PDF export function on load to reduce cold start lag
@@ -959,9 +958,9 @@ useEffect(() => {
   }
 
   function showToast(msg, type = "info") {
-    setToast({ msg, type });
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+    if (type === "success") sonnerToast.success(msg);
+    else if (type === "error") sonnerToast.error(msg);
+    else sonnerToast(msg);
   }
 
   async function addCollaborator(cal) {
@@ -1736,7 +1735,7 @@ useEffect(() => {
         pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
         pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
         signOut={signOut}
-        toast={toast}
+
       />
     </AppContext.Provider>
     </ErrorBoundary>
@@ -1789,7 +1788,7 @@ useEffect(() => {
         sharePermission={sharePermission} setSharePermission={setSharePermission}
         shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
         calCollaborators={calCollaborators}
-        toast={toast}
+
       />
     </AppContext.Provider>
     </ErrorBoundary>

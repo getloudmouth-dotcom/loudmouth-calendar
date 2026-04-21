@@ -1,20 +1,4 @@
-const DISP = "'Anton', Impact, Helvetica, sans-serif";
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
-const MONO = "'Space Mono', 'Courier New', monospace";
-const C = {
-  canvas:  "#131313",
-  surface: "#1e1e1e",
-  accent:  "#CCFF00",
-  text:    "#ffffff",
-  meta:    "#949494",
-  border:  "rgba(255,255,255,0.14)",
-};
-
-const inputStyle = {
-  width: "100%", padding: "10px 14px", border: `1.5px solid ${C.border}`,
-  borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box",
-  background: C.canvas, color: C.text, fontFamily: SANS, lineHeight: 1,
-};
+import { SANS, MONO, C, DISP, INPUT as inputStyle } from "../theme";
 
 export default function ProfileSetupView({ profileInput, setProfileInput, saveProfile, profilePhone, setProfilePhone, profileSmsConsent, setProfileSmsConsent }) {
   return (

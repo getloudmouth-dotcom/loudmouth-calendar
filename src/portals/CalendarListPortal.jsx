@@ -1,24 +1,7 @@
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import CollabAvatars from "../components/CollabAvatars";
-
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
-const MONO = "'Space Mono', 'Courier New', monospace";
-const C = {
-  canvas:  "#131313",
-  surface: "#1e1e1e",
-  accent:  "#CCFF00",
-  text:    "#ffffff",
-  meta:    "#949494",
-  border:  "rgba(255,255,255,0.14)",
-};
-
-const btn = (override = {}) => ({
-  border: `1px solid ${C.border}`, borderRadius: 24, background: "transparent",
-  color: C.meta, fontFamily: MONO, fontSize: 10, fontWeight: 700,
-  textTransform: "uppercase", letterSpacing: "1.5px", cursor: "pointer",
-  lineHeight: 1, transition: "all 0.15s", ...override,
-});
+import { SANS, MONO, C, btn } from "../theme";
 
 export default function CalendarListPortal({
   allCalendars, calCollaborators,
@@ -71,7 +54,7 @@ export default function CalendarListPortal({
               <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                 <button
                   onClick={e => { e.stopPropagation(); openCalendar(cal); }}
-                  style={btn({ flex: 1, padding: "7px 0", background: C.accent, color: "#000", border: "none", letterSpacing: "1.5px" })}
+                  style={btn({ flex: 1, padding: "7px 10px", background: C.accent, color: "#000", border: "none", letterSpacing: "1.5px" })}
                   onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
                   onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                 >Open</button>

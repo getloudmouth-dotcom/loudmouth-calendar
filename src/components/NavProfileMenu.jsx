@@ -1,15 +1,7 @@
 import { useState } from "react";
 import NavMenuItem from "./NavMenuItem";
 
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
-const MONO = "'Space Mono', 'Courier New', monospace";
-const C = {
-  surface: "#1e1e1e",
-  accent:  "#CCFF00",
-  text:    "#ffffff",
-  meta:    "#949494",
-  border:  "rgba(255,255,255,0.14)",
-};
+import { SANS, MONO, C } from "../theme";
 
 export default function NavProfileMenu({ profileName, userEmail, currentCalendarId, onMyCalendars, onHistory, onEditProfile, onSignOut }) {
   const [open, setOpen] = useState(false);

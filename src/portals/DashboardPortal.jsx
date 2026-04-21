@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
-import Toast from "../components/Toast";
+import { Toaster } from "../components/ui/sonner";
 import NavProfileMenu from "../components/NavProfileMenu";
 import CollabAvatars from "../components/CollabAvatars";
 import CalendarListPortal from "./CalendarListPortal";
@@ -9,20 +9,7 @@ import SchedulingPortal from "./SchedulingPortal";
 import AdminPortal from "./AdminPortal";
 import ContentPlanPortal from "./ContentPlanPortal";
 import BillingPortal from "./BillingPortal";
-
-const DISP = "'Anton', Impact, Helvetica, sans-serif";
-const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
-const MONO = "'Space Mono', 'Courier New', monospace";
-
-const C = {
-  canvas:  "#131313",
-  surface: "#1e1e1e",
-  surface2:"#2a2a2a",
-  accent:  "#CCFF00",
-  text:    "#ffffff",
-  meta:    "#949494",
-  border:  "rgba(255,255,255,0.14)",
-};
+import { SANS, MONO, C, DISP } from "../theme";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const icons = {
@@ -396,7 +383,6 @@ export default function DashboardPortal({
   loadAdminUsers, loadRoleToolDefaults,
   loadAllContentPlans,
   signOut,
-  toast,
 }) {
   const { can } = useApp();
 
@@ -616,7 +602,7 @@ export default function DashboardPortal({
         </div>
       )}
 
-      <Toast toast={toast} />
+      <Toaster theme="dark" position="bottom-right" richColors />
     </div>
   );
 }
