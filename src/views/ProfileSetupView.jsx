@@ -18,7 +18,7 @@ const inputStyle = {
 
 export default function ProfileSetupView({ profileInput, setProfileInput, saveProfile, profilePhone, setProfilePhone, profileSmsConsent, setProfileSmsConsent }) {
   return (
-    <div style={{ minHeight: "100vh", background: C.canvas, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SANS }}>
+    <main style={{ minHeight: "100vh", background: C.canvas, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SANS }}>
       <div style={{ background: C.surface, borderRadius: 16, padding: 32, width: 380, border: `1px solid ${C.border}`, boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
@@ -61,6 +61,6 @@ export default function ProfileSetupView({ profileInput, setProfileInput, savePr
           Let's go →
         </button>
       </div>
-    </div>
+    </main>
   );
 }

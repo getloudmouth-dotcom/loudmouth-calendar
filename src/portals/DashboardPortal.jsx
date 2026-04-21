@@ -27,26 +27,26 @@ const C = {
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const icons = {
   calendar: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
       <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" strokeWidth="2"/>
       <path d="M3 9h18" stroke="currentColor" strokeWidth="2"/>
       <path d="M8 2v4M16 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
   contentPlan: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
       <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
       <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
   scheduling: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
       <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
   admin: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
       <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="2"/>
       <path d="M3 20c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
       <path d="M17 11l1.5 1.5L21 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -54,14 +54,14 @@ const icons = {
     </svg>
   ),
   billing: (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
       <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
       <path d="M2 10h20" stroke="currentColor" strokeWidth="2"/>
       <rect x="5" y="14" width="4" height="2" rx="0.5" fill="currentColor"/>
     </svg>
   ),
   home: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+    <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none">
       <path d="M3 12L12 3l9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M5 10v11h14V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M9 21V15h6v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -421,7 +421,7 @@ export default function DashboardPortal({
       />
 
       {/* ── Main content ── */}
-      <div style={{ flex: 1, overflowY: "auto", background: C.canvas }}>
+      <main style={{ flex: 1, overflowY: "auto", background: C.canvas }}>
 
         {activePortal === null && (
           <Hub
@@ -518,12 +518,12 @@ export default function DashboardPortal({
         {activePortal === "billing" && can("billing") && (
           <BillingPortal setActivePortal={setActivePortal} />
         )}
-      </div>
+      </main>
 
       {/* ── Export overlay ── */}
       {exporting && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-          <svg width="48" height="48" viewBox="0 0 48 48">
+          <svg aria-hidden="true" focusable="false" width="48" height="48" viewBox="0 0 48 48">
             <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
             <circle cx="24" cy="24" r="20" fill="none" stroke={C.accent} strokeWidth="4"
               strokeDasharray="125.6"

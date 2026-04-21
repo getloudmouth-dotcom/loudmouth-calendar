@@ -52,7 +52,7 @@ export default function CarouselManager({ imageUrls, urls, onReorder, onRemove, 
         <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 5 }}>
           {imageUrls.map((_, imgIdx) => (
             <div key={imgIdx} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 10, color: "#aaa", fontWeight: 700, minWidth: 16 }}>{imgIdx + 1}</span>
+              <span style={{ fontSize: 10, color: "#767676", fontWeight: 700, minWidth: 16 }}>{imgIdx + 1}</span>
               <input
                 value={urls[imgIdx] || ""}
                 placeholder={`Slide ${imgIdx + 1} link...`}

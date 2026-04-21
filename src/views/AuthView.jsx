@@ -23,7 +23,7 @@ const labelStyle = {
 
 export default function AuthView({ authMode, setAuthMode, authEmail, setAuthEmail, authPassword, setAuthPassword, authError, authBusy, signIn, signUp, resetPassword }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: C.canvas, fontFamily: SANS }}>
+    <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: C.canvas, fontFamily: SANS }}>
       <div style={{ background: C.surface, borderRadius: 16, padding: 32, width: 360, border: `1px solid ${C.border}`, boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontFamily: DISP, fontSize: 22, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
@@ -55,6 +55,6 @@ export default function AuthView({ authMode, setAuthMode, authEmail, setAuthEmai
           </button>
         )}
       </div>
-    </div>
+    </main>
   );
 }

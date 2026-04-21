@@ -72,22 +72,22 @@ function BillingInvoiceExportView({ token }) {
       {/* Meta */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 40 }}>
         <div>
-          <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Invoice #</div>
+          <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Invoice #</div>
           <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: "-0.5px" }}>{invoice.invoiceNumber}</div>
           <div style={{ marginTop: 20 }}>
-            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Bill To</div>
+            <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Bill To</div>
             <div style={{ fontWeight: 800, fontSize: 16 }}>{invoice.client?.name ?? ""}</div>
             {invoice.client?.company && <div style={{ color: "#888", fontSize: 13 }}>{invoice.client.company}</div>}
-            {invoice.client?.email && <div style={{ color: "#aaa", fontSize: 12 }}>{invoice.client.email}</div>}
+            {invoice.client?.email && <div style={{ color: "#767676", fontSize: 12 }}>{invoice.client.email}</div>}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Issue Date</div>
+            <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Issue Date</div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{fmtDate(invoice.issueDate)}</div>
           </div>
           <div>
-            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Due Date</div>
+            <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Due Date</div>
             <div style={{ fontWeight: 800, fontSize: 14, color: "#E8001C" }}>{fmtDate(invoice.dueDate)}</div>
           </div>
         </div>
@@ -137,7 +137,7 @@ function BillingInvoiceExportView({ token }) {
       {/* Notes */}
       {invoice.notes && (
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid #f0f0f0" }}>
-          <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Notes</div>
+          <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Notes</div>
           <div style={{ color: "#666", fontSize: 13, lineHeight: 1.6 }}>{invoice.notes}</div>
         </div>
       )}
@@ -146,7 +146,7 @@ function BillingInvoiceExportView({ token }) {
       <div style={{ marginTop: 60, paddingTop: 24, borderTop: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ color: "#ccc", fontSize: 11 }}>billing@getloudmouth.us</div>
         {invoice.paymentUrl && (
-          <div style={{ color: "#aaa", fontSize: 11 }}>Pay at: {invoice.paymentUrl}</div>
+          <div style={{ color: "#767676", fontSize: 11 }}>Pay at: {invoice.paymentUrl}</div>
         )}
       </div>
     </div>

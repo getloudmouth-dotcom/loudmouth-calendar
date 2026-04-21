@@ -11,7 +11,7 @@ export default function DatePicker({ day, month, year, daysInMonth, selectedDays
       </div>
       {open && (
         <div style={{ position: "absolute", top: "110%", left: 0, zIndex: 999, background: "white", border: "1.5px solid #e0e0e0", borderRadius: 10, padding: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 220 }}>
-          <div style={{ fontSize: 11, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, fontWeight: 600 }}>Change date</div>
+          <div style={{ fontSize: 11, color: "#767676", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8, fontWeight: 600 }}>Change date</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
             {["S","M","T","W","T","F","S"].map((d, i) => (
               <div key={i} style={{ textAlign: "center", fontSize: 9, color: "#ccc", fontWeight: 700, padding: "2px 0" }}>{d}</div>

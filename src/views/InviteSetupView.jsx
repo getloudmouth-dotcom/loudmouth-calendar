@@ -43,7 +43,7 @@ export default function InviteSetupView({
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.canvas, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SANS, padding: "24px 16px" }}>
+    <main style={{ minHeight: "100vh", background: C.canvas, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SANS, padding: "24px 16px" }}>
       <div style={{ background: C.surface, borderRadius: 16, padding: 32, width: "100%", maxWidth: 400, border: `1px solid ${C.border}`, boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
 
         <div style={{ marginBottom: 24 }}>
@@ -86,6 +86,6 @@ export default function InviteSetupView({
           {inviteSetupBusy ? "Setting up..." : "Let's get loud →"}
         </button>
       </div>
-    </div>
+    </main>
   );
 }

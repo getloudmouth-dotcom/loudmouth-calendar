@@ -87,7 +87,7 @@ export default function CalendarBuilder({
       />
     </div>
     </nav>
-    
+    <main>
     {(!isOnline || wasOffline) && (
       <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 99998, display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", backdropFilter: "blur(8px)", background: isOnline ? "rgba(20, 160, 80, 0.92)" : "rgba(20,20,40,0.95)", border: isOnline ? "1px solid rgba(100,220,140,0.4)" : "1px solid rgba(232,0,28,0.4)", transition: "background 0.4s, border 0.4s", whiteSpace: "nowrap" }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#6fec9f" : "#E8001C", boxShadow: isOnline ? "0 0 8px #6fec9f" : "0 0 8px #E8001C", flexShrink: 0, animation: isOnline ? "none" : "offlinePulse 1.4s ease-in-out infinite" }} />
@@ -105,7 +105,7 @@ export default function CalendarBuilder({
 
     {exporting && (
     <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
-      <svg width="48" height="48" viewBox="0 0 48 48">
+      <svg aria-hidden="true" focusable="false" width="48" height="48" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
         <circle cx="24" cy="24" r="20" fill="none" stroke="#D7FA06" strokeWidth="4"
           strokeDasharray="125.6"
@@ -135,7 +135,7 @@ export default function CalendarBuilder({
       onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
       <div style={{ background: "white", borderRadius: 14, width: 360, padding: 28, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
         <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6 }}>Edit Profile</div>
-        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 18 }}>This name appears in calendar footers and your account.</div>
+        <div style={{ fontSize: 12, color: "#767676", marginBottom: 18 }}>This name appears in calendar footers and your account.</div>
         <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..." style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16 }} />
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
@@ -150,16 +150,16 @@ export default function CalendarBuilder({
       <div style={{ background: "white", width: 360, height: "100vh", overflowY: "auto", padding: 24, boxShadow: "-4px 0 24px rgba(0,0,0,0.15)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div style={{ fontWeight: 800, fontSize: 16 }}>Draft History</div>
-          <button onClick={() => setShowDraftHistory(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#aaa" }}>✕</button>
+          <button onClick={() => setShowDraftHistory(false)} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#767676" }}>✕</button>
         </div>
-        <div style={{ fontSize: 12, color: "#aaa", marginBottom: 16 }}>Last 20 saves for this calendar. Click any to restore.</div>
+        <div style={{ fontSize: 12, color: "#767676", marginBottom: 16 }}>Last 20 saves for this calendar. Click any to restore.</div>
         {draftHistory.length === 0 && (
-          <div style={{ fontSize: 13, color: "#aaa", textAlign: "center", padding: "40px 0" }}>No saves yet for this calendar.</div>
+          <div style={{ fontSize: 13, color: "#767676", textAlign: "center", padding: "40px 0" }}>No saves yet for this calendar.</div>
         )}
         {draftHistory.map(d => (
           <div key={d.id} style={{ border: "1.5px solid #e8e8e8", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: "#111", marginBottom: 2 }}>{d.label}</div>
-            <div style={{ fontSize: 11, color: "#aaa", marginBottom: 10 }}>{new Date(d.saved_at).toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: "#767676", marginBottom: 10 }}>{new Date(d.saved_at).toLocaleString()}</div>
             <button onClick={() => restoreDraft(d)} style={{ width: "100%", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 6, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Restore this version</button>
           </div>
         ))}
@@ -301,7 +301,7 @@ export default function CalendarBuilder({
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                       <DatePicker day={day} month={month} year={year} daysInMonth={daysInMonth} selectedDays={selectedDays} onChangeDay={newDay => changeDay(day, newDay)} />
                       <button onClick={() => addPostToDay(day)} style={{ background: "#D7FA06", color: "#111", border: "none", width: 28, height: 28, borderRadius: "50%", fontSize: 18, lineHeight: 1, cursor: "pointer", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-                      {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#aaa" }}>{dayPosts.length} posts</span>}
+                      {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#767676" }}>{dayPosts.length} posts</span>}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                       {dayPosts.map((post, postIdx) => {
@@ -315,7 +315,7 @@ export default function CalendarBuilder({
                               <button title="Remove this day" onClick={() => { setSelectedDays(prev => prev.filter(d => d !== day)); setPosts(p => { const c = { ...p }; delete c[day]; return c; }); }} style={{ position: "absolute", top: 8, right: 8, background: "#E8001C", border: "none", color: "white", borderRadius: "50%", width: 20, height: 20, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, zIndex: 5, lineHeight: 1 }}>✕</button>
                             )}
                             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                              {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#aaa", fontWeight: 700, minWidth: 20 }}>#{postIdx + 1}</span>}
+                              {dayPosts.length > 1 && <span style={{ fontSize: 11, color: "#767676", fontWeight: 700, minWidth: 20 }}>#{postIdx + 1}</span>}
                               <select value={post.contentType} onChange={e => {
   const newType = e.target.value;
   if (newType === "Carousel" && post.contentType !== "Carousel" && post.url && !(post.urls?.length)) {
@@ -365,7 +365,7 @@ updatePost(day, postIdx, "urls", [post.url]);
                                       <img src={post.imageUrls[0]} alt="" style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 5, flexShrink: 0 }} />
                                       <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>Image uploaded ✓</div>
-                                        <div style={{ fontSize: 10, color: "#aaa" }}>Drop to replace</div>
+                                        <div style={{ fontSize: 10, color: "#767676" }}>Drop to replace</div>
                                       </div>
                                       <button onClick={() => { updatePost(day, postIdx, "imageUrls", []); updatePost(day, postIdx, "url", ""); }} style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: 18, padding: 0 }}>✕</button>
                                     </div>
@@ -380,7 +380,7 @@ updatePost(day, postIdx, "urls", [post.url]);
                                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                         <DropZone isDropTarget={isDropTarget} label="Drag & drop or browse" onDragOver={e => { e.preventDefault(); setDragOver(dragKey); }} onDragLeave={() => setDragOver(null)} onDrop={e => { e.preventDefault(); setDragOver(null); const raw = e.dataTransfer.getData("driveFileIds"); if (raw) { handleMultiDriveFileDrop(day, postIdx, JSON.parse(raw)); } else { const did = e.dataTransfer.getData("driveFileId"); const dlink = e.dataTransfer.getData("driveFileLink"); did ? handleDriveFileDrop(day, postIdx, did, dlink) : handleFiles(day, postIdx, e.dataTransfer.files); } }} onFileInput={e => handleFiles(day, postIdx, e.target.files)} urlValue={post.imageUrls?.[0] || ""} onUrlChange={v => updatePost(day, postIdx, "imageUrls", v ? [v] : [])} />
                                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                          <button onClick={() => updatePost(day, postIdx, "placeholder", "Pending photo")} style={{ width: "100%", padding: "7px 0", background: "#FFFDE7", border: "1.5px dashed #F0E060", borderRadius: 6, fontSize: 11, color: "#aaa", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                                          <button onClick={() => updatePost(day, postIdx, "placeholder", "Pending photo")} style={{ width: "100%", padding: "7px 0", background: "#FFFDE7", border: "1.5px dashed #F0E060", borderRadius: 6, fontSize: 11, color: "#767676", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
                                             📝 Add placeholder note
                                           </button>
                                           
@@ -601,6 +601,7 @@ updatePost(day, postIdx, "urls", [post.url]);
     onExitPickMode={() => setLinkPickMode({ active: false, onPick: null })}
   />
   )}
+    </main>
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }

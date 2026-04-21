@@ -212,7 +212,7 @@ export default function PinterestPanel({ isOpen, onClose, onAddImages, width, on
       <div style={{ flex: 1, overflowY: "auto", padding: mode === "choose" ? 20 : 10 }}>
         {loading && <div style={{ textAlign: "center", padding: "40px 0", color: "#bbb", fontSize: 12 }}>Loading...</div>}
         {error && <div style={{ color: "#E8001C", fontSize: 11, padding: "10px 12px", background: "#fff0f0", borderRadius: 8, margin: 4 }}>{error}</div>}
-        {emptyMsg && !loading && <div style={{ textAlign: "center", padding: "30px 10px", color: "#aaa", fontSize: 12 }}><div style={{ fontSize: 24, marginBottom: 8 }}>📌</div>{emptyMsg}</div>}
+        {emptyMsg && !loading && <div style={{ textAlign: "center", padding: "30px 10px", color: "#767676", fontSize: 12 }}><div style={{ fontSize: 24, marginBottom: 8 }}>📌</div>{emptyMsg}</div>}
 
         {/* Choose mode */}
         {mode === "choose" && !loading && (
@@ -275,7 +275,7 @@ export default function PinterestPanel({ isOpen, onClose, onAddImages, width, on
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.name}</div>
-                  {b.pin_count > 0 && <div style={{ fontSize: 10, color: "#aaa", marginTop: 1 }}>{b.pin_count} pins</div>}
+                  {b.pin_count > 0 && <div style={{ fontSize: 10, color: "#767676", marginTop: 1 }}>{b.pin_count} pins</div>}
                 </div>
                 <span style={{ color: "#ccc", fontSize: 14, flexShrink: 0 }}>›</span>
               </div>
