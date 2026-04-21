@@ -22,7 +22,7 @@ function SectionHeader({ label }) {
   );
 }
 
-export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, toggleNotify, setActivePortal }) {
+export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, toggleNotify, setActivePortal, allCalendars, openCalendar }) {
   const { user } = useApp();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -78,6 +78,8 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
                       onToggleNotify={toggleNotify}
                       currentUserId={user?.id}
                       optedInUsers={getOptedInUsers(row)}
+                      allCalendars={allCalendars}
+                      openCalendar={openCalendar}
                     />
                   ))}
                 </div>
@@ -95,6 +97,8 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
                       onToggleNotify={toggleNotify}
                       currentUserId={user?.id}
                       optedInUsers={getOptedInUsers(row)}
+                      allCalendars={allCalendars}
+                      openCalendar={openCalendar}
                     />
                   ))}
                 </div>

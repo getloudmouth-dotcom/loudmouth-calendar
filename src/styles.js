@@ -1,4 +1,4 @@
-/* Shared design tokens — Verge-inspired dark system, Loudmouth branded */
+/* Shared design tokens — dark system, Loudmouth branded */
 
 export const labelStyle = {
   fontSize: 10,
@@ -9,19 +9,21 @@ export const labelStyle = {
   marginBottom: 4,
   fontWeight: 600,
   fontFamily: "'Space Mono', monospace",
+  lineHeight: 1,
 };
 
 export const inputStyle = {
   width: "100%",
-  padding: "9px 12px",
-  border: "1px solid rgba(255,255,255,0.2)",
-  borderRadius: 4,
-  fontSize: 14,
+  padding: "10px 14px",
+  border: "1.5px solid rgba(255,255,255,0.14)",
+  borderRadius: 8,
+  fontSize: 13,
   outline: "none",
-  fontFamily: "'Space Grotesk', sans-serif",
+  fontFamily: "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif",
   transition: "border-color 0.15s",
-  background: "#1e1e1e",
+  background: "#131313",
   color: "#ffffff",
+  boxSizing: "border-box",
 };
 
 /* Primary: chartreuse fill, black text, pill shape */
@@ -29,27 +31,31 @@ export const primaryBtn = {
   background: "#CCFF00",
   color: "#000000",
   border: "none",
-  padding: "10px 24px",
+  padding: "10px 20px",
   borderRadius: 24,
-  fontSize: 13,
+  fontSize: 11,
   fontWeight: 700,
   cursor: "pointer",
   letterSpacing: "1.5px",
   textTransform: "uppercase",
   fontFamily: "'Space Mono', monospace",
   transition: "background 0.18s",
+  lineHeight: 1,
 };
 
-/* Secondary: dark slate pill */
+/* Secondary: ghost pill */
 export const secondaryBtn = {
-  background: "#2d2d2d",
-  color: "#e9e9e9",
-  border: "none",
-  padding: "10px 20px",
+  background: "transparent",
+  color: "#949494",
+  border: "1px solid rgba(255,255,255,0.14)",
+  padding: "8px 16px",
   borderRadius: 24,
-  fontSize: 13,
-  fontWeight: 500,
+  fontSize: 10,
+  fontWeight: 700,
   cursor: "pointer",
-  fontFamily: "'Space Grotesk', sans-serif",
-  transition: "background 0.15s",
+  letterSpacing: "1.5px",
+  textTransform: "uppercase",
+  fontFamily: "'Space Mono', monospace",
+  transition: "all 0.15s",
+  lineHeight: 1,
 };

@@ -149,7 +149,7 @@ export default function AdminPortal({
             <button key={t.key} onClick={() => setTab(t.key)} style={{
               background: tab === t.key ? C.accent : "rgba(255,255,255,0.06)",
               color: tab === t.key ? "#111" : C.meta,
-              border: "none", padding: "6px 14px", borderRadius: 7,
+              border: "none", padding: "6px 14px", borderRadius: 24,
               fontFamily: MONO, fontWeight: 700, fontSize: 10,
               cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase",
               transition: "background 0.15s",
@@ -166,7 +166,7 @@ export default function AdminPortal({
         {tab === "roles" && permsDirty && (
           <button onClick={handleSavePerms} disabled={rolePermsBusy} style={{
             background: C.accent, color: "#111", border: "none",
-            padding: "8px 20px", borderRadius: 8,
+            padding: "8px 20px", borderRadius: 24,
             fontFamily: MONO, fontWeight: 700, fontSize: 10,
             cursor: rolePermsBusy ? "default" : "pointer", letterSpacing: "1.2px",
             textTransform: "uppercase", opacity: rolePermsBusy ? 0.6 : 1,
@@ -307,7 +307,7 @@ export default function AdminPortal({
               <button onClick={handleSavePerms} disabled={rolePermsBusy} style={{ background: C.accent, color: "#111", border: "none", padding: "10px 24px", borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: rolePermsBusy ? "default" : "pointer", opacity: rolePermsBusy ? 0.6 : 1 }}>
                 {rolePermsBusy ? "Saving…" : "Save Changes"}
               </button>
-              <button onClick={() => { setLocalPerms(roleToolDefaults); setPermsDirty(false); }} style={{ background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, padding: "10px 18px", borderRadius: 8, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Discard</button>
+              <button onClick={() => { setLocalPerms(roleToolDefaults); setPermsDirty(false); }} style={{ background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, padding: "10px 18px", borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Discard</button>
               <span style={{ fontFamily: MONO, fontSize: 10, color: C.meta, letterSpacing: "0.5px" }}>Unsaved changes</span>
             </div>
           )}
@@ -340,10 +340,10 @@ export default function AdminPortal({
             </Select>
             {inviteError && <div style={{ fontSize: 12, color: C.error, marginBottom: 12 }}>{inviteError}</div>}
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={doInviteUser} disabled={inviteBusy || !inviteForm.email.trim()} style={{ flex: 1, padding: "11px 0", background: C.accent, color: "#111", border: "none", borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: inviteBusy || !inviteForm.email.trim() ? "default" : "pointer", opacity: inviteForm.email.trim() ? 1 : 0.4 }}>
+              <button onClick={doInviteUser} disabled={inviteBusy || !inviteForm.email.trim()} style={{ flex: 1, padding: "11px 0", background: C.accent, color: "#111", border: "none", borderRadius: 24, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: inviteBusy || !inviteForm.email.trim() ? "default" : "pointer", opacity: inviteForm.email.trim() ? 1 : 0.4 }}>
                 {inviteBusy ? "Sending..." : "Send Invite"}
               </button>
-              <button onClick={() => { setInviteModal(false); setInviteError(""); }} style={{ padding: "11px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setInviteModal(false); setInviteError(""); }} style={{ padding: "11px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -394,10 +394,10 @@ export default function AdminPortal({
               })}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={doUpdateUser} disabled={editUserBusy} style={{ flex: 1, padding: "11px 0", background: C.accent, color: "#111", border: "none", borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: editUserBusy ? "default" : "pointer" }}>
+              <button onClick={doUpdateUser} disabled={editUserBusy} style={{ flex: 1, padding: "11px 0", background: C.accent, color: "#111", border: "none", borderRadius: 24, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: editUserBusy ? "default" : "pointer" }}>
                 {editUserBusy ? "Saving..." : "Save Changes"}
               </button>
-              <button onClick={() => { setEditingUser(null); setConfirmDelete(false); }} style={{ padding: "11px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setEditingUser(null); setConfirmDelete(false); }} style={{ padding: "11px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Cancel</button>
             </div>
 
             {editingUser.id !== currentUserId && (
@@ -405,7 +405,7 @@ export default function AdminPortal({
                 {!confirmDelete ? (
                   <button
                     onClick={() => setConfirmDelete(true)}
-                    style={{ width: "100%", padding: "10px 0", background: "none", color: C.error, border: `1px solid rgba(232,0,28,0.35)`, borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}
+                    style={{ width: "100%", padding: "10px 0", background: "none", color: C.error, border: `1px solid rgba(232,0,28,0.35)`, borderRadius: 24, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}
                   >Delete User</button>
                 ) : (
                   <div style={{ background: "rgba(232,0,28,0.08)", border: `1px solid rgba(232,0,28,0.25)`, borderRadius: 10, padding: "16px" }}>
@@ -417,11 +417,11 @@ export default function AdminPortal({
                       <button
                         onClick={() => doDeleteUser(editingUser.id)}
                         disabled={deleteUserBusy}
-                        style={{ flex: 1, padding: "10px 0", background: C.error, color: "white", border: "none", borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: deleteUserBusy ? "default" : "pointer", opacity: deleteUserBusy ? 0.6 : 1 }}
+                        style={{ flex: 1, padding: "10px 0", background: C.error, color: "white", border: "none", borderRadius: 24, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: deleteUserBusy ? "default" : "pointer", opacity: deleteUserBusy ? 0.6 : 1 }}
                       >{deleteUserBusy ? "Deleting..." : "Yes, Delete"}</button>
                       <button
                         onClick={() => setConfirmDelete(false)}
-                        style={{ padding: "10px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}
+                        style={{ padding: "10px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}
                       >Cancel</button>
                     </div>
                   </div>

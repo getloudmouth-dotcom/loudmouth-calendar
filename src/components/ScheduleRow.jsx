@@ -15,14 +15,13 @@ const C = {
   border:  "rgba(255,255,255,0.14)",
 };
 
-export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUserId, optedInUsers = [] }) {
+export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUserId, optedInUsers = [], allCalendars = [], openCalendar }) {
   const [removing, setRemoving] = useState(false);
   const [showOptedIn, setShowOptedIn] = useState(false);
   const [testStatus, setTestStatus] = useState(null); // null | "sending" | "sent" | "error"
 
-  const dateStr = new Date(row.post_date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
   const types = (row.content_types || []).join(", ") || "—";
-  const links = (row.drive_links || []).filter(Boolean);
+  const calendar = allCalendars.find(c => c.id === row.calendar_id);
 
   const myEntry = optedInUsers.find(u => u.userId === currentUserId);
   const iAmNotified = myEntry ? myEntry.notify !== false : true;
@@ -77,24 +76,28 @@ export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUser
 
         <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "nowrap", overflow: "hidden" }}>
-            <span style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1 }}>{row.client_name}</span>
+            <span style={{ fontWeight: 600, fontSize: 15, color: C.text, fontFamily: SANS, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1 }}>{row.client_name}</span>
             {row.email_sent_at && (
-              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: "#7fd99e", borderRadius: 20, padding: "1px 5px", flexShrink: 0, lineHeight: 1 }}>Sent</span>
+              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: "#7fd99e", borderRadius: 20, padding: "3px 8px", flexShrink: 0, lineHeight: 1 }}>Sent</span>
             )}
             {!iAmNotified && (
               <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(255,255,255,0.05)", color: C.meta, borderRadius: 20, padding: "1px 5px", flexShrink: 0, lineHeight: 1 }}>Muted</span>
             )}
           </div>
-          <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1 }}>{dateStr} · {types}</div>
-          {links.length > 0 && (
-            <a href={links[0]} target="_blank" rel="noopener noreferrer"
-              style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textDecoration: "none", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.3px", lineHeight: 1 }}
-              onMouseEnter={e => e.currentTarget.style.color = C.accent}
-              onMouseLeave={e => e.currentTarget.style.color = C.meta}>
-              {links[0].length > 60 ? links[0].slice(0, 60) + "…" : links[0]}
-              {links.length > 1 && <span style={{ color: C.meta, opacity: 0.6 }}> +{links.length - 1} more</span>}
-            </a>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: "0.5px", lineHeight: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{types}</span>
+            {calendar && openCalendar && (
+              <button
+                onClick={() => openCalendar(calendar)}
+                title="Open this calendar"
+                style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.meta, borderRadius: 20, padding: "2px 8px", fontFamily: MONO, fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", lineHeight: 1, cursor: "pointer", flexShrink: 0, transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}
+              >
+                Open →
+              </button>
+            )}
+          </div>
           {hasCollaborators && (
             <button
               onClick={() => setShowOptedIn(v => !v)}

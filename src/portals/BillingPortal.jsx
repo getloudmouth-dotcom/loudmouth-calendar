@@ -11,7 +11,7 @@ const STATUS_COLORS = {
   draft:     { bg: "#2a2a2a", color: "#888",    label: "Draft" },
   sent:      { bg: "#1e3a5f", color: "#3B82F6", label: "Sent" },
   viewed:    { bg: "#2d1f5e", color: "#8B5CF6", label: "Viewed" },
-  paid:      { bg: "#1a2e0a", color: "#D7FA06", label: "Paid" },
+  paid:      { bg: "#1a2e0a", color: "#CCFF00", label: "Paid" },
   overdue:   { bg: "#3a0a0a", color: "#E8001C", label: "Overdue" },
   cancelled: { bg: "#222",    color: "#555",    label: "Cancelled" },
 };
@@ -19,7 +19,7 @@ const STATUS_COLORS = {
 function StatusBadge({ status }) {
   const s = STATUS_COLORS[status] || STATUS_COLORS.draft;
   return (
-    <span style={{ background: s.bg, color: s.color, borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+    <span style={{ background: s.bg, color: s.color, borderRadius: 20, padding: "3px 10px", fontSize: 10, fontWeight: 700, letterSpacing: "0.8px", textTransform: "uppercase", whiteSpace: "nowrap", lineHeight: 1, fontFamily: "'Space Mono', monospace" }}>
       {s.label}
     </span>
   );
@@ -44,17 +44,19 @@ function emptyLine() {
 // ── Input style ───────────────────────────────────────────────────────────────
 const INPUT = {
   width: "100%",
-  padding: "9px 12px",
-  background: "#111",
-  border: "1.5px solid #2a2a2a",
+  padding: "10px 14px",
+  background: "#131313",
+  border: "1.5px solid rgba(255,255,255,0.14)",
   borderRadius: 8,
   color: "#fff",
   fontSize: 13,
   outline: "none",
   boxSizing: "border-box",
+  fontFamily: "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif",
+  lineHeight: 1,
 };
 
-const LABEL = { fontSize: 11, color: "#666", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, display: "block" };
+const LABEL = { fontSize: 10, color: "#949494", textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 4, display: "block", fontFamily: "'Space Mono', monospace", fontWeight: 600, lineHeight: 1 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -370,7 +372,7 @@ export default function BillingPortal({ setActivePortal }) {
             ← Home
           </button>
           <div style={{ width: 1, height: 16, background: "#222" }} />
-          <div style={{ fontWeight: 900, fontSize: 14, color: "#D7FA06", letterSpacing: "0.1em", textTransform: "uppercase" }}>Billing</div>
+          <div style={{ fontWeight: 900, fontSize: 14, color: "#CCFF00", letterSpacing: "0.1em", textTransform: "uppercase" }}>Billing</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {tab === "clients" && (
@@ -378,7 +380,7 @@ export default function BillingPortal({ setActivePortal }) {
               <button onClick={syncFromFreshbooks} disabled={syncing || syncCooldown} style={{ background: "#1a1a1a", color: (syncing || syncCooldown) ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: (syncing || syncCooldown) ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
                 {syncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
               </button>
-              <button onClick={openNewClient} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
+              <button onClick={openNewClient} style={{ background: "#CCFF00", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
                 + New Client
               </button>
             </div>
@@ -388,7 +390,7 @@ export default function BillingPortal({ setActivePortal }) {
               <button onClick={syncInvoicesFromFreshbooks} disabled={invoiceSyncing || syncCooldown} style={{ background: "#1a1a1a", color: (invoiceSyncing || syncCooldown) ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: (invoiceSyncing || syncCooldown) ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
                 {invoiceSyncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
               </button>
-              <button onClick={() => setShowInvoiceForm(true)} style={{ background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
+              <button onClick={() => setShowInvoiceForm(true)} style={{ background: "#CCFF00", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
                 + New Invoice
               </button>
             </div>
@@ -399,7 +401,7 @@ export default function BillingPortal({ setActivePortal }) {
       {/* ── Tabs ── */}
       <div style={{ background: "#111", borderBottom: "1px solid #1e1e1e", padding: "0 48px", display: "flex", gap: 0 }}>
         {["invoices", "clients"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: tab === t ? "2px solid #D7FA06" : "2px solid transparent", color: tab === t ? "#fff" : "#555", fontWeight: tab === t ? 700 : 500, fontSize: 13, padding: "14px 0", marginRight: 32, cursor: "pointer", letterSpacing: "0.02em", textTransform: "capitalize" }}>
+          <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: tab === t ? "2px solid #CCFF00" : "2px solid transparent", color: tab === t ? "#fff" : "#555", fontWeight: tab === t ? 700 : 500, fontSize: 13, padding: "14px 0", marginRight: 32, cursor: "pointer", letterSpacing: "0.02em", textTransform: "capitalize" }}>
             {t === "invoices" ? "Invoices" : "Clients"}
           </button>
         ))}
@@ -417,7 +419,7 @@ export default function BillingPortal({ setActivePortal }) {
       {tab === "invoices" && (
         <div style={{ padding: "32px 48px" }}>
           {invoiceSyncResult && (
-            <div style={{ marginBottom: 16, padding: "10px 16px", background: invoiceSyncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${invoiceSyncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: invoiceSyncResult.error ? "#E8001C" : "#D7FA06", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ marginBottom: 16, padding: "10px 16px", background: invoiceSyncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${invoiceSyncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: invoiceSyncResult.error ? "#E8001C" : "#CCFF00", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               {invoiceSyncResult.error
                 ? `Sync failed: ${invoiceSyncResult.error}`
                 : `Sync complete — ${invoiceSyncResult.created} created, ${invoiceSyncResult.updated} updated, ${invoiceSyncResult.skipped} skipped`}
@@ -451,25 +453,25 @@ export default function BillingPortal({ setActivePortal }) {
                       </td>
                       <td style={{ padding: "14px 16px 14px 0", color: "#888" }}>{fmtDate(inv.issue_date)}</td>
                       <td style={{ padding: "14px 16px 14px 0", color: inv.status === "overdue" ? "#E8001C" : "#888" }}>{fmtDate(inv.due_date)}</td>
-                      <td style={{ padding: "14px 16px 14px 0", color: "#D7FA06", fontWeight: 700 }}>{fmt(inv.total, inv.currency)}</td>
+                      <td style={{ padding: "14px 16px 14px 0", color: "#CCFF00", fontWeight: 700 }}>{fmt(inv.total, inv.currency)}</td>
                       <td style={{ padding: "14px 16px 14px 0" }}><StatusBadge status={inv.status} /></td>
                       <td style={{ padding: "14px 0", whiteSpace: "nowrap" }}>
                         <div style={{ display: "flex", gap: 6 }}>
                           {/* Send */}
                           {["draft", "sent", "viewed", "overdue"].includes(inv.status) && (
-                            <button onClick={() => { setSendModal(inv); setSendMethod("email"); setSendError(""); setSendSuccess(""); }} style={{ background: "#1a1a2e", color: "#fff", border: "1px solid #2a2a4e", borderRadius: 6, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                            <button onClick={() => { setSendModal(inv); setSendMethod("email"); setSendError(""); setSendSuccess(""); }} style={{ background: "transparent", color: "#949494", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>
                               Send
                             </button>
                           )}
                           {/* Mark Paid */}
                           {["sent", "viewed", "overdue"].includes(inv.status) && (
-                            <button onClick={() => markPaid(inv)} style={{ background: "#1a2e0a", color: "#D7FA06", border: "1px solid #2a4e0a", borderRadius: 6, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                            <button onClick={() => markPaid(inv)} style={{ background: "rgba(204,255,0,0.1)", color: "#CCFF00", border: "1px solid #CCFF00", borderRadius: 24, padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>
                               Mark Paid
                             </button>
                           )}
                           {/* Payment link */}
                           {inv.payment_url && (
-                            <a href={inv.payment_url} target="_blank" rel="noopener noreferrer" style={{ background: "#1a1a1a", color: "#888", border: "1px solid #222", borderRadius: 6, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", textDecoration: "none" }}>
+                            <a href={inv.payment_url} target="_blank" rel="noopener noreferrer" style={{ background: "transparent", color: "#949494", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer", textDecoration: "none", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>
                               FreshBooks ↗
                             </a>
                           )}
@@ -490,7 +492,7 @@ export default function BillingPortal({ setActivePortal }) {
       {tab === "clients" && (
         <div style={{ padding: "32px 48px" }}>
           {syncResult && (
-            <div style={{ marginBottom: 16, padding: "10px 16px", background: syncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${syncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: syncResult.error ? "#E8001C" : "#D7FA06", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ marginBottom: 16, padding: "10px 16px", background: syncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${syncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: syncResult.error ? "#E8001C" : "#CCFF00", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               {syncResult.error
                 ? `Sync failed: ${syncResult.error}`
                 : `Sync complete — ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.pushed} pushed to FreshBooks, ${syncResult.skipped} skipped`}
@@ -498,37 +500,37 @@ export default function BillingPortal({ setActivePortal }) {
             </div>
           )}
           {loadingC ? (
-            <div style={{ color: "#444", fontSize: 13, padding: "40px 0" }}>Loading clients...</div>
+            <div style={{ color: "#949494", fontSize: 13, padding: "40px 0", lineHeight: 1 }}>Loading clients...</div>
           ) : clients.length === 0 ? (
-            <div style={{ color: "#333", fontSize: 14, padding: "60px 0", textAlign: "center" }}>
+            <div style={{ color: "#949494", fontSize: 14, padding: "60px 0", textAlign: "center", lineHeight: 1 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>👤</div>
               No clients yet. Add your first client.
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
               {clients.map(c => (
-                <div key={c.id} style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, padding: "20px 24px" }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: "#fff", marginBottom: 4 }}>{c.name}</div>
-                  {c.company && <div style={{ color: "#888", fontSize: 12, marginBottom: 12 }}>{c.company}</div>}
+                <div key={c.id} style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 12, padding: "20px 24px" }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: "#fff", marginBottom: 4, lineHeight: 1 }}>{c.name}</div>
+                  {c.company && <div style={{ color: "#949494", fontSize: 12, marginBottom: 12, lineHeight: 1 }}>{c.company}</div>}
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {c.email && <div style={{ color: "#666", fontSize: 12, display: "flex", gap: 8 }}><span style={{ color: "#333" }}>Email</span>{c.email}</div>}
-                    {c.phone && <div style={{ color: "#666", fontSize: 12, display: "flex", gap: 8 }}><span style={{ color: "#333" }}>Phone</span>{c.phone}</div>}
+                    {c.email && <div style={{ color: "#949494", fontSize: 12, display: "flex", gap: 8, lineHeight: 1 }}><span style={{ color: "rgba(255,255,255,0.4)" }}>Email</span>{c.email}</div>}
+                    {c.phone && <div style={{ color: "#949494", fontSize: 12, display: "flex", gap: 8, lineHeight: 1 }}><span style={{ color: "rgba(255,255,255,0.4)" }}>Phone</span>{c.phone}</div>}
                   </div>
                   <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         {c.freshbooks_contact_id ? (
-                          <span style={{ fontSize: 10, color: "#D7FA06", background: "#1a2e0a", border: "1px solid #2a4e0a", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>FB SYNCED</span>
+                          <span style={{ fontSize: 9, color: "#CCFF00", background: "rgba(204,255,0,0.12)", borderRadius: 20, padding: "2px 7px", fontWeight: 700, letterSpacing: "0.5px", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", lineHeight: 1 }}>FB Synced</span>
                         ) : (
-                          <span style={{ fontSize: 10, color: "#555", background: "#111", border: "1px solid #222", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>NOT SYNCED</span>
+                          <span style={{ fontSize: 9, color: "#949494", background: "rgba(255,255,255,0.07)", borderRadius: 20, padding: "2px 7px", fontWeight: 700, letterSpacing: "0.5px", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", lineHeight: 1 }}>Not Synced</span>
                         )}
                         {c.sms_consent_at ? (
-                          <span style={{ fontSize: 10, color: "#4ade80", background: "#052e16", border: "1px solid #166534", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>SMS OPTED IN</span>
+                          <span style={{ fontSize: 9, color: "#7fd99e", background: "rgba(127,217,158,0.15)", borderRadius: 20, padding: "2px 7px", fontWeight: 700, letterSpacing: "0.5px", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", lineHeight: 1 }}>SMS Opted In</span>
                         ) : (
-                          <span style={{ fontSize: 10, color: "#666", background: "#111", border: "1px solid #222", borderRadius: 4, padding: "2px 8px", fontWeight: 700, letterSpacing: "0.04em" }}>SMS NOT OPTED IN</span>
+                          <span style={{ fontSize: 9, color: "#949494", background: "rgba(255,255,255,0.07)", borderRadius: 20, padding: "2px 7px", fontWeight: 700, letterSpacing: "0.5px", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", lineHeight: 1 }}>SMS Not Opted In</span>
                         )}
                       </div>
-                      <button onClick={() => openEditClient(c)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 6, color: "#555", fontSize: 11, padding: "3px 10px", cursor: "pointer", fontWeight: 600 }}>
+                      <button onClick={() => openEditClient(c)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, color: "#949494", fontSize: 10, padding: "4px 12px", cursor: "pointer", fontWeight: 700, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>
                         Edit
                       </button>
                     </div>
@@ -536,7 +538,7 @@ export default function BillingPortal({ setActivePortal }) {
                       <button
                         onClick={() => sendSmsOptin(c.id)}
                         disabled={optinSending === c.id}
-                        style={{ width: "100%", padding: "7px 0", background: "transparent", border: "1px solid #2a2a2a", borderRadius: 6, color: optinSending === c.id ? "#444" : "#888", fontSize: 11, cursor: optinSending === c.id ? "default" : "pointer", fontWeight: 600, letterSpacing: "0.03em" }}
+                        style={{ width: "100%", padding: "8px 0", background: "transparent", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, color: optinSending === c.id ? "rgba(255,255,255,0.3)" : "#949494", fontSize: 10, cursor: optinSending === c.id ? "default" : "pointer", fontWeight: 700, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}
                       >
                         {optinSending === c.id ? "Sending..." : "Send SMS Opt-In Email"}
                       </button>
@@ -553,10 +555,10 @@ export default function BillingPortal({ setActivePortal }) {
       {/* NEW CLIENT MODAL                                                      */}
       {/* ════════════════════════════════════════════════════════════════════ */}
       {showClientForm && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
           onClick={e => e.target === e.currentTarget && setShowClientForm(false)}>
-          <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, width: "100%", maxWidth: 480, padding: 32 }}>
-            <div style={{ fontWeight: 900, fontSize: 18, color: "#fff", marginBottom: 24 }}>{editingClient ? "Edit Client" : "New Client"}</div>
+          <div style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, width: "100%", maxWidth: 480, padding: 32 }}>
+            <div style={{ fontWeight: 900, fontSize: 18, color: "#fff", marginBottom: 24, lineHeight: 1 }}>{editingClient ? "Edit Client" : "New Client"}</div>
             <form onSubmit={submitClient} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <label style={LABEL}>Name</label>
@@ -574,12 +576,12 @@ export default function BillingPortal({ setActivePortal }) {
                 <label style={LABEL}>Phone</label>
                 <input style={INPUT} type="tel" value={clientForm.phone} onChange={e => setClientForm(f => ({ ...f, phone: e.target.value }))} placeholder="(555) 000-0000" />
               </div>
-              {clientError && <div style={{ color: "#E8001C", fontSize: 13 }}>{clientError}</div>}
+              {clientError && <div style={{ color: "#E8001C", fontSize: 13, lineHeight: 1 }}>{clientError}</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                <button type="submit" disabled={savingClient} style={{ flex: 1, background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "11px 0", fontWeight: 900, fontSize: 13, cursor: "pointer", opacity: savingClient ? 0.6 : 1 }}>
+                <button type="submit" disabled={savingClient} style={{ flex: 1, background: "#CCFF00", color: "#000", border: "none", borderRadius: 24, padding: "11px 0", fontWeight: 700, fontSize: 11, cursor: "pointer", opacity: savingClient ? 0.6 : 1, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1 }}>
                   {savingClient ? "Saving..." : editingClient ? "Save Changes" : "Create Client"}
                 </button>
-                <button type="button" onClick={() => setShowClientForm(false)} style={{ padding: "11px 20px", background: "#1a1a1a", color: "#888", border: "1px solid #2a2a2a", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+                <button type="button" onClick={() => setShowClientForm(false)} style={{ padding: "11px 20px", background: "transparent", color: "#949494", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, fontSize: 10, cursor: "pointer", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1 }}>
                   Cancel
                 </button>
               </div>
@@ -592,10 +594,10 @@ export default function BillingPortal({ setActivePortal }) {
       {/* NEW INVOICE MODAL                                                     */}
       {/* ════════════════════════════════════════════════════════════════════ */}
       {showInvoiceForm && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px", overflowY: "auto" }}
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px", overflowY: "auto" }}
           onClick={e => e.target === e.currentTarget && setShowInvoiceForm(false)}>
-          <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, width: "100%", maxWidth: 640, padding: 36, marginBottom: 40 }}>
-            <div style={{ fontWeight: 900, fontSize: 20, color: "#fff", marginBottom: 28 }}>New Invoice</div>
+          <div style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, width: "100%", maxWidth: 640, padding: 36, marginBottom: 40 }}>
+            <div style={{ fontWeight: 900, fontSize: 20, color: "#fff", marginBottom: 28, lineHeight: 1 }}>New Invoice</div>
             <form onSubmit={submitInvoice} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
               {/* Client */}
@@ -628,10 +630,10 @@ export default function BillingPortal({ setActivePortal }) {
                       <input style={INPUT} placeholder="Description" value={li.description} onChange={e => updateLine(li._id, "description", e.target.value)} />
                       <input style={{ ...INPUT, textAlign: "center" }} type="number" min="1" step="1" placeholder="Qty" value={li.quantity} onChange={e => updateLine(li._id, "quantity", e.target.value)} />
                       <input style={{ ...INPUT, textAlign: "right" }} type="number" min="0" step="0.01" placeholder="Price" value={li.unit_price} onChange={e => updateLine(li._id, "unit_price", e.target.value)} />
-                      <button type="button" onClick={() => removeLine(li._id)} style={{ background: "none", border: "none", color: "#444", fontSize: 18, cursor: "pointer", padding: 0, textAlign: "center" }} title="Remove">×</button>
+                      <button type="button" onClick={() => removeLine(li._id)} style={{ background: "none", border: "none", color: "#949494", fontSize: 18, cursor: "pointer", padding: 0, textAlign: "center", lineHeight: 1 }} title="Remove">×</button>
                     </div>
                   ))}
-                  <button type="button" onClick={() => setLineItems(prev => [...prev, emptyLine()])} style={{ background: "none", border: "1px dashed #2a2a2a", borderRadius: 8, color: "#555", fontSize: 12, fontWeight: 700, padding: "8px 0", cursor: "pointer", marginTop: 4 }}>
+                  <button type="button" onClick={() => setLineItems(prev => [...prev, emptyLine()])} style={{ background: "none", border: "1px dashed rgba(255,255,255,0.14)", borderRadius: 8, color: "#949494", fontSize: 11, fontWeight: 700, padding: "8px 0", cursor: "pointer", marginTop: 4, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>
                     + Add Line Item
                   </button>
                 </div>
@@ -639,11 +641,11 @@ export default function BillingPortal({ setActivePortal }) {
                 {/* Subtotal preview */}
                 <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "120px 96px", gap: 8 }}>
-                    <div style={{ fontSize: 11, color: "#555", textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>Tax %</div>
+                    <div style={{ fontSize: 11, color: "#949494", textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", lineHeight: 1 }}>Tax %</div>
                     <input style={{ ...INPUT, textAlign: "right" }} type="number" min="0" max="100" step="0.1" placeholder="0" value={invoiceForm.tax_rate} onChange={e => setInvoiceForm(f => ({ ...f, tax_rate: e.target.value }))} />
                   </div>
-                  <div style={{ fontSize: 12, color: "#888" }}>Subtotal: <strong style={{ color: "#fff" }}>{fmt(invoiceSubtotal())}</strong></div>
-                  <div style={{ fontSize: 15, color: "#D7FA06", fontWeight: 900 }}>Total: {fmt(invoiceTotal())}</div>
+                  <div style={{ fontSize: 12, color: "#949494", lineHeight: 1 }}>Subtotal: <strong style={{ color: "#fff" }}>{fmt(invoiceSubtotal())}</strong></div>
+                  <div style={{ fontSize: 15, color: "#CCFF00", fontWeight: 900, lineHeight: 1 }}>Total: {fmt(invoiceTotal())}</div>
                 </div>
               </div>
 
@@ -654,10 +656,10 @@ export default function BillingPortal({ setActivePortal }) {
               </div>
 
               {/* Recurring */}
-              <div style={{ background: "#0d0d0d", border: "1px solid #1e1e1e", borderRadius: 10, padding: "16px 18px" }}>
+              <div style={{ background: "#2a2a2a", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "16px 18px" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                  <input type="checkbox" checked={invoiceForm.is_recurring} onChange={e => setInvoiceForm(f => ({ ...f, is_recurring: e.target.checked }))} style={{ width: 16, height: 16, accentColor: "#D7FA06" }} />
-                  <span style={{ fontWeight: 700, fontSize: 13, color: "#fff" }}>Recurring Invoice</span>
+                  <input type="checkbox" checked={invoiceForm.is_recurring} onChange={e => setInvoiceForm(f => ({ ...f, is_recurring: e.target.checked }))} style={{ width: 16, height: 16, accentColor: "#CCFF00" }} />
+                  <span style={{ fontWeight: 700, fontSize: 13, color: "#fff", lineHeight: 1 }}>Recurring Invoice</span>
                 </label>
                 {invoiceForm.is_recurring && (
                   <div style={{ marginTop: 12 }}>
@@ -667,20 +669,20 @@ export default function BillingPortal({ setActivePortal }) {
                       <option value="quarterly">Quarterly</option>
                       <option value="yearly">Yearly</option>
                     </select>
-                    <div style={{ fontSize: 11, color: "#444", marginTop: 8 }}>
+                    <div style={{ fontSize: 11, color: "#949494", marginTop: 8, lineHeight: 1 }}>
                       Auto-generates and emails a new invoice on the next cycle date.
                     </div>
                   </div>
                 )}
               </div>
 
-              {invoiceError && <div style={{ color: "#E8001C", fontSize: 13 }}>{invoiceError}</div>}
+              {invoiceError && <div style={{ color: "#E8001C", fontSize: 13, lineHeight: 1 }}>{invoiceError}</div>}
 
               <div style={{ display: "flex", gap: 8 }}>
-                <button type="submit" disabled={savingInvoice} style={{ flex: 1, background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "12px 0", fontWeight: 900, fontSize: 13, cursor: "pointer", opacity: savingInvoice ? 0.6 : 1 }}>
+                <button type="submit" disabled={savingInvoice} style={{ flex: 1, background: "#CCFF00", color: "#000", border: "none", borderRadius: 24, padding: "12px 0", fontWeight: 700, fontSize: 11, cursor: "pointer", opacity: savingInvoice ? 0.6 : 1, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1 }}>
                   {savingInvoice ? "Creating..." : "Create Invoice"}
                 </button>
-                <button type="button" onClick={() => setShowInvoiceForm(false)} style={{ padding: "12px 20px", background: "#1a1a1a", color: "#888", border: "1px solid #2a2a2a", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>
+                <button type="button" onClick={() => setShowInvoiceForm(false)} style={{ padding: "12px 20px", background: "transparent", color: "#949494", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, fontSize: 10, cursor: "pointer", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1 }}>
                   Cancel
                 </button>
               </div>
@@ -693,11 +695,11 @@ export default function BillingPortal({ setActivePortal }) {
       {/* SEND INVOICE MODAL                                                    */}
       {/* ════════════════════════════════════════════════════════════════════ */}
       {sendModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
           onClick={e => e.target === e.currentTarget && !sending && setSendModal(null)}>
-          <div style={{ background: "#111", border: "1px solid #222", borderRadius: 16, width: "100%", maxWidth: 440, padding: 32 }}>
-            <div style={{ fontWeight: 900, fontSize: 18, color: "#fff", marginBottom: 6 }}>Send Invoice</div>
-            <div style={{ color: "#555", fontSize: 13, marginBottom: 24 }}>
+          <div style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, width: "100%", maxWidth: 440, padding: 32 }}>
+            <div style={{ fontWeight: 900, fontSize: 18, color: "#fff", marginBottom: 6, lineHeight: 1 }}>Send Invoice</div>
+            <div style={{ color: "#949494", fontSize: 13, marginBottom: 24, lineHeight: 1 }}>
               {sendModal.invoice_number} — {fmt(sendModal.total, sendModal.currency)} — {sendModal.clients?.name}
             </div>
 
@@ -716,7 +718,7 @@ export default function BillingPortal({ setActivePortal }) {
                   const noPhone = !sendModal.clients?.phone && (m.value === "sms" || m.value === "both");
                   const disabled = noEmail || noPhone;
                   return (
-                    <button key={m.value} type="button" onClick={() => !disabled && setSendMethod(m.value)} title={disabled ? (noEmail ? "Client has no email" : "Client has no phone") : ""} style={{ flex: 1, background: active ? "#D7FA06" : "#1a1a1a", color: active ? "#000" : disabled ? "#333" : "#888", border: `1.5px solid ${active ? "#D7FA06" : "#2a2a2a"}`, borderRadius: 10, padding: "12px 0", fontWeight: 800, fontSize: 13, cursor: disabled ? "not-allowed" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                    <button key={m.value} type="button" onClick={() => !disabled && setSendMethod(m.value)} title={disabled ? (noEmail ? "Client has no email" : "Client has no phone") : ""} style={{ flex: 1, background: active ? "#CCFF00" : "#2a2a2a", color: active ? "#000" : disabled ? "rgba(255,255,255,0.2)" : "#949494", border: `1.5px solid ${active ? "#CCFF00" : "rgba(255,255,255,0.14)"}`, borderRadius: 10, padding: "12px 0", fontWeight: 800, fontSize: 13, cursor: disabled ? "not-allowed" : "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, lineHeight: 1 }}>
                       <span style={{ fontSize: 20 }}>{m.icon}</span>
                       <span>{m.label}</span>
                     </button>
@@ -726,23 +728,23 @@ export default function BillingPortal({ setActivePortal }) {
             </div>
 
             {/* Delivery preview */}
-            <div style={{ background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#555", marginBottom: 20, lineHeight: 1.6 }}>
+            <div style={{ background: "#2a2a2a", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "12px 16px", fontSize: 12, color: "#949494", marginBottom: 20, lineHeight: 1.5 }}>
               {(sendMethod === "email" || sendMethod === "both") && sendModal.clients?.email && (
-                <div>Email → <span style={{ color: "#888" }}>{sendModal.clients.email}</span></div>
+                <div style={{ lineHeight: 1 }}>Email → <span style={{ color: "#fff" }}>{sendModal.clients.email}</span></div>
               )}
               {(sendMethod === "sms" || sendMethod === "both") && sendModal.clients?.phone && (
-                <div>SMS → <span style={{ color: "#888" }}>{sendModal.clients.phone}</span></div>
+                <div style={{ lineHeight: 1, marginTop: 6 }}>SMS → <span style={{ color: "#fff" }}>{sendModal.clients.phone}</span></div>
               )}
             </div>
 
-            {sendError && <div style={{ color: "#E8001C", fontSize: 13, marginBottom: 12 }}>{sendError}</div>}
-            {sendSuccess && <div style={{ color: "#D7FA06", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>{sendSuccess}</div>}
+            {sendError && <div style={{ color: "#E8001C", fontSize: 13, marginBottom: 12, lineHeight: 1 }}>{sendError}</div>}
+            {sendSuccess && <div style={{ color: "#CCFF00", fontSize: 13, marginBottom: 12, fontWeight: 700, lineHeight: 1 }}>{sendSuccess}</div>}
 
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={sendInvoice} disabled={sending} style={{ flex: 1, background: "#D7FA06", color: "#000", border: "none", borderRadius: 8, padding: "12px 0", fontWeight: 900, fontSize: 13, cursor: "pointer", opacity: sending ? 0.6 : 1 }}>
+              <button onClick={sendInvoice} disabled={sending} style={{ flex: 1, background: "#CCFF00", color: "#000", border: "none", borderRadius: 24, padding: "12px 0", fontWeight: 700, fontSize: 11, cursor: "pointer", opacity: sending ? 0.6 : 1, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1 }}>
                 {sending ? "Sending..." : `Send via ${sendMethod === "both" ? "Email & SMS" : sendMethod === "email" ? "Email" : "SMS"}`}
               </button>
-              <button onClick={() => setSendModal(null)} disabled={sending} style={{ padding: "12px 20px", background: "#1a1a1a", color: "#888", border: "1px solid #2a2a2a", borderRadius: 8, fontSize: 13, cursor: "pointer", opacity: sending ? 0.5 : 1 }}>
+              <button onClick={() => setSendModal(null)} disabled={sending} style={{ padding: "12px 20px", background: "transparent", color: "#949494", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, fontSize: 10, cursor: "pointer", opacity: sending ? 0.5 : 1, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1 }}>
                 Cancel
               </button>
             </div>

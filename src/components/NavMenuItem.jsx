@@ -1,13 +1,15 @@
 import { useState } from "react";
 
-export default function NavMenuItem({ onClick, color = "#333", children }) {
+const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
+
+export default function NavMenuItem({ onClick, color, children }) {
   const [hovered, setHovered] = useState(false);
   return (
     <button
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ width: "100%", padding: "10px 16px", background: hovered ? "#f7f7f7" : "none", border: "none", textAlign: "left", fontSize: 13, color, cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "background 0.12s", boxShadow: hovered ? "inset 0 0 0 1px rgba(0,0,0,0.04)" : "none" }}
+      style={{ width: "100%", padding: "9px 16px", background: hovered ? "rgba(255,255,255,0.06)" : "transparent", border: "none", textAlign: "left", fontSize: 13, color: color || "#ffffff", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, transition: "background 0.12s", fontFamily: SANS, lineHeight: 1 }}
     >{children}</button>
   );
 }

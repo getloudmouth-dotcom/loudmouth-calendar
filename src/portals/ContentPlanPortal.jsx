@@ -1,9 +1,46 @@
 import { supabase } from "../supabase";
 import { MONTHS } from "../constants";
-import { labelStyle, inputStyle, primaryBtn, secondaryBtn } from "../styles";
 import { useApp } from "../AppContext";
 import { useState, useEffect } from "react";
 import PinterestPanel from "../components/PinterestPanel";
+
+const SANS = "'Space Grotesk', 'Helvetica Neue', Arial, sans-serif";
+const MONO = "'Space Mono', 'Courier New', monospace";
+const C = {
+  canvas:  "#131313",
+  surface: "#1e1e1e",
+  surface2:"#2a2a2a",
+  accent:  "#CCFF00",
+  text:    "#ffffff",
+  meta:    "#949494",
+  border:  "rgba(255,255,255,0.14)",
+};
+
+const INPUT = {
+  width: "100%", padding: "10px 14px", border: `1.5px solid ${C.border}`,
+  borderRadius: 8, fontSize: 13, outline: "none", boxSizing: "border-box",
+  background: C.canvas, color: C.text, fontFamily: SANS, lineHeight: 1,
+};
+const LABEL = {
+  fontSize: 10, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px",
+  display: "block", marginBottom: 4, fontWeight: 600, fontFamily: MONO, lineHeight: 1,
+};
+const primaryBtn = {
+  background: C.accent, color: "#000", border: "none", borderRadius: 24,
+  padding: "10px 20px", fontSize: 11, fontWeight: 700, cursor: "pointer",
+  fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1,
+};
+const ghostBtn = {
+  background: "transparent", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24,
+  padding: "8px 16px", fontSize: 10, fontWeight: 700, cursor: "pointer",
+  fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1,
+};
+
+const approvalStyle = status => ({
+  background: status === "approved" ? "rgba(204,255,0,0.1)" : status === "denied" ? "rgba(255,68,68,0.12)" : C.surface2,
+  color: status === "approved" ? C.accent : status === "denied" ? "#ff6b6b" : C.meta,
+  borderColor: status === "approved" ? C.accent : status === "denied" ? "#ff6b6b" : C.border,
+});
 
 export default function ContentPlanPortal({
   currentCPId, setCurrentCPId,
@@ -66,61 +103,73 @@ export default function ContentPlanPortal({
     : () => { setCurrentCPId(null); setActiveCPStep(null); };
 
   return (
-    <div>
-      {/* ── Content Plan Creator portal ── */}
-      <div style={{ padding: "20px 40px", borderBottom: "1.5px solid #e8e8e8", display: "flex", alignItems: "center", gap: 16, background: "white" }}>
-        <button onClick={backAction} style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600 }}>{backLabel}</button>
-        <div style={{ width: 1, height: 18, background: "#e0e0e0" }} />
-        <div style={{ fontWeight: 800, fontSize: 16, color: "#1a1a2e" }}>Content Plan Creator</div>
+    <div style={{ background: C.canvas, minHeight: "100vh", fontFamily: SANS }}>
+      {/* Header */}
+      <div style={{ padding: "20px 48px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 16 }}>
+        <button onClick={backAction} style={ghostBtn}>{backLabel}</button>
+        <div style={{ width: 1, height: 18, background: C.border }} />
+        <div style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: SANS, lineHeight: 1 }}>Content Plan Creator</div>
         {currentCPId && (
-          <div style={{ fontSize: 13, color: "#aaa", fontWeight: 500 }}>
+          <div style={{ fontSize: 13, color: C.meta, lineHeight: 1 }}>
             {cpClientName} — {MONTHS[cpMonth]} {cpYear}
           </div>
         )}
         <div style={{ flex: 1 }} />
         {currentCPId && (
-          <button onClick={() => { newContentPlan(); }} style={{ background: "#f0f0ee", color: "#555", border: "none", padding: "10px 18px", borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>+ New Plan</button>
+          <button onClick={() => newContentPlan()} style={ghostBtn}>+ New Plan</button>
         )}
       </div>
-      <div style={{ padding: "36px 40px", maxWidth: 1100, margin: "0 auto" }}>
-        {/* Plan list (no active plan, not in setup) */}
+
+      <div style={{ padding: "36px 48px", maxWidth: 1100, margin: "0 auto" }}>
+
+        {/* Plan list */}
         {!currentCPId && activeCPStep === null && (
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e" }}>Content Plans</div>
-                <div style={{ fontSize: 13, color: "#999", marginTop: 4 }}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: C.text, lineHeight: 1 }}>Content Plans</div>
+                <div style={{ fontSize: 13, color: C.meta, marginTop: 6, lineHeight: 1 }}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
               </div>
-              <button onClick={() => newContentPlan()} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 24px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer", letterSpacing: "0.04em" }}>+ New Plan</button>
+              <button onClick={() => newContentPlan()} style={primaryBtn}>+ New Plan</button>
             </div>
             {allContentPlans.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "80px 0", color: "#aaa" }}>
+              <div style={{ textAlign: "center", padding: "80px 0" }}>
                 <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
-                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>No content plans yet</div>
-                <div style={{ fontSize: 13, marginBottom: 24 }}>Create your first plan to get started</div>
-                <button onClick={() => newContentPlan()} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", padding: "12px 28px", borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>+ New Plan</button>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8, lineHeight: 1 }}>No content plans yet</div>
+                <div style={{ fontSize: 13, color: C.meta, marginBottom: 24, lineHeight: 1 }}>Create your first plan to get started</div>
+                <button onClick={() => newContentPlan()} style={primaryBtn}>+ New Plan</button>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
                 {allContentPlans.map(plan => (
-                  <div key={plan.id} onClick={() => openContentPlan(plan)} style={{ position: "relative", background: "white", borderRadius: 12, padding: 20, boxShadow: "0 2px 12px rgba(0,0,0,0.07)", border: "1.5px solid #e8e8e8", cursor: "pointer" }}>
+                  <div
+                    key={plan.id}
+                    onClick={() => openContentPlan(plan)}
+                    style={{ position: "relative", background: C.surface, borderRadius: 12, padding: 20, border: `1px solid ${C.border}`, cursor: "pointer", transition: "border-color 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.28)"}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+                  >
                     {plan.user_id === user?.id && (
                       <button
                         onClick={e => { e.stopPropagation(); deleteContentPlan(plan); }}
-                        style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: "#ccc", fontSize: 16, padding: 0, lineHeight: 1 }}
+                        style={{ position: "absolute", top: 10, right: 10, background: "none", border: "none", cursor: "pointer", color: C.meta, fontSize: 16, padding: 0, lineHeight: 1 }}
                         title="Delete plan"
                       >🗑</button>
                     )}
-                    <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 4 }}>{plan.client_name}</div>
-                    <div style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>{MONTHS[plan.month]} {plan.year}</div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 4, lineHeight: 1 }}>{plan.client_name}</div>
+                    <div style={{ fontSize: 13, color: C.meta, marginBottom: 12, lineHeight: 1 }}>{MONTHS[plan.month]} {plan.year}</div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 11, color: plan.shoot_date === "PENDING" ? "#E8001C" : "#22aa66", fontWeight: 700, background: plan.shoot_date === "PENDING" ? "#ffe5e5" : "#e8f8e8", borderRadius: 5, padding: "3px 8px" }}>
-                        {plan.shoot_date === "PENDING" ? "SHOOT PENDING" : `SHOOT: ${plan.shoot_date}`}
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, borderRadius: 20, padding: "2px 7px", lineHeight: 1,
+                        fontFamily: MONO, textTransform: "uppercase", letterSpacing: "0.5px",
+                        color: plan.shoot_date === "PENDING" ? "#ff6b6b" : "#7fd99e",
+                        background: plan.shoot_date === "PENDING" ? "rgba(255,68,68,0.12)" : "rgba(127,217,158,0.12)",
+                      }}>
+                        {plan.shoot_date === "PENDING" ? "Shoot Pending" : `Shoot: ${plan.shoot_date}`}
                       </span>
-                      <span style={{ fontSize: 12, color: "#bbb" }}>{new Date(plan.updated_at).toLocaleDateString()}</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "#bbb", marginTop: 8 }}>
-                      Last saved {new Date(plan.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    <div style={{ fontSize: 11, color: C.meta, marginTop: 10, fontFamily: MONO, lineHeight: 1, opacity: 0.7 }}>
+                      Saved {new Date(plan.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                       {plan.last_updated_by && ` · ${plan.last_updated_by}`}
                     </div>
                   </div>
@@ -133,15 +182,10 @@ export default function ContentPlanPortal({
         {/* Step 1: Setup */}
         {currentCPId === null && activeCPStep === 1 && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            <button
-              onClick={() => setActiveCPStep(null)}
-              style={{ background: "none", border: "none", fontSize: 13, color: "#888", cursor: "pointer", padding: "6px 0", fontWeight: 600, marginBottom: 20 }}
-            >
-              ← Back to Plans
-            </button>
-            <div style={{ fontSize: 20, fontWeight: 900, color: "#1a1a2e", marginBottom: 8 }}>New Content Plan</div>
-            <div style={{ fontSize: 13, color: "#999", marginBottom: 28 }}>Set up the basics for this content plan.</div>
-            <label style={labelStyle}>Client</label>
+            <div style={{ fontSize: 20, fontWeight: 900, color: C.text, marginBottom: 8, lineHeight: 1 }}>New Content Plan</div>
+            <div style={{ fontSize: 13, color: C.meta, marginBottom: 28, lineHeight: 1 }}>Set up the basics for this content plan.</div>
+
+            <label style={LABEL}>Client</label>
             <div style={{ marginBottom: 16 }}>
               <select
                 value={cpClientId || ""}
@@ -150,44 +194,58 @@ export default function ContentPlanPortal({
                   setCpClientId(e.target.value || null);
                   setCpClientName(c?.name || "");
                 }}
-                style={{ ...inputStyle, width: "100%" }}
+                style={{ ...INPUT, appearance: "none" }}
               >
                 <option value="">Select a client...</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               {clients.length === 0 && (
-                <div style={{ fontSize: 11, color: "#aaa", marginTop: 6 }}>No clients yet — add them in Billing first.</div>
+                <div style={{ fontSize: 11, color: C.meta, marginTop: 6, lineHeight: 1 }}>No clients yet — add them in Billing first.</div>
               )}
             </div>
+
             <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Month</label>
-                <select value={cpMonth} onChange={e => setCpMonth(Number(e.target.value))} style={inputStyle}>
+                <label style={LABEL}>Month</label>
+                <select value={cpMonth} onChange={e => setCpMonth(Number(e.target.value))} style={{ ...INPUT, appearance: "none" }}>
                   {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
                 </select>
               </div>
               <div style={{ width: 100 }}>
-                <label style={labelStyle}>Year</label>
-                <input type="number" value={cpYear} onChange={e => setCpYear(Number(e.target.value))} style={inputStyle} min={2020} max={2035} />
+                <label style={LABEL}>Year</label>
+                <input type="number" value={cpYear} onChange={e => setCpYear(Number(e.target.value))} style={INPUT} min={2020} max={2035} />
               </div>
             </div>
-            <label style={labelStyle}>Shoot Date</label>
+
+            <label style={LABEL}>Shoot Date</label>
             <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
-              <button onClick={() => setCpShootDate("PENDING")} style={{ ...cpShootDate === "PENDING" ? primaryBtn : secondaryBtn, padding: "8px 16px", fontSize: 12 }}>PENDING</button>
-              <input type="date" value={cpShootDate === "PENDING" ? "" : cpShootDate} onChange={e => setCpShootDate(e.target.value || "PENDING")} style={{ ...inputStyle, flex: 1 }} placeholder="Or pick a date" />
+              <button
+                onClick={() => setCpShootDate("PENDING")}
+                style={cpShootDate === "PENDING" ? primaryBtn : ghostBtn}
+              >Pending</button>
+              <input type="date" value={cpShootDate === "PENDING" ? "" : cpShootDate} onChange={e => setCpShootDate(e.target.value || "PENDING")} style={{ ...INPUT, flex: 1 }} />
             </div>
+
             <div style={{ display: "flex", gap: 12, marginBottom: 28 }}>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Produced Videos</label>
-                <input type="number" value={cpProducedCount} onChange={e => setCpProducedCount(Math.max(0, Math.min(20, Number(e.target.value))))} style={inputStyle} min={0} max={20} />
+                <label style={LABEL}>Produced Videos</label>
+                <input type="number" value={cpProducedCount} onChange={e => setCpProducedCount(Math.max(0, Math.min(20, Number(e.target.value))))} style={INPUT} min={0} max={20} />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Organic Videos</label>
-                <input type="number" value={cpOrganicCount} onChange={e => setCpOrganicCount(Math.max(0, Math.min(20, Number(e.target.value))))} style={inputStyle} min={0} max={20} />
+                <label style={LABEL}>Organic Videos</label>
+                <input type="number" value={cpOrganicCount} onChange={e => setCpOrganicCount(Math.max(0, Math.min(20, Number(e.target.value))))} style={INPUT} min={0} max={20} />
               </div>
             </div>
+
             <button
-              onClick={() => { if (!cpClientId) { showToast("Please select a client", "error"); return; } const duplicate = allContentPlans.find(p => p.client_id === cpClientId && p.month === cpMonth && p.year === cpYear); if (duplicate) { showToast(`A content plan for ${cpClientName} — ${MONTHS[cpMonth]} ${cpYear} already exists`, "error"); return; } const items = generateCPItems(cpProducedCount, cpOrganicCount); setCpItems(items); setActiveCPStep(2); }}
+              onClick={() => {
+                if (!cpClientId) { showToast("Please select a client", "error"); return; }
+                const duplicate = allContentPlans.find(p => p.client_id === cpClientId && p.month === cpMonth && p.year === cpYear);
+                if (duplicate) { showToast(`A content plan for ${cpClientName} — ${MONTHS[cpMonth]} ${cpYear} already exists`, "error"); return; }
+                const items = generateCPItems(cpProducedCount, cpOrganicCount);
+                setCpItems(items);
+                setActiveCPStep(2);
+              }}
               style={{ ...primaryBtn, width: "100%", textAlign: "center" }}
               disabled={!cpClientId || (cpProducedCount === 0 && cpOrganicCount === 0)}
             >
@@ -206,18 +264,19 @@ export default function ContentPlanPortal({
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
-                  <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>SHOOT DATE: {cpShootDate}</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: C.text, lineHeight: 1 }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
+                  <div style={{ fontSize: 12, color: C.meta, marginTop: 6, fontFamily: MONO, lineHeight: 1 }}>Shoot: {cpShootDate}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button onClick={() => saveContentPlan(false)} disabled={cpSaving} style={{ ...secondaryBtn, padding: "10px 18px", border: "1.5px solid #ccc" }}>
+                  <button onClick={() => saveContentPlan(false)} disabled={cpSaving} style={ghostBtn}>
                     {cpSaving ? "Saving..." : "Save"}
                   </button>
-                  <button onClick={() => setActiveCPStep(3)} style={{ ...primaryBtn, padding: "10px 18px" }}>Preview & Export →</button>
+                  <button onClick={() => setActiveCPStep(3)} style={primaryBtn}>Preview & Export →</button>
                 </div>
               </div>
+
               <div style={{ overflowX: "auto", marginBottom: 24 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", tableLayout: "fixed" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", background: C.surface, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.border}`, tableLayout: "fixed" }}>
                   <colgroup>
                     <col style={{ width: "25%" }} />
                     <col style={{ width: "38%" }} />
@@ -225,34 +284,33 @@ export default function ContentPlanPortal({
                     <col style={{ width: "19%" }} />
                   </colgroup>
                   <thead>
-                    <tr style={{ background: "#1a1a2e", borderBottom: "2px solid rgba(215, 250, 6, 0.25)" }}>
-                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>LINK</th>
-                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>WHAT'S NEEDED</th>
-                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>CREATOR</th>
-                      <th style={{ padding: "11px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em" }}>APPROVAL</th>
+                    <tr style={{ background: C.canvas }}>
+                      {["Link", "What's Needed", "Creator", "Approval"].map(h => (
+                        <th key={h} style={{ padding: "11px 14px", textAlign: "left", color: C.accent, fontSize: 10, fontWeight: 700, letterSpacing: "1.5px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {producedItems.length > 0 && (
-                      <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
+                      <tr><td colSpan={4} style={{ background: C.canvas, color: C.accent, fontSize: 10, fontWeight: 800, letterSpacing: "1.5px", padding: "7px 14px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1 }}>Produced Videos</td></tr>
                     )}
                     {producedItems.map((item, idx) => (
-                      <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
+                      <tr key={item._localId} style={{ borderBottom: `1px solid ${C.border}`, background: idx % 2 === 0 ? C.surface : C.surface2 }}>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>#{item.item_number}</div>
-                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
+                          <div style={{ fontSize: 9, fontWeight: 800, color: C.meta, letterSpacing: "1px", marginBottom: 4, fontFamily: MONO, lineHeight: 1 }}>#{item.item_number}</div>
+                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: `1px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box", background: C.canvas, color: C.text, fontFamily: SANS, lineHeight: 1 }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <textarea value={item.whats_needed} onChange={e => updateCPItem(item._localId, "whats_needed", e.target.value)} placeholder="Props, people, description..." rows={3} style={{ width: "100%", fontSize: 12, border: "none", outline: "none", background: "transparent", color: "#444", padding: 0, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }} />
+                          <textarea value={item.whats_needed} onChange={e => updateCPItem(item._localId, "whats_needed", e.target.value)} placeholder="Props, people, description..." rows={3} style={{ width: "100%", fontSize: 12, border: "none", outline: "none", background: "transparent", color: C.text, padding: 0, resize: "vertical", fontFamily: SANS, lineHeight: 1.5, boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <select value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: "#333", padding: 0, boxSizing: "border-box", cursor: "pointer" }}>
+                          <select value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: C.text, padding: 0, boxSizing: "border-box", cursor: "pointer", fontFamily: SANS, lineHeight: 1 }}>
                             <option value="">— Select —</option>
                             {creators.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                           </select>
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
-                          <select value={item.approval_status} onChange={e => updateCPItem(item._localId, "approval_status", e.target.value)} style={{ width: "100%", fontSize: 11, fontWeight: 700, border: "1.5px solid", borderRadius: 20, padding: "4px 8px", outline: "none", cursor: "pointer", background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderColor: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#ccc" }}>
+                          <select value={item.approval_status} onChange={e => updateCPItem(item._localId, "approval_status", e.target.value)} style={{ width: "100%", fontSize: 11, fontWeight: 700, border: "1.5px solid", borderRadius: 20, padding: "4px 8px", outline: "none", cursor: "pointer", fontFamily: MONO, lineHeight: 1, ...approvalStyle(item.approval_status) }}>
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                             <option value="denied">Denied</option>
@@ -261,25 +319,25 @@ export default function ContentPlanPortal({
                       </tr>
                     ))}
                     {organicItems.length > 0 && (
-                      <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
+                      <tr><td colSpan={4} style={{ background: C.canvas, color: C.accent, fontSize: 10, fontWeight: 800, letterSpacing: "1.5px", padding: "7px 14px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1 }}>Organic Videos</td></tr>
                     )}
                     {organicItems.map((item, idx) => (
-                      <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
+                      <tr key={item._localId} style={{ borderBottom: `1px solid ${C.border}`, background: idx % 2 === 0 ? C.surface : C.surface2 }}>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 3 }}>#{item.item_number}</div>
-                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: "1.5px solid #e0e0e0", borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box" }} />
+                          <div style={{ fontSize: 9, fontWeight: 800, color: C.meta, letterSpacing: "1px", marginBottom: 4, fontFamily: MONO, lineHeight: 1 }}>#{item.item_number}</div>
+                          <input type="url" value={item.reference_link} onChange={e => updateCPItem(item._localId, "reference_link", e.target.value)} placeholder="Paste Link" style={{ width: "100%", fontSize: 11, border: `1px solid ${C.border}`, borderRadius: 6, padding: "5px 8px", outline: "none", boxSizing: "border-box", background: C.canvas, color: C.text, fontFamily: SANS, lineHeight: 1 }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <textarea value={item.whats_needed} onChange={e => updateCPItem(item._localId, "whats_needed", e.target.value)} placeholder="Props, people, description..." rows={3} style={{ width: "100%", fontSize: 12, border: "none", outline: "none", background: "transparent", color: "#444", padding: 0, resize: "vertical", fontFamily: "inherit", lineHeight: 1.5, boxSizing: "border-box" }} />
+                          <textarea value={item.whats_needed} onChange={e => updateCPItem(item._localId, "whats_needed", e.target.value)} placeholder="Props, people, description..." rows={3} style={{ width: "100%", fontSize: 12, border: "none", outline: "none", background: "transparent", color: C.text, padding: 0, resize: "vertical", fontFamily: SANS, lineHeight: 1.5, boxSizing: "border-box" }} />
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "top" }}>
-                          <select value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: "#333", padding: 0, boxSizing: "border-box", cursor: "pointer" }}>
+                          <select value={item.creator_name} onChange={e => updateCPItem(item._localId, "creator_name", e.target.value)} style={{ width: "100%", fontSize: 12, fontWeight: 600, border: "none", outline: "none", background: "transparent", color: C.text, padding: 0, boxSizing: "border-box", cursor: "pointer", fontFamily: SANS, lineHeight: 1 }}>
                             <option value="">— Select —</option>
                             {creators.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                           </select>
                         </td>
                         <td style={{ padding: "10px 12px", verticalAlign: "middle" }}>
-                          <select value={item.approval_status} onChange={e => updateCPItem(item._localId, "approval_status", e.target.value)} style={{ width: "100%", fontSize: 11, fontWeight: 700, border: "1.5px solid", borderRadius: 20, padding: "4px 8px", outline: "none", cursor: "pointer", background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderColor: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#ccc" }}>
+                          <select value={item.approval_status} onChange={e => updateCPItem(item._localId, "approval_status", e.target.value)} style={{ width: "100%", fontSize: 11, fontWeight: 700, border: "1.5px solid", borderRadius: 20, padding: "4px 8px", outline: "none", cursor: "pointer", fontFamily: MONO, lineHeight: 1, ...approvalStyle(item.approval_status) }}>
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                             <option value="denied">Denied</option>
@@ -290,18 +348,19 @@ export default function ContentPlanPortal({
                   </tbody>
                 </table>
               </div>
+
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setCurrentCPId(null); setActiveCPStep(null); }} style={{ ...secondaryBtn }}>← Plans</button>
+                <button onClick={() => { setCurrentCPId(null); setActiveCPStep(null); }} style={ghostBtn}>← Plans</button>
                 <div style={{ flex: 1 }} />
-                <button onClick={() => { saveContentPlan(true); setActiveCPStep(3); }} style={{ ...primaryBtn }}>Preview & Export →</button>
+                <button onClick={() => { saveContentPlan(true); setActiveCPStep(3); }} style={primaryBtn}>Preview & Export →</button>
               </div>
 
               {/* Shot Plan / References */}
               {cpReferenceImages?.length > 0 ? (
-                <div style={{ marginTop: 32, borderTop: "1.5px solid #f0f0f0", paddingTop: 24 }}>
+                <div style={{ marginTop: 32, borderTop: `1px solid ${C.border}`, paddingTop: 24 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "#aaa", letterSpacing: "0.08em", textTransform: "uppercase" }}>📌 Shot Plan / References</div>
-                    <button onClick={() => setPinterestOpen(o => !o)} style={{ background: "none", border: "none", fontSize: 11, color: "#E60023", cursor: "pointer", fontWeight: 700, padding: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: C.meta, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO, lineHeight: 1 }}>Shot Plan / References</div>
+                    <button onClick={() => setPinterestOpen(o => !o)} style={{ background: "none", border: "none", fontSize: 11, color: "#E60023", cursor: "pointer", fontWeight: 700, padding: 0, lineHeight: 1 }}>
                       {pinterestOpen ? "Close Panel" : "+ Add More"}
                     </button>
                   </div>
@@ -322,13 +381,12 @@ export default function ContentPlanPortal({
                 </div>
               ) : (
                 <div style={{ marginTop: 24, textAlign: "center", padding: "16px 0" }}>
-                  <button onClick={() => setPinterestOpen(true)} style={{ background: "none", border: "1.5px dashed #E60023", color: "#E60023", borderRadius: 8, padding: "10px 20px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                  <button onClick={() => setPinterestOpen(true)} style={{ background: "none", border: "1.5px dashed #E60023", color: "#E60023", borderRadius: 8, padding: "10px 20px", fontSize: 12, fontWeight: 700, cursor: "pointer", lineHeight: 1 }}>
                     📌 Add Pinterest References
                   </button>
                 </div>
               )}
 
-              {/* Pinterest panel (position:fixed, DOM location doesn't matter) */}
               <PinterestPanel
                 isOpen={pinterestOpen}
                 onClose={() => setPinterestOpen(false)}
@@ -348,11 +406,11 @@ export default function ContentPlanPortal({
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: "#1a1a2e" }}>Preview — {cpClientName} / {MONTHS[cpMonth]} {cpYear}</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>SHOOT DATE: {cpShootDate}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: C.text, lineHeight: 1 }}>Preview — {cpClientName} / {MONTHS[cpMonth]} {cpYear}</div>
+                <div style={{ fontSize: 12, color: C.meta, marginTop: 6, fontFamily: MONO, lineHeight: 1 }}>Shoot: {cpShootDate}</div>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => setActiveCPStep(2)} style={{ ...secondaryBtn }}>← Edit</button>
+                <button onClick={() => setActiveCPStep(2)} style={ghostBtn}>← Edit</button>
                 <button
                   onClick={async () => {
                     if (!currentCPId) { await saveContentPlan(true); }
@@ -374,10 +432,8 @@ export default function ContentPlanPortal({
                       URL.revokeObjectURL(url);
                     } catch (e) { showToast(e.message, "error"); }
                   }}
-                  style={{ ...secondaryBtn }}
-                >
-                  Export PDF
-                </button>
+                  style={ghostBtn}
+                >Export PDF</button>
                 <button
                   onClick={async () => {
                     if (!currentCPId) { await saveContentPlan(true); }
@@ -399,10 +455,8 @@ export default function ContentPlanPortal({
                       URL.revokeObjectURL(url);
                     } catch (e) { showToast(e.message, "error"); }
                   }}
-                  style={{ ...secondaryBtn }}
-                >
-                  Export DOCX
-                </button>
+                  style={ghostBtn}
+                >Export DOCX</button>
                 <button
                   onClick={async () => {
                     try {
@@ -411,17 +465,16 @@ export default function ContentPlanPortal({
                       await getOrCreateShareToken(planId);
                     } catch (e) { showToast("Failed to generate share link", "error"); }
                   }}
-                  style={{ ...primaryBtn }}
-                >
-                  Share with Client
-                </button>
+                  style={primaryBtn}
+                >Share with Client</button>
               </div>
             </div>
+
             {/* Preview table */}
-            <div style={{ overflowX: "auto", background: "white", borderRadius: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.07)", padding: 24 }}>
+            <div style={{ overflowX: "auto", background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, padding: 24 }}>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: "0.04em", color: "#1a1a2e" }}>{cpClientName.toUpperCase()} CONTENT PLAN</div>
-                <div style={{ fontSize: 12, color: "#888", marginTop: 4, fontWeight: 600 }}>SHOOT DATE: {cpShootDate}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: "0.04em", color: C.text, lineHeight: 1 }}>{cpClientName.toUpperCase()} CONTENT PLAN</div>
+                <div style={{ fontSize: 12, color: C.meta, marginTop: 6, fontWeight: 600, fontFamily: MONO, lineHeight: 1 }}>SHOOT DATE: {cpShootDate}</div>
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <colgroup>
@@ -431,44 +484,44 @@ export default function ContentPlanPortal({
                   <col style={{ width: "14%" }} />
                 </colgroup>
                 <thead>
-                  <tr style={{ background: "#1a1a2e" }}>
-                    {["REFERENCE", "WHAT'S NEEDED", "CREATOR", "APPROVAL"].map(h => (
-                      <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: "#D7FA06", fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", border: "1px solid #333" }}>{h}</th>
+                  <tr style={{ background: C.canvas }}>
+                    {["Reference", "What's Needed", "Creator", "Approval"].map(h => (
+                      <th key={h} style={{ padding: "10px 14px", textAlign: "left", color: C.accent, fontSize: 10, fontWeight: 700, letterSpacing: "1.5px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1, border: `1px solid ${C.border}` }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {cpItems.filter(it => it.item_type === "produced").length > 0 && (
-                    <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>PRODUCED VIDEOS</td></tr>
+                    <tr><td colSpan={4} style={{ background: C.canvas, color: C.accent, fontSize: 10, fontWeight: 800, letterSpacing: "1.5px", padding: "7px 14px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1 }}>Produced Videos</td></tr>
                   )}
                   {cpItems.filter(it => it.item_type === "produced").map(item => (
-                    <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em" }}>PRODUCED VIDEO #{item.item_number}</div>
-                        {item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 600, marginTop: 3, display: "block" }}>LINK ↗</a> : <span style={{ color: "#ddd", fontSize: 12, marginTop: 3, display: "block" }}>—</span>}
+                    <tr key={item._localId} style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: `1px solid ${C.border}` }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: C.meta, letterSpacing: "1px", fontFamily: MONO, lineHeight: 1 }}>Produced #{item.item_number}</div>
+                        {item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.accent, fontWeight: 600, marginTop: 4, display: "block", lineHeight: 1 }}>LINK ↗</a> : <span style={{ color: C.meta, fontSize: 12, marginTop: 4, display: "block", lineHeight: 1 }}>—</span>}
                       </td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 12, color: "#444", lineHeight: 1.5, border: "1px solid #eee" }}>{item.whats_needed || "—"}</td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 13, fontWeight: 700, color: "#333", border: "1px solid #eee" }}>{item.creator_name || "—"}</td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
-                        <span style={{ background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 12, color: C.text, lineHeight: 1.5, border: `1px solid ${C.border}` }}>{item.whats_needed || "—"}</td>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 13, fontWeight: 700, color: C.text, border: `1px solid ${C.border}`, lineHeight: 1 }}>{item.creator_name || "—"}</td>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: `1px solid ${C.border}` }}>
+                        <span style={{ borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, fontFamily: MONO, lineHeight: 1, ...approvalStyle(item.approval_status) }}>
                           {item.approval_status === "approved" ? "Approved" : item.approval_status === "denied" ? "Denied" : "Pending"}
                         </span>
                       </td>
                     </tr>
                   ))}
                   {cpItems.filter(it => it.item_type === "organic").length > 0 && (
-                    <tr><td colSpan={4} style={{ background: "#1a1a2e", color: "#D7FA06", fontSize: 10, fontWeight: 800, letterSpacing: "0.1em", padding: "7px 14px" }}>ORGANIC VIDEOS</td></tr>
+                    <tr><td colSpan={4} style={{ background: C.canvas, color: C.accent, fontSize: 10, fontWeight: 800, letterSpacing: "1.5px", padding: "7px 14px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1 }}>Organic Videos</td></tr>
                   )}
                   {cpItems.filter(it => it.item_type === "organic").map(item => (
-                    <tr key={item._localId} style={{ borderBottom: "1px solid #f0f0f0" }}>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
-                        <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em" }}>ORGANIC VIDEO #{item.item_number}</div>
-                        {item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#1a1a2e", fontWeight: 600, marginTop: 3, display: "block" }}>LINK ↗</a> : <span style={{ color: "#ddd", fontSize: 12, marginTop: 3, display: "block" }}>—</span>}
+                    <tr key={item._localId} style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: `1px solid ${C.border}` }}>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: C.meta, letterSpacing: "1px", fontFamily: MONO, lineHeight: 1 }}>Organic #{item.item_number}</div>
+                        {item.reference_link ? <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.accent, fontWeight: 600, marginTop: 4, display: "block", lineHeight: 1 }}>LINK ↗</a> : <span style={{ color: C.meta, fontSize: 12, marginTop: 4, display: "block", lineHeight: 1 }}>—</span>}
                       </td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 12, color: "#444", lineHeight: 1.5, border: "1px solid #eee" }}>{item.whats_needed || "—"}</td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 13, fontWeight: 700, color: "#333", border: "1px solid #eee" }}>{item.creator_name || "—"}</td>
-                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #eee" }}>
-                        <span style={{ background: item.approval_status === "approved" ? "#e8f8e8" : item.approval_status === "denied" ? "#ffe5e5" : "#f0f0ee", color: item.approval_status === "approved" ? "#22aa66" : item.approval_status === "denied" ? "#E8001C" : "#888", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 12, color: C.text, lineHeight: 1.5, border: `1px solid ${C.border}` }}>{item.whats_needed || "—"}</td>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", fontSize: 13, fontWeight: 700, color: C.text, border: `1px solid ${C.border}`, lineHeight: 1 }}>{item.creator_name || "—"}</td>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", border: `1px solid ${C.border}` }}>
+                        <span style={{ borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, fontFamily: MONO, lineHeight: 1, ...approvalStyle(item.approval_status) }}>
                           {item.approval_status === "approved" ? "Approved" : item.approval_status === "denied" ? "Denied" : "Pending"}
                         </span>
                       </td>
@@ -477,10 +530,9 @@ export default function ContentPlanPortal({
                 </tbody>
               </table>
 
-              {/* Shot Plan / References — preview */}
               {cpReferenceImages?.length > 0 && (
-                <div style={{ marginTop: 28, paddingTop: 24, borderTop: "1.5px solid #f0f0f0" }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: "#aaa", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 14 }}>📌 Shot Plan / References</div>
+                <div style={{ marginTop: 28, paddingTop: 24, borderTop: `1px solid ${C.border}` }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: C.meta, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 14, fontFamily: MONO, lineHeight: 1 }}>Shot Plan / References</div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                     {cpReferenceImages.map((url, i) => (
                       <img key={i} src={url} alt="" style={{ width: 120, height: "auto", borderRadius: 8, display: "block" }} />
@@ -493,7 +545,7 @@ export default function ContentPlanPortal({
         )}
       </div>
 
-      {/* ── Content Plan Share / Send Modal ── */}
+      {/* Share / Send Modal */}
       {cpShareModal && (() => {
         const client = cpShareModal.client;
         const methods = [
@@ -503,31 +555,31 @@ export default function ContentPlanPortal({
         ];
         const activeMethod = methods.find(m => m.value === cpShareMethod);
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-            onClick={e => { if (e.target === e.currentTarget) { setCpShareModal(null); setOverridePhone(null); setOverrideEmail(null); } }}>
-            <div style={{ background: "white", borderRadius: 16, width: 460, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
-              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 2 }}>Send Content Plan</div>
-              <div style={{ fontSize: 12, color: "#aaa", marginBottom: 20 }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}
+            onClick={e => { if (e.target === e.currentTarget) { setCpShareModal(null); setOverridePhone(null); setOverrideEmail(null); } }}
+          >
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, width: 460, padding: 32, boxShadow: "0 24px 60px rgba(0,0,0,0.3)" }}>
+              <div style={{ fontWeight: 800, fontSize: 18, color: C.text, marginBottom: 2, lineHeight: 1 }}>Send Content Plan</div>
+              <div style={{ fontSize: 12, color: C.meta, marginBottom: 20, lineHeight: 1 }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
 
-              {/* Public link row */}
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>Public link (no login required)</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 8, fontFamily: MONO, lineHeight: 1 }}>Public link (no login required)</div>
               <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-                <input readOnly value={cpShareModal.url} style={{ flex: 1, padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 12, outline: "none", color: "#555", background: "#f8f8f8" }} />
-                <button onClick={() => { navigator.clipboard.writeText(cpShareModal.url).then(() => showToast("Link copied!")); }} style={{ ...primaryBtn, padding: "9px 16px", fontSize: 12 }}>Copy</button>
+                <input readOnly value={cpShareModal.url} style={{ ...INPUT, flex: 1 }} />
+                <button onClick={() => { navigator.clipboard.writeText(cpShareModal.url).then(() => showToast("Link copied!")); }} style={primaryBtn}>Copy</button>
               </div>
 
-              {/* Delivery method toggle */}
               {!client ? (
-                <div style={{ fontSize: 13, color: "#aaa", marginBottom: 20 }}>No client linked — link a client to enable direct send.</div>
+                <div style={{ fontSize: 13, color: C.meta, marginBottom: 20, lineHeight: 1 }}>No client linked — link a client to enable direct send.</div>
               ) : (
                 <>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Deliver via</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO, lineHeight: 1 }}>Deliver via</div>
                   <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
                     {methods.map(m => (
                       <button
                         key={m.value}
                         onClick={() => { setCpShareMethod(m.value); setCpShareError(""); setCpShareSuccess(""); }}
-                        style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer", border: "1.5px solid", borderColor: cpShareMethod === m.value ? "#1a1a2e" : "#e0e0e0", background: cpShareMethod === m.value ? "#1a1a2e" : "white", color: cpShareMethod === m.value ? "#D7FA06" : "#555" }}
+                        style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: "pointer", border: `1.5px solid ${cpShareMethod === m.value ? C.accent : C.border}`, background: cpShareMethod === m.value ? C.accent : C.surface2, color: cpShareMethod === m.value ? "#000" : C.meta, fontFamily: MONO, lineHeight: 1 }}
                       >{m.label}</button>
                     ))}
                   </div>
@@ -535,53 +587,53 @@ export default function ContentPlanPortal({
                     <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                       {(cpShareMethod === "email" || cpShareMethod === "both") && (
                         <div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Send email to</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 5, fontFamily: MONO, lineHeight: 1 }}>Send email to</div>
                           <input
                             type="email"
                             value={overrideEmail !== null ? overrideEmail : (client?.email || "")}
                             onChange={e => setOverrideEmail(e.target.value)}
                             placeholder="Email address..."
-                            style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#1a1a2e", background: "white", outline: "none", boxSizing: "border-box" }}
+                            style={INPUT}
                           />
                           {overrideEmail !== null && overrideEmail !== client?.email && (
-                            <div style={{ fontSize: 11, color: "#E8001C", marginTop: 3 }}>Using override — client's saved email unchanged</div>
+                            <div style={{ fontSize: 11, color: "#ff4444", marginTop: 3, lineHeight: 1 }}>Using override — client's saved email unchanged</div>
                           )}
                         </div>
                       )}
                       {(cpShareMethod === "sms" || cpShareMethod === "both") && (
                         <div>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Send SMS to</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 5, fontFamily: MONO, lineHeight: 1 }}>Send SMS to</div>
                           <input
                             type="tel"
                             value={overridePhone !== null ? overridePhone : (client?.phone || "")}
                             onChange={e => setOverridePhone(e.target.value)}
                             placeholder="Phone number..."
-                            style={{ width: "100%", padding: "9px 12px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#1a1a2e", background: "white", outline: "none", boxSizing: "border-box" }}
+                            style={INPUT}
                           />
                           {overridePhone !== null && overridePhone !== client?.phone && (
-                            <div style={{ fontSize: 11, color: "#E8001C", marginTop: 3 }}>Using override — client's saved number unchanged</div>
+                            <div style={{ fontSize: 11, color: "#ff4444", marginTop: 3, lineHeight: 1 }}>Using override — client's saved number unchanged</div>
                           )}
                         </div>
                       )}
                     </div>
                   )}
-                  {cpShareSuccess && <div style={{ fontSize: 13, color: "#22aa66", fontWeight: 700, marginBottom: 10 }}>{cpShareSuccess}</div>}
-                  {cpShareError && <div style={{ fontSize: 12, color: "#E8001C", marginBottom: 10 }}>{cpShareError}</div>}
+                  {cpShareSuccess && <div style={{ fontSize: 13, color: C.accent, fontWeight: 700, marginBottom: 10, lineHeight: 1 }}>{cpShareSuccess}</div>}
+                  {cpShareError && <div style={{ fontSize: 12, color: "#ff4444", marginBottom: 10, lineHeight: 1 }}>{cpShareError}</div>}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={() => doSendContentPlan(overridePhone, overrideEmail)}
                       disabled={cpShareBusy}
-                      style={{ flex: 1, padding: "11px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: cpShareBusy ? "default" : "pointer" }}
+                      style={{ ...primaryBtn, flex: 1, padding: "11px 0", opacity: cpShareBusy ? 0.6 : 1, cursor: cpShareBusy ? "default" : "pointer" }}
                     >
                       {cpShareBusy ? "Sending..." : `Send via ${cpShareMethod === "both" ? "Email & SMS" : cpShareMethod === "email" ? "Email" : "SMS"}`}
                     </button>
-                    <button onClick={() => { setCpShareModal(null); setOverridePhone(null); setOverrideEmail(null); }} style={{ ...secondaryBtn, padding: "11px 16px" }}>Close</button>
+                    <button onClick={() => { setCpShareModal(null); setOverridePhone(null); setOverrideEmail(null); }} style={ghostBtn}>Close</button>
                   </div>
                 </>
               )}
               {!client && (
                 <div style={{ textAlign: "right", marginTop: 16 }}>
-                  <button onClick={() => setCpShareModal(null)} style={{ ...secondaryBtn }}>Close</button>
+                  <button onClick={() => setCpShareModal(null)} style={ghostBtn}>Close</button>
                 </div>
               )}
             </div>

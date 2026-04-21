@@ -137,7 +137,7 @@ function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, c
               <span style={{ flexShrink: 0 }}>{item.icon}</span>
               <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: isActive ? 600 : 400, flex: 1 }}>{item.label}</span>
               {badge && (
-                <span style={{ background: C.accent, color: "#000", borderRadius: 20, padding: "1px 7px", fontSize: 10, fontWeight: 700, fontFamily: MONO }}>
+                <span style={{ background: C.accent, color: "#000", borderRadius: 20, padding: "2px 7px", fontSize: 9, fontWeight: 700, fontFamily: MONO }}>
                   {badge}
                 </span>
               )}
@@ -202,7 +202,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
     <div style={{ padding: "40px 48px 80px" }}>
       {/* Greeting */}
       <div style={{ marginBottom: 48 }}>
-        <div style={{ fontFamily: DISP, fontSize: 72, lineHeight: 0.88, letterSpacing: 1, color: C.text }}>
+        <div style={{ fontFamily: DISP, fontSize: 72, lineHeight: 1, letterSpacing: 1, color: C.text }}>
           {line1}<br />
           <span style={{ color: C.accent }}>{line2}</span>
         </div>
@@ -219,7 +219,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
           {recentCals.map(cal => (
             <div key={cal.id} onClick={() => openCalendar(cal)}
-              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
+              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
               onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -248,7 +248,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
           ))}
           {/* Dashed "New Calendar" card */}
           <div onClick={newCalendar}
-            style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta }}
+            style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
             <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
@@ -268,7 +268,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                 : "pending";
               return (
                 <div key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
-                  style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
+                  style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
                   onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -296,7 +296,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
             })}
             {/* Dashed "New Plan" card */}
             <div onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
-              style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 16, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 90, transition: "all 0.15s", color: C.meta }}
+              style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 90, transition: "all 0.15s", color: C.meta }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
               <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
@@ -455,6 +455,8 @@ export default function DashboardPortal({
             removeScheduledPost={removeScheduledPost}
             toggleNotify={toggleNotify}
             setActivePortal={setActivePortal}
+            allCalendars={allCalendars}
+            openCalendar={openCalendar}
           />
         )}
 
@@ -549,7 +551,7 @@ export default function DashboardPortal({
       {editingProfile && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => e.target === e.currentTarget && setEditingProfile(false)}>
-          <div style={{ background: C.surface, borderRadius: 20, width: 360, padding: 28, border: `1px solid ${C.border}` }}>
+          <div style={{ background: C.surface, borderRadius: 16, width: 360, padding: 28, border: `1px solid ${C.border}` }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 4, fontFamily: SANS }}>Edit Profile</div>
             <div style={{ fontSize: 12, color: C.meta, marginBottom: 18, fontFamily: SANS }}>This name appears in calendar footers and your account.</div>
             <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..."
@@ -566,7 +568,7 @@ export default function DashboardPortal({
       {shareModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={e => e.target === e.currentTarget && setShareModal(null)}>
-          <div style={{ background: C.surface, borderRadius: 20, width: 420, padding: 28, border: `1px solid ${C.border}`, maxHeight: "80vh", overflowY: "auto" }}>
+          <div style={{ background: C.surface, borderRadius: 16, width: 420, padding: 28, border: `1px solid ${C.border}`, maxHeight: "80vh", overflowY: "auto" }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 4, fontFamily: SANS }}>Share Calendar</div>
             <div style={{ fontSize: 11, color: C.meta, marginBottom: 20, fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px" }}>
               {shareModal.cal.client_name} — {MONTHS[shareModal.cal.month]} {shareModal.cal.year}
