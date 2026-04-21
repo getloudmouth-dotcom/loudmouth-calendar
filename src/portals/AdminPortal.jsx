@@ -138,7 +138,7 @@ export default function AdminPortal({
       <div style={{ padding: "16px 48px", borderBottom: `1px solid ${C.border}`, background: C.surface, display: "flex", alignItems: "center", gap: 16 }}>
         <button
           onClick={() => setActivePortal(null)}
-          style={{ background: "none", border: "none", fontFamily: MONO, fontSize: 10, color: C.meta, cursor: "pointer", textTransform: "uppercase", letterSpacing: "1.5px", padding: 0 }}
+          style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 24, fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.meta, cursor: "pointer", textTransform: "uppercase", letterSpacing: "1.5px", padding: "6px 12px", lineHeight: 1, transition: "all 0.15s" }}
         >← Back</button>
         <div style={{ width: 1, height: 16, background: C.border }} />
         <div style={{ fontFamily: MONO, fontSize: 11, color: C.text, textTransform: "uppercase", letterSpacing: "2px", fontWeight: 700 }}>Admin Portal</div>

@@ -368,7 +368,7 @@ export default function BillingPortal({ setActivePortal }) {
       {/* ── Header ── */}
       <div style={{ background: "#111", borderBottom: "1px solid #1e1e1e", padding: "16px 48px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button onClick={() => setActivePortal(null)} style={{ background: "none", border: "none", color: "#555", fontSize: 13, cursor: "pointer", fontWeight: 600, padding: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => setActivePortal(null)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, fontFamily: "'Space Mono','Courier New',monospace", fontSize: 10, fontWeight: 700, color: "#949494", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1.5px", padding: "6px 12px", lineHeight: 1, transition: "all 0.15s" }}>
             ← Home
           </button>
           <div style={{ width: 1, height: 16, background: "#222" }} />

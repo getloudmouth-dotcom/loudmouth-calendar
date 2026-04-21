@@ -32,8 +32,8 @@ const primaryBtn = {
 };
 const ghostBtn = {
   background: "transparent", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24,
-  padding: "8px 16px", fontSize: 10, fontWeight: 700, cursor: "pointer",
-  fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1,
+  padding: "6px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer",
+  fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", lineHeight: 1, transition: "all 0.15s",
 };
 
 const approvalStyle = status => ({
@@ -115,9 +115,6 @@ export default function ContentPlanPortal({
           </div>
         )}
         <div style={{ flex: 1 }} />
-        {currentCPId && (
-          <button onClick={() => newContentPlan()} style={ghostBtn}>+ New Plan</button>
-        )}
       </div>
 
       <div style={{ padding: "36px 48px", maxWidth: 1100, margin: "0 auto" }}>
@@ -130,7 +127,6 @@ export default function ContentPlanPortal({
                 <div style={{ fontSize: 20, fontWeight: 900, color: C.text, lineHeight: 1 }}>Content Plans</div>
                 <div style={{ fontSize: 13, color: C.meta, marginTop: 6, lineHeight: 1 }}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
               </div>
-              <button onClick={() => newContentPlan()} style={primaryBtn}>+ New Plan</button>
             </div>
             {allContentPlans.length === 0 ? (
               <div style={{ textAlign: "center", padding: "80px 0" }}>
@@ -174,6 +170,13 @@ export default function ContentPlanPortal({
                     </div>
                   </div>
                 ))}
+                <div onClick={() => newContentPlan()}
+                  style={{ border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
+                  <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+                  <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Plan</span>
+                </div>
               </div>
             )}
           </div>

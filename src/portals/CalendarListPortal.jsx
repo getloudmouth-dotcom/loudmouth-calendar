@@ -16,7 +16,7 @@ const C = {
 const btn = (override = {}) => ({
   border: `1px solid ${C.border}`, borderRadius: 24, background: "transparent",
   color: C.meta, fontFamily: MONO, fontSize: 10, fontWeight: 700,
-  textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer",
+  textTransform: "uppercase", letterSpacing: "1.5px", cursor: "pointer",
   lineHeight: 1, transition: "all 0.15s", ...override,
 });
 
@@ -37,7 +37,6 @@ export default function CalendarListPortal({
         <div style={{ width: 1, height: 18, background: C.border }} />
         <div style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: SANS, lineHeight: 1 }}>Calendar Creator</div>
         <div style={{ flex: 1 }} />
-        <button onClick={newCalendar} style={btn({ background: C.accent, color: "#000", border: "none", padding: "8px 18px", fontSize: 11, letterSpacing: "1.5px" })}>+ New Calendar</button>
       </div>
 
       <div style={{ padding: "36px 48px" }}>
@@ -117,6 +116,13 @@ export default function CalendarListPortal({
               </div>
             </div>
           ))}
+          <div onClick={newCalendar}
+            style={{ border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
+            <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
+            <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Calendar</span>
+          </div>
         </div>
       </div>
     </div>
