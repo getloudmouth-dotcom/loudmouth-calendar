@@ -17,7 +17,7 @@ export const C = {
   surface2: "#2a2a2a",
   accent:   "#CCFF00",   // chartreuse brand — primary CTAs, active states
   text:     "#ffffff",
-  meta:     "#949494",
+  meta:     "#a0a0a0",
   border:   "rgba(255,255,255,0.14)",
   error:    "#E8001C",
 };
