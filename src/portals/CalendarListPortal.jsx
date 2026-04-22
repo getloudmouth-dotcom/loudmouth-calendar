@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import CollabAvatars from "../components/CollabAvatars";
-import { SANS, MONO, C, btn } from "../theme";
+import { SANS, MONO, C, btn, BTN_ROW, PAGE_HEADER, PAGE_TITLE } from "../theme";
 
 export default function CalendarListPortal({
   allCalendars, calCollaborators,
@@ -11,14 +12,13 @@ export default function CalendarListPortal({
   scheduledPosts,
 }) {
   const { user } = useApp();
+  const [hoveredCard, setHoveredCard] = useState(null);
 
   return (
     <div style={{ background: C.canvas, minHeight: "100vh", fontFamily: SANS }}>
       {/* Header */}
-      <div style={{ padding: "20px 48px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 16 }}>
-        <button onClick={() => setActivePortal(null)} style={btn({ padding: "6px 12px" })}>← Back</button>
-        <div style={{ width: 1, height: 18, background: C.border }} />
-        <div style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: SANS, lineHeight: 1 }}>Calendar Creator</div>
+      <div style={PAGE_HEADER}>
+        <div style={PAGE_TITLE}>Calendar Creator</div>
         <div style={{ flex: 1 }} />
       </div>
 
@@ -35,11 +35,27 @@ export default function CalendarListPortal({
           {allCalendars.map(cal => (
             <div
               key={cal.id}
-              style={{ background: C.surface, borderRadius: 12, padding: 20, border: `1px solid ${C.border}`, cursor: "pointer", transition: "border-color 0.15s" }}
+              style={{ position: "relative", background: C.surface, borderRadius: 12, padding: 20, border: `1px solid ${C.border}`, cursor: "pointer", transition: "border-color 0.15s" }}
               onClick={e => { if (e.target.closest("button")) return; openCalendar(cal); }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.28)"}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.28)"; setHoveredCard(cal.id); }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; setHoveredCard(null); }}
             >
+              {cal.user_id === user?.id && (
+                <button
+                  onClick={e => { e.stopPropagation(); deleteCalendar(cal); }}
+                  style={{
+                    position: "absolute", top: 10, right: 10,
+                    ...btn({ padding: "4px 7px", fontSize: 14, lineHeight: 1 }),
+                    opacity: hoveredCard === cal.id ? 1 : 0,
+                    pointerEvents: hoveredCard === cal.id ? "auto" : "none",
+                    color: hoveredCard === cal.id ? C.meta : "transparent",
+                    border: "none", background: "transparent",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "#ff4444"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = C.meta; }}
+                  title="Delete calendar"
+                >×</button>
+              )}
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: C.text, fontFamily: SANS, lineHeight: 1 }}>{cal.client_name}</div>
                 {cal.user_id !== user?.id && (
@@ -51,10 +67,10 @@ export default function CalendarListPortal({
                 Saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </div>
               <CollabAvatars collaborators={calCollaborators[cal.id]} />
-              <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <div style={{ ...BTN_ROW, marginTop: 4 }}>
                 <button
                   onClick={e => { e.stopPropagation(); openCalendar(cal); }}
-                  style={btn({ flex: 1, padding: "7px 10px", background: C.accent, color: "#000", border: "none", letterSpacing: "1.5px" })}
+                  style={btn({ padding: "7px 10px", background: C.accent, color: "#000", border: "none", letterSpacing: "1.5px" })}
                   onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
                   onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                 >Open</button>
@@ -88,14 +104,6 @@ export default function CalendarListPortal({
                   );
                 })()}
 
-                {cal.user_id === user?.id && (
-                  <button
-                    onClick={e => { e.stopPropagation(); deleteCalendar(cal); }}
-                    style={btn({ padding: "7px 10px" })}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#ff4444"; e.currentTarget.style.color = "#ff4444"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}
-                  >🗑</button>
-                )}
               </div>
             </div>
           ))}

@@ -4,7 +4,7 @@
 // Access: admin + account_manager roles only (enforced server-side; gated client-side via can("billing")).
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { SANS, MONO, C, INPUT, LABEL } from "../theme";
+import { SANS, MONO, C, INPUT, LABEL, ghostBtn, primaryBtn, PAGE_HEADER, PAGE_TITLE } from "../theme";
 import { supabase } from "../supabase";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -347,48 +347,37 @@ export default function BillingPortal({ setActivePortal }) {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: C.canvas, color: C.text, fontFamily: SANS }}>
 
       {/* ── Header ── */}
-      <div style={{ background: "#111", borderBottom: "1px solid #1e1e1e", padding: "16px 48px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button onClick={() => setActivePortal(null)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, fontFamily: "'Space Mono','Courier New',monospace", fontSize: 10, fontWeight: 700, color: "#949494", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1.5px", padding: "6px 12px", lineHeight: 1, transition: "all 0.15s" }}>
-            ← Home
-          </button>
-          <div style={{ width: 1, height: 16, background: "#222" }} />
-          <div style={{ fontWeight: 900, fontSize: 14, color: "#CCFF00", letterSpacing: "0.1em", textTransform: "uppercase" }}>Billing</div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {tab === "clients" && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={syncFromFreshbooks} disabled={syncing || syncCooldown} style={{ background: "#1a1a1a", color: (syncing || syncCooldown) ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: (syncing || syncCooldown) ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
-                {syncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
-              </button>
-              <button onClick={openNewClient} style={{ background: "#CCFF00", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
-                + New Client
-              </button>
-            </div>
-          )}
-          {tab === "invoices" && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button onClick={syncInvoicesFromFreshbooks} disabled={invoiceSyncing || syncCooldown} style={{ background: "#1a1a1a", color: (invoiceSyncing || syncCooldown) ? "#444" : "#888", border: "1px solid #2a2a2a", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 12, cursor: (invoiceSyncing || syncCooldown) ? "not-allowed" : "pointer", letterSpacing: "0.04em" }}>
-                {invoiceSyncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
-              </button>
-              <button onClick={() => setShowInvoiceForm(true)} style={{ background: "#CCFF00", color: "#000", border: "none", borderRadius: 8, padding: "8px 18px", fontWeight: 800, fontSize: 12, cursor: "pointer", letterSpacing: "0.04em" }}>
-                + New Invoice
-              </button>
-            </div>
-          )}
-        </div>
+      <div style={PAGE_HEADER}>
+        <div style={PAGE_TITLE}>Billing</div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={{ background: "#111", borderBottom: "1px solid #1e1e1e", padding: "0 48px", display: "flex", gap: 0 }}>
+      {/* ── Tabs + actions ── */}
+      <div style={{ background: C.canvas, borderBottom: `1px solid ${C.border}`, padding: "0 44px", display: "flex", alignItems: "center", gap: 0 }}>
         {["invoices", "clients"].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: tab === t ? "2px solid #CCFF00" : "2px solid transparent", color: tab === t ? "#fff" : "#555", fontWeight: tab === t ? 700 : 500, fontSize: 13, padding: "14px 0", marginRight: 32, cursor: "pointer", letterSpacing: "0.02em", textTransform: "capitalize" }}>
+          <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: tab === t ? `2px solid ${C.accent}` : "2px solid transparent", color: tab === t ? C.text : C.meta, fontWeight: tab === t ? 700 : 500, fontSize: 13, fontFamily: SANS, padding: "14px 0", marginRight: 32, cursor: "pointer", letterSpacing: "0.02em", textTransform: "capitalize" }}>
             {t === "invoices" ? "Invoices" : "Clients"}
           </button>
         ))}
+        <div style={{ flex: 1 }} />
+        {tab === "clients" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={syncFromFreshbooks} disabled={syncing || syncCooldown} style={{ ...ghostBtn, opacity: (syncing || syncCooldown) ? 0.4 : 1, cursor: (syncing || syncCooldown) ? "not-allowed" : "pointer" }}>
+              {syncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
+            </button>
+            <button onClick={openNewClient} style={primaryBtn}>+ New Client</button>
+          </div>
+        )}
+        {tab === "invoices" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={syncInvoicesFromFreshbooks} disabled={invoiceSyncing || syncCooldown} style={{ ...ghostBtn, opacity: (invoiceSyncing || syncCooldown) ? 0.4 : 1, cursor: (invoiceSyncing || syncCooldown) ? "not-allowed" : "pointer" }}>
+              {invoiceSyncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
+            </button>
+            <button onClick={() => setShowInvoiceForm(true)} style={primaryBtn}>+ New Invoice</button>
+          </div>
+        )}
       </div>
 
       {apiError && (

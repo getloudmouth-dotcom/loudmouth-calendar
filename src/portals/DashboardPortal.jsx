@@ -54,6 +54,12 @@ const icons = {
       <path d="M9 21V15h6v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
+  settings: (
+    <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="2"/>
+    </svg>
+  ),
 };
 
 const NAV_ITEMS = [
@@ -65,10 +71,11 @@ const NAV_ITEMS = [
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, can, signOut, setProfileInput, setEditingProfile, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults }) {
+function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, can, signOut, setProfileInput, setEditingProfile, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults, onOpenRolePerms }) {
   const { user } = useApp();
   const today = new Date();
   const upcomingCount = scheduledPosts.filter(r => r.post_date >= today.toISOString().slice(0, 10)).length;
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   function navigate(key, permission) {
     if (permission === "content_plan_creator") loadAllContentPlans();
@@ -133,12 +140,58 @@ function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, c
         })}
       </nav>
 
-      {/* Logo */}
-      <div onClick={() => setActivePortal(null)} style={{ padding: "16px 20px 20px", borderTop: `1px solid ${C.border}`, cursor: "pointer" }}>
-        <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
-        <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: -2 }}>
-          {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+      {/* Logo + settings */}
+      <div style={{ padding: "16px 20px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+        <div onClick={() => setActivePortal(null)} style={{ flex: 1, cursor: "pointer", minWidth: 0 }}>
+          <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
+          <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: -2 }}>
+            {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </div>
         </div>
+        <button
+          onClick={() => setSettingsOpen(o => !o)}
+          title="Settings"
+          aria-label="Settings"
+          style={{ background: settingsOpen ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 7, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: settingsOpen ? C.text : "#949494", transition: "background 0.15s" }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+          onMouseLeave={e => e.currentTarget.style.background = settingsOpen ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)"}
+        >
+          {icons.settings}
+        </button>
+
+        {/* Settings popover */}
+        {settingsOpen && (
+          <>
+            <div onClick={() => setSettingsOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 100 }} />
+            <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 12, right: 12, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "6px 0", zIndex: 101, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+              <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "6px 14px 4px" }}>Settings</div>
+              <button
+                onClick={() => { window.open("/privacy-policy", "_blank"); setSettingsOpen(false); }}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", background: "transparent", border: "none", color: C.text, fontFamily: SANS, fontSize: 13, cursor: "pointer", textAlign: "left", transition: "background 0.12s" }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                Privacy Policy
+                <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: 9, color: C.meta }}>↗</span>
+              </button>
+              {can("admin_portal") && (
+                <button
+                  onClick={() => {
+                    if (adminUsers.length === 0) loadAdminUsers();
+                    if (!roleToolDefaults) loadRoleToolDefaults();
+                    onOpenRolePerms();
+                    setSettingsOpen(false);
+                  }}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px", background: "transparent", border: "none", color: C.text, fontFamily: SANS, fontSize: 13, cursor: "pointer", textAlign: "left", transition: "background 0.12s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  Role Permissions
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -385,6 +438,12 @@ export default function DashboardPortal({
   signOut,
 }) {
   const { can } = useApp();
+  const [adminInitialTab, setAdminInitialTab] = useState(null);
+
+  function openRolePerms() {
+    setAdminInitialTab("roles");
+    setActivePortal("admin");
+  }
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: C.canvas, fontFamily: SANS }}>
@@ -404,6 +463,7 @@ export default function DashboardPortal({
         loadRoleToolDefaults={loadRoleToolDefaults}
         adminUsers={adminUsers}
         roleToolDefaults={roleToolDefaults}
+        onOpenRolePerms={openRolePerms}
       />
 
       {/* ── Main content ── */}
@@ -460,6 +520,7 @@ export default function DashboardPortal({
             doUpdateUser={doUpdateUser}
             doDeleteUser={doDeleteUser} deleteUserBusy={deleteUserBusy} currentUserId={currentUserId}
             setActivePortal={setActivePortal}
+            initialTab={adminInitialTab}
           />
         )}
 

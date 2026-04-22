@@ -4,7 +4,7 @@ import { useApp } from "../AppContext";
 import { useState, useEffect } from "react";
 import PinterestPanel from "../components/PinterestPanel";
 
-import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn } from "../theme";
+import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn, PAGE_HEADER, PAGE_TITLE } from "../theme";
 
 const approvalStyle = status => ({
   background: status === "approved" ? "rgba(204,255,0,0.1)" : status === "denied" ? "rgba(255,68,68,0.12)" : C.surface2,
@@ -75,10 +75,14 @@ export default function ContentPlanPortal({
   return (
     <div style={{ background: C.canvas, minHeight: "100vh", fontFamily: SANS }}>
       {/* Header */}
-      <div style={{ padding: "20px 48px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 16 }}>
-        <button onClick={backAction} style={ghostBtn}>{backLabel}</button>
-        <div style={{ width: 1, height: 18, background: C.border }} />
-        <div style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: SANS, lineHeight: 1 }}>Content Plan Creator</div>
+      <div style={PAGE_HEADER}>
+        {!onPlansList && (
+          <>
+            <button onClick={backAction} style={ghostBtn}>{backLabel}</button>
+            <div style={{ width: 1, height: 18, background: C.border }} />
+          </>
+        )}
+        <div style={PAGE_TITLE}>Content Plan Creator</div>
         {currentCPId && (
           <div style={{ fontSize: 13, color: C.meta, lineHeight: 1 }}>
             {cpClientName} — {MONTHS[cpMonth]} {cpYear}
@@ -87,7 +91,7 @@ export default function ContentPlanPortal({
         <div style={{ flex: 1 }} />
       </div>
 
-      <div style={{ padding: "36px 48px", maxWidth: 1100, margin: "0 auto" }}>
+      <div style={{ padding: "36px 48px", maxWidth: 1100 }}>
 
         {/* Plan list */}
         {!currentCPId && activeCPStep === null && (

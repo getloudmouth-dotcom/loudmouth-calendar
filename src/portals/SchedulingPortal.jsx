@@ -1,7 +1,7 @@
 import { useApp } from "../AppContext";
 import ScheduleRow from "../components/ScheduleRow";
 
-import { SANS, MONO, C } from "../theme";
+import { SANS, MONO, C, PAGE_HEADER, PAGE_TITLE } from "../theme";
 
 function SectionHeader({ label }) {
   return (
@@ -34,10 +34,12 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
 
   return (
     <div style={{ background: C.canvas, minHeight: "100vh", fontFamily: SANS }}>
+      <div style={PAGE_HEADER}>
+        <div style={PAGE_TITLE}>Scheduling</div>
+      </div>
       <div style={{ padding: "40px 48px 80px" }}>
         {/* Page title */}
         <div style={{ marginBottom: 40 }}>
-          <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "2px", color: C.meta, marginBottom: 8 }}>Scheduling</div>
           <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>Content Schedule</div>
           {myPosts.length > 0 && (
             <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>

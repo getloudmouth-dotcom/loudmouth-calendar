@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ROLE_TOOLS, ALL_TOOLS } from "../constants";
 
-import { SANS, MONO, C } from "../theme";
+import { SANS, MONO, C, PAGE_HEADER, PAGE_TITLE } from "../theme";
 
 const ROLES = [
   { key: "admin",           label: "Admin" },
@@ -94,8 +94,9 @@ export default function AdminPortal({
   doUpdateUser,
   doDeleteUser, deleteUserBusy, currentUserId,
   setActivePortal,
+  initialTab,
 }) {
-  const [tab, setTab] = useState("team");
+  const [tab, setTab] = useState(initialTab ?? "team");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [localPerms, setLocalPerms] = useState(null);
   const [permsDirty, setPermsDirty] = useState(false);
@@ -123,43 +124,10 @@ export default function AdminPortal({
     <div style={{ minHeight: "100vh", background: C.canvas, fontFamily: SANS }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: "16px 48px", borderBottom: `1px solid ${C.border}`, background: C.surface, display: "flex", alignItems: "center", gap: 16 }}>
-        <button
-          onClick={() => setActivePortal(null)}
-          style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 24, fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.meta, cursor: "pointer", textTransform: "uppercase", letterSpacing: "1.5px", padding: "6px 12px", lineHeight: 1, transition: "all 0.15s" }}
-        >← Back</button>
-        <div style={{ width: 1, height: 16, background: C.border }} />
-        <div style={{ fontFamily: MONO, fontSize: 11, color: C.text, textTransform: "uppercase", letterSpacing: "2px", fontWeight: 700 }}>Admin Portal</div>
+      <div style={PAGE_HEADER}>
+        <div style={PAGE_TITLE}>Admin Portal</div>
 
-        {/* Tabs */}
-        <div style={{ display: "flex", gap: 4, marginLeft: 12 }}>
-          {[{ key: "team", label: "Team" }, { key: "roles", label: "Role Permissions" }].map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
-              background: tab === t.key ? C.accent : "rgba(255,255,255,0.06)",
-              color: tab === t.key ? "#111" : C.meta,
-              border: "none", padding: "6px 14px", borderRadius: 24,
-              fontFamily: MONO, fontWeight: 700, fontSize: 10,
-              cursor: "pointer", letterSpacing: "1px", textTransform: "uppercase",
-              transition: "background 0.15s",
-            }}>{t.label}</button>
-          ))}
-        </div>
 
-        <div style={{ flex: 1 }} />
-
-        <a href="/privacy-policy" target="_blank" rel="noreferrer"
-          style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textDecoration: "none", letterSpacing: "1px", textTransform: "uppercase" }}>
-          Privacy Policy ↗
-        </a>
-        {tab === "roles" && permsDirty && (
-          <button onClick={handleSavePerms} disabled={rolePermsBusy} style={{
-            background: C.accent, color: "#111", border: "none",
-            padding: "8px 20px", borderRadius: 24,
-            fontFamily: MONO, fontWeight: 700, fontSize: 10,
-            cursor: rolePermsBusy ? "default" : "pointer", letterSpacing: "1.2px",
-            textTransform: "uppercase", opacity: rolePermsBusy ? 0.6 : 1,
-          }}>{rolePermsBusy ? "Saving…" : "Save Changes"}</button>
-        )}
       </div>
 
       {/* ── Team tab ── */}
