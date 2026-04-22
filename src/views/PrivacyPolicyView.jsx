@@ -1,17 +1,25 @@
+import { C, SANS, MONO, DISP } from "../theme";
+
 export default function PrivacyPolicyView() {
   const S = {
-    page: { minHeight: "100vh", background: "#1a1a2e", fontFamily: "'Helvetica Neue', Arial, sans-serif", padding: "60px 24px" },
+    page: { minHeight: "100vh", background: C.canvas, fontFamily: SANS, padding: "60px 24px" },
     wrap: { maxWidth: 720, margin: "0 auto" },
-    logo: { fontWeight: 900, fontSize: 16, letterSpacing: "0.08em", color: "#D7FA06", marginBottom: 8 },
-    sub: { fontSize: 11, color: "#555", letterSpacing: "0.06em", marginBottom: 48 },
-    h1: { fontSize: 28, fontWeight: 900, color: "#fff", marginBottom: 8 },
-    updated: { fontSize: 12, color: "#555", marginBottom: 48 },
-    h2: { fontSize: 16, fontWeight: 800, color: "#D7FA06", marginBottom: 10, marginTop: 36, textTransform: "uppercase", letterSpacing: "0.06em" },
-    p: { fontSize: 14, color: "#aaa", lineHeight: 1.8, marginBottom: 12 },
-    li: { fontSize: 14, color: "#aaa", lineHeight: 1.8, marginBottom: 6, marginLeft: 20 },
-    strong: { color: "#ddd" },
-    divider: { border: "none", borderTop: "1px solid #2a2a2a", margin: "48px 0" },
-    kbd: { background: "#222", color: "#D7FA06", padding: "2px 8px", borderRadius: 4, fontFamily: "monospace", fontSize: 13, fontWeight: 700 },
+    logo: { fontFamily: DISP, fontWeight: 900, fontSize: 18, letterSpacing: "0.06em", color: C.accent, marginBottom: 6 },
+    sub: { fontFamily: MONO, fontSize: 10, color: C.meta, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 48 },
+    h1: { fontFamily: DISP, fontSize: 28, fontWeight: 900, color: C.text, marginBottom: 8 },
+    updated: { fontFamily: MONO, fontSize: 11, color: C.meta, letterSpacing: "0.5px", marginBottom: 48 },
+    h2: {
+      fontFamily: MONO, fontSize: 11, fontWeight: 700, color: C.accent, marginBottom: 10,
+      marginTop: 36, textTransform: "uppercase", letterSpacing: "1.8px",
+    },
+    p: { fontFamily: SANS, fontSize: 14, color: C.meta, lineHeight: 1.8, marginBottom: 12 },
+    li: { fontFamily: SANS, fontSize: 14, color: C.meta, lineHeight: 1.8, marginBottom: 6, marginLeft: 20 },
+    strong: { color: C.text },
+    divider: { border: "none", borderTop: `1px solid ${C.border}`, margin: "48px 0" },
+    kbd: {
+      background: C.surface2, color: C.accent, padding: "2px 8px", borderRadius: 4,
+      fontFamily: MONO, fontSize: 12, fontWeight: 700,
+    },
   };
 
   return (
@@ -115,7 +123,7 @@ export default function PrivacyPolicyView() {
         <h2 style={S.h2}>How to Opt Out</h2>
         <p style={S.p}>Reply <span style={S.kbd}>STOP</span> to any message at any time to stop receiving SMS notifications from Loudmouth. You will receive a one-time confirmation message and then no further messages.</p>
 
-        <p style={{ ...S.p, marginTop: 48, color: "#444", fontSize: 12 }}>© {new Date().getFullYear()} Loudmouth Creative, LLC · getloudmouth.work</p>
+        <p style={{ ...S.p, marginTop: 48, fontSize: 11 }}>© {new Date().getFullYear()} Loudmouth Creative, LLC · getloudmouth.work</p>
       </div>
     </div>
   );
