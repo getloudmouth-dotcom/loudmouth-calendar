@@ -570,7 +570,9 @@ export default function BillingPortal({ setActivePortal }) {
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "40px 24px", overflowY: "auto" }}
           onClick={e => e.target === e.currentTarget && setShowInvoiceForm(false)}>
           <div style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, width: "100%", maxWidth: 640, padding: 36, marginBottom: 40 }}>
-            <div style={{ fontWeight: 900, fontSize: 20, color: "#fff", marginBottom: 28, lineHeight: 1 }}>New Invoice</div>
+            <div style={{ marginBottom: 40 }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>New Invoice</div>
+            </div>
             <form onSubmit={submitInvoice} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
               {/* Client */}

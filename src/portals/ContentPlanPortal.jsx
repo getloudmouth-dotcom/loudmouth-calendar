@@ -96,10 +96,10 @@ export default function ContentPlanPortal({
         {/* Plan list */}
         {!currentCPId && activeCPStep === null && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40 }}>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: C.text, lineHeight: 1 }}>Content Plans</div>
-                <div style={{ fontSize: 13, color: C.meta, marginTop: 6, lineHeight: 1 }}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
+                <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>Content Plans</div>
+                <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
               </div>
             </div>
             {allContentPlans.length === 0 ? (
@@ -159,8 +159,10 @@ export default function ContentPlanPortal({
         {/* Step 1: Setup */}
         {currentCPId === null && activeCPStep === 1 && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
-            <div style={{ fontSize: 20, fontWeight: 900, color: C.text, marginBottom: 8, lineHeight: 1 }}>New Content Plan</div>
-            <div style={{ fontSize: 13, color: C.meta, marginBottom: 28, lineHeight: 1 }}>Set up the basics for this content plan.</div>
+            <div style={{ marginBottom: 40 }}>
+              <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>New Content Plan</div>
+              <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>Set up the basics for this content plan.</div>
+            </div>
 
             <label style={LABEL}>Client</label>
             <div style={{ marginBottom: 16 }}>

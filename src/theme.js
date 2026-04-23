@@ -103,6 +103,22 @@ export const SECTION_HEADER = {
   color: C.meta, whiteSpace: "nowrap",
 };
 
+// ── Section display heading ───────────────────────────────────────────────────
+// Use for main content-area section titles inside portals and panels.
+// Pattern:
+//   <div style={{ marginBottom: 40 }}>
+//     <div style={DISPLAY_TITLE}>Section Name</div>
+//     <div style={DISPLAY_SUBTITLE}>optional description or count</div>
+//   </div>
+
+export const DISPLAY_TITLE = {
+  fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5,
+};
+
+export const DISPLAY_SUBTITLE = {
+  marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta,
+};
+
 // ── Page header bar ───────────────────────────────────────────────────────────
 
 // Wrapper for every portal's top header bar. Contains PAGE_TITLE + optional actions.

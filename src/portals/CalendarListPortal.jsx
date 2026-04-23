@@ -23,6 +23,10 @@ export default function CalendarListPortal({
       </div>
 
       <div style={{ padding: "36px 48px" }}>
+        <div style={{ marginBottom: 40 }}>
+          <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>Calendar Creator</div>
+          <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>{allCalendars.length} calendar{allCalendars.length !== 1 ? "s" : ""}</div>
+        </div>
         {allCalendars.length === 0 && (
           <div style={{ textAlign: "center", padding: "80px 0" }}>
             <div style={{ fontSize: 36, marginBottom: 16 }}>📅</div>
