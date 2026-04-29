@@ -218,6 +218,19 @@ export default function GridCreatorPortal() {
           {/* GRID */}
           <div style={{ marginTop: 0 }}>
             {gridItems.length === 0 ? (
+              driveUploadProgress.active ? (
+                <div style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 14, height: 280,
+                  border: `1.5px dashed ${C.accent}`, borderRadius: 8,
+                  background: C.surface,
+                }}>
+                  <div style={{ width: 36, height: 36, border: `3.5px solid ${C.border}`, borderTop: `3.5px solid ${C.accent}`, borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: C.meta, fontFamily: MONO, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                    {driveUploadProgress.total > 1 ? `${driveUploadProgress.done} / ${driveUploadProgress.total} uploading` : "Uploading..."}
+                  </span>
+                </div>
+              ) : (
               <label
                 style={{
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -244,6 +257,7 @@ export default function GridCreatorPortal() {
                 <input type="file" accept="image/*" multiple style={{ display: "none" }}
                   onChange={e => { handleBatchImport(e.target.files); e.target.value = ""; }} />
               </label>
+              )
             ) : (
               <div style={{ height: Math.max(360, Math.ceil((gridItems.length + pinnedCount) / 3) * 180) }}>
                 <ReorderFeedGrid
