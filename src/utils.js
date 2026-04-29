@@ -61,6 +61,24 @@ export function chunkArray(arr, size) {
   return chunks;
 }
 
+// Lazy-loads the Google Identity Services script on first call, then resolves.
+// Subsequent calls resolve immediately from the module-level promise cache.
+let _gsiPromise = null;
+export function loadGsiScript() {
+  if (_gsiPromise) return _gsiPromise;
+  _gsiPromise = new Promise((resolve, reject) => {
+    if (window.google?.accounts?.oauth2) { resolve(); return; }
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => { _gsiPromise = null; reject(new Error("Failed to load Google auth")); };
+    document.head.appendChild(script);
+  });
+  return _gsiPromise;
+}
+
 // Per-slide crop/scale helpers for carousels
 export function getSlideCropX(post, slideIdx) { return post.cropXs?.[slideIdx] ?? post.cropX ?? 50; }
 export function getSlideCropY(post, slideIdx) { return post.cropYs?.[slideIdx] ?? post.cropY ?? 50; }

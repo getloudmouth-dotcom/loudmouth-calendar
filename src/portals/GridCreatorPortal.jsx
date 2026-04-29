@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { C, SANS, MONO, PAGE_HEADER, PAGE_TITLE, BTN_ROW, primaryBtn, dangerBtn } from "../theme";
 import ReorderFeedGrid from "../components/ReorderFeedGrid";
 import DrivePanel from "../components/DrivePanel";
-import { compressToBlob, uploadToCloudinary } from "../utils";
+import { compressToBlob, uploadToCloudinary, loadGsiScript } from "../utils";
 import { useApp } from "../AppContext";
 
 const GOOGLE_CLIENT_ID = "988412963391-j36f4j6or67871i599o17ui2nai59pi9.apps.googleusercontent.com";
@@ -42,9 +42,11 @@ export default function GridCreatorPortal() {
   }
 
   // ── Drive ─────────────────────────────────────────────────────────────────────
-  function connectDrive() {
-    if (!window.google?.accounts?.oauth2) {
-      showToast("Google auth not loaded yet — wait a second and try again.", "error");
+  async function connectDrive() {
+    try {
+      await loadGsiScript();
+    } catch {
+      showToast("Failed to load Google auth — check your connection.", "error");
       return;
     }
     const client = window.google.accounts.oauth2.initTokenClient({

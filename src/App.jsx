@@ -17,7 +17,7 @@ class ErrorBoundary extends Component {
 // PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
 import { MONTHS, CONTENT_FIELDS, ROLE_TOOLS, ALL_TOOLS, newPost } from "./constants";
-import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, formatDate, chunkArray } from "./utils";
+import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, formatDate, chunkArray, loadGsiScript } from "./utils";
 import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
 import AuthView from "./views/AuthView";
@@ -388,9 +388,12 @@ useEffect(() => {
   const [cpExportToken] = useState(() => readCPExportToken());
   const [billingExportToken] = useState(() => readBillingExportToken());
 
-  function connectDrive() {
-    if (!window.google?.accounts?.oauth2) {
-      return alert("Google auth not loaded yet — wait a second and try again.");
+  async function connectDrive() {
+    try {
+      await loadGsiScript();
+    } catch {
+      showToast("Failed to load Google auth — check your connection.", "error");
+      return;
     }
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: "988412963391-j36f4j6or67871i599o17ui2nai59pi9.apps.googleusercontent.com",
