@@ -4,8 +4,10 @@
 // Access: admin + account_manager roles only (enforced server-side; gated client-side via can("billing")).
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { SANS, MONO, C, INPUT, LABEL, ghostBtn, primaryBtn, PAGE_HEADER, PAGE_TITLE } from "../theme";
+import { SANS, MONO, C, INPUT, LABEL, ghostBtn, primaryBtn, dangerBtn, PAGE_HEADER, PAGE_TITLE } from "../theme";
 import { supabase } from "../supabase";
+import { useApp } from "../AppContext";
+import AppDialog from "../components/AppDialog";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -45,8 +47,10 @@ function emptyLine() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function BillingPortal({ setActivePortal }) {
+  const { showToast } = useApp();
   const [tab, setTab] = useState("invoices");
   const [token, setToken] = useState(null);
+  const [markPaidConfirm, setMarkPaidConfirm] = useState(null);
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const [clients, setClients]   = useState([]);
@@ -218,7 +222,7 @@ export default function BillingPortal({ setActivePortal }) {
       await apiFetch("/api/billing/sms-optin", { method: "POST", body: JSON.stringify({ client_id: clientId }) });
       await loadClients();
     } catch (e) {
-      alert("Failed to send opt-in email: " + e.message);
+      showToast("Failed to send opt-in email: " + e.message, "error");
     } finally {
       setOptinSending(null);
     }
@@ -298,8 +302,11 @@ export default function BillingPortal({ setActivePortal }) {
     }
   }
 
-  async function markPaid(invoice) {
-    if (!window.confirm(`Mark invoice ${invoice.invoice_number} as paid?`)) return;
+  function markPaid(invoice) {
+    setMarkPaidConfirm(invoice);
+  }
+
+  async function confirmMarkPaid(invoice) {
     try {
       await apiFetch(`/api/billing/invoices/${invoice.id}`, {
         method: "PATCH",
@@ -307,7 +314,9 @@ export default function BillingPortal({ setActivePortal }) {
       });
       await loadInvoices();
     } catch (err) {
-      alert("Failed: " + err.message);
+      showToast("Failed: " + err.message, "error");
+    } finally {
+      setMarkPaidConfirm(null);
     }
   }
 
@@ -726,6 +735,15 @@ export default function BillingPortal({ setActivePortal }) {
           </div>
         </div>
       )}
+      <AppDialog open={!!markPaidConfirm} onClose={() => setMarkPaidConfirm(null)} title="Mark as paid">
+        <p style={{ fontSize: 14, color: C.meta, fontFamily: SANS, marginTop: 8, marginBottom: 24, lineHeight: "160%" }}>
+          Mark invoice {markPaidConfirm?.invoice_number} as paid?
+        </p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={() => setMarkPaidConfirm(null)} style={ghostBtn}>Cancel</button>
+          <button onClick={() => confirmMarkPaid(markPaidConfirm)} style={dangerBtn}>Mark paid</button>
+        </div>
+      </AppDialog>
     </div>
   );
 }

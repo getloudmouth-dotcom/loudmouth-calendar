@@ -21,7 +21,7 @@ export default function AuthView({ authMode, setAuthMode, authEmail, setAuthEmai
         <input id="auth-password" type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && (authMode === "login" ? signIn() : signUp())} style={{ ...inputStyle, marginBottom: 16 }} />
 
         {authError && (
-          <div style={{ fontSize: 12, color: authError.includes("Check") ? "#7fd99e" : "#ff4444", marginBottom: 12, textAlign: "center", fontFamily: SANS, lineHeight: 1 }}>{authError}</div>
+          <div style={{ fontSize: 12, color: authError.includes("Check") ? "#7fd99e" : C.error, marginBottom: 12, textAlign: "center", fontFamily: SANS, lineHeight: 1 }}>{authError}</div>
         )}
 
         <button onClick={authMode === "login" ? signIn : signUp} disabled={authBusy} style={{ width: "100%", padding: "11px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: "pointer", letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO, lineHeight: 1 }}>

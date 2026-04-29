@@ -5,12 +5,15 @@ import { Toaster } from "../components/ui/sonner";
 import NavProfileMenu from "../components/NavProfileMenu";
 import CollabAvatars from "../components/CollabAvatars";
 import CalendarListPortal from "./CalendarListPortal";
+import ClientListPortal from "./ClientListPortal";
+import ClientPortal from "./ClientPortal";
+import MonthWorkspace from "./MonthWorkspace";
 import SchedulingPortal from "./SchedulingPortal";
 import AdminPortal from "./AdminPortal";
 import ContentPlanPortal from "./ContentPlanPortal";
 import BillingPortal from "./BillingPortal";
 import GridCreatorPortal from "./GridCreatorPortal";
-import { SANS, MONO, C, DISP } from "../theme";
+import { SANS, MONO, C, DISP, BADGE } from "../theme";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const icons = {
@@ -69,25 +72,41 @@ const icons = {
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" strokeWidth="2"/>
     </svg>
   ),
+  clients: (
+    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
+      <path d="M2 21c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="19" cy="7" r="3" stroke="currentColor" strokeWidth="2"/>
+      <path d="M22 21c0-3-2-5-3-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
 };
 
-const NAV_ITEMS = [
-  { key: "calendar",     permission: "calendar_creator",     label: "Calendar Creator",    icon: icons.calendar },
-  { key: "grid",         permission: "grid_creator",         label: "Grid Creator",        icon: icons.grid },
-  { key: "content-plan", permission: "content_plan_creator", label: "Content Plans",       icon: icons.contentPlan },
-  { key: "scheduling",   permission: "content_scheduling",   label: "Scheduling",          icon: icons.scheduling },
-  { key: "admin",        permission: "admin_portal",         label: "Admin",               icon: icons.admin },
-  { key: "billing",      permission: "billing",              label: "Billing",             icon: icons.billing },
+const TOOL_ITEMS = [
+  { key: "scheduling",   permission: "content_scheduling",   label: "Scheduling",   icon: icons.scheduling },
+  { key: "content-plan", permission: "content_plan_creator", label: "Content Plans",icon: icons.contentPlan },
+  { key: "grid",         permission: "grid_creator",         label: "Grid Creator", icon: icons.grid },
+  { key: "admin",        permission: "admin_portal",         label: "Admin",        icon: icons.admin },
+  { key: "billing",      permission: "billing",              label: "Billing",      icon: icons.billing },
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, can, signOut, setProfileInput, setEditingProfile, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults, onOpenRolePerms }) {
+export function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, can, signOut, setProfileInput, setEditingProfile, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults, onOpenRolePerms, clients, workspaceClientId, onSelectClient, addClientDirect }) {
   const { user } = useApp();
   const today = new Date();
   const upcomingCount = scheduledPosts.filter(r => r.post_date >= today.toISOString().slice(0, 10)).length;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [addingClient, setAddingClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
 
-  function navigate(key, permission) {
+  async function handleAddClient() {
+    if (!newClientName.trim()) return;
+    await addClientDirect(newClientName.trim());
+    setNewClientName("");
+    setAddingClient(false);
+  }
+
+  function navigateTool(key, permission) {
     if (permission === "content_plan_creator") loadAllContentPlans();
     if (permission === "admin_portal") {
       if (adminUsers.length === 0) loadAdminUsers();
@@ -122,42 +141,111 @@ function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, c
         </button>
       </div>
 
-      {/* Nav items */}
-      <nav style={{ flex: 1, padding: "10px 0", overflowY: "auto" }}>
-        {NAV_ITEMS.filter(item => can(item.permission)).map(item => {
-          const isActive = activePortal === item.key;
-          const badge = item.key === "scheduling" && upcomingCount > 0 ? upcomingCount : null;
+      {/* Clients section header */}
+      <div style={{ padding: "12px 16px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>Clients</span>
+        <button
+          onClick={() => { setAddingClient(a => !a); setNewClientName(""); }}
+          title="Add client"
+          style={{ background: "none", border: "none", color: addingClient ? C.accent : C.meta, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px", display: "flex", alignItems: "center", transition: "color 0.12s" }}
+          onMouseEnter={e => e.currentTarget.style.color = C.accent}
+          onMouseLeave={e => e.currentTarget.style.color = addingClient ? C.accent : C.meta}
+        >+</button>
+      </div>
+
+      {/* Add client inline input */}
+      {addingClient && (
+        <div style={{ padding: "4px 12px 8px" }}>
+          <input
+            autoFocus
+            aria-label="New client name"
+            value={newClientName}
+            onChange={e => setNewClientName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleAddClient(); if (e.key === "Escape") { setAddingClient(false); setNewClientName(""); } }}
+            placeholder="Client name..."
+            style={{ width: "100%", padding: "7px 10px", background: C.canvas, border: `1px solid ${C.accent}`, borderRadius: 6, color: C.text, fontFamily: SANS, fontSize: 12, outline: "none", boxSizing: "border-box" }}
+          />
+        </div>
+      )}
+
+      {/* Client list */}
+      <nav style={{ flex: 1, overflowY: "auto", paddingBottom: 6 }}>
+        {clients.map(client => {
+          const isActive = activePortal === "clients" && workspaceClientId === client.id;
           return (
-            <div key={item.key} onClick={() => navigate(item.key, item.permission)}
+            <button
+              key={client.id}
+              onClick={() => onSelectClient(client.id)}
+              aria-current={isActive ? "page" : undefined}
               style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
+                display: "flex", alignItems: "center", gap: 9, padding: "8px 16px",
+                width: "100%", textAlign: "left", background: isActive ? "rgba(204,255,0,0.08)" : "transparent",
+                border: "none", borderLeft: isActive ? `2px solid ${C.accent}` : "2px solid transparent",
                 cursor: "pointer", transition: "background 0.12s",
-                background: isActive ? "rgba(204,255,0,0.08)" : "transparent",
-                borderLeft: isActive ? `2px solid ${C.accent}` : "2px solid transparent",
-                color: isActive ? C.accent : C.meta,
               }}
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}>
-              <span style={{ flexShrink: 0 }}>{item.icon}</span>
-              <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: isActive ? 600 : 400, flex: 1 }}>{item.label}</span>
-              {badge && (
-                <span style={{ background: C.accent, color: "#000", borderRadius: 20, padding: "2px 7px", fontSize: 9, fontWeight: 700, fontFamily: MONO }}>
-                  {badge}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+            >
+              <div style={{ width: 26, height: 26, borderRadius: 7, background: isActive ? C.accent : "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.12s" }}>
+                <span style={{ fontFamily: DISP, fontSize: 12, color: isActive ? "#000" : C.meta, lineHeight: 1 }}>
+                  {(client.name || "?")[0].toUpperCase()}
                 </span>
-              )}
-            </div>
+              </div>
+              <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: isActive ? 600 : 400, color: isActive ? C.text : C.meta, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {client.name}
+              </span>
+            </button>
           );
         })}
+        {clients.length === 0 && !addingClient && (
+          <div style={{ padding: "16px 16px", fontFamily: MONO, fontSize: 10, color: C.meta, textTransform: "uppercase", letterSpacing: "1.2px" }}>
+            No clients yet
+          </div>
+        )}
       </nav>
+
+      {/* Tool icons row */}
+      {TOOL_ITEMS.some(t => can(t.permission)) && (
+        <div style={{ borderTop: `1px solid ${C.border}`, padding: "8px 12px", display: "flex", gap: 4, justifyContent: "flex-start", flexWrap: "wrap" }}>
+          {TOOL_ITEMS.filter(t => can(t.permission)).map(item => {
+            const isActive = activePortal === item.key;
+            const badge = item.key === "scheduling" && upcomingCount > 0 ? upcomingCount : null;
+            return (
+              <div key={item.key} style={{ position: "relative" }}>
+                <button
+                  onClick={() => navigateTool(item.key, item.permission)}
+                  title={item.label}
+                  style={{
+                    background: isActive ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.06)",
+                    border: "none", borderRadius: 7, width: 32, height: 32,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", color: isActive ? C.accent : C.meta,
+                    transition: "background 0.12s, color 0.12s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = C.text; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isActive ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.06)"; e.currentTarget.style.color = isActive ? C.accent : C.meta; }}
+                >
+                  {item.icon}
+                </button>
+                {badge && (
+                  <span style={{ position: "absolute", top: -4, right: -4, background: C.accent, color: "#000", borderRadius: 20, padding: "1px 5px", fontSize: 8, fontWeight: 700, fontFamily: MONO, pointerEvents: "none" }}>
+                    {badge}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Logo + settings */}
       <div style={{ padding: "16px 20px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
-        <div onClick={() => setActivePortal(null)} style={{ flex: 1, cursor: "pointer", minWidth: 0 }}>
+        <button onClick={() => setActivePortal(null)} aria-label="Go to home dashboard" style={{ flex: 1, cursor: "pointer", minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "left" }}>
           <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
           <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: -2 }}>
             {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </div>
-        </div>
+        </button>
         <button
           onClick={() => setSettingsOpen(o => !o)}
           title="Settings"
@@ -246,7 +334,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
     .sort((a, b) => a.post_date.localeCompare(b.post_date))
     .slice(0, 5);
 
-  const statusColor = { approved: "#CCFF00", pending: C.meta, denied: "#ff4444" };
+  const statusColor = { approved: "#CCFF00", pending: C.meta, denied: C.error };
 
   return (
     <div style={{ padding: "40px 48px 80px" }}>
@@ -268,8 +356,9 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
         <SectionHeader label="Recently Edited Calendars" />
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
           {recentCals.map(cal => (
-            <div key={cal.id} onClick={() => openCalendar(cal)}
-              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
+            <button key={cal.id} onClick={() => openCalendar(cal)}
+              aria-label={`Open ${cal.client_name} calendar`}
+              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
               onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -281,7 +370,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                   <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                     <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
                     {cal.user_id !== user?.id && (
-                      <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.8px", background: "rgba(68,102,204,0.15)", color: "#7799ff", borderRadius: 4, padding: "2px 5px", flexShrink: 0 }}>SHARED</span>
+                      <span style={{ ...BADGE, flexShrink: 0 }}>SHARED</span>
                     )}
                   </div>
                   <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
@@ -294,16 +383,17 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                 {cal.updated_at ? `Saved ${new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
                 {cal.last_updated_by ? ` · ${cal.last_updated_by}` : ""}
               </div>
-            </div>
+            </button>
           ))}
           {/* Dashed "New Calendar" card */}
-          <div onClick={newCalendar}
-            style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta }}
+          <button onClick={newCalendar}
+            aria-label="Create new calendar"
+            style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta, background: "transparent" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
             <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
             <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Calendar</span>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -317,8 +407,9 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                 ? (plan.items.every(i => i.approval_status === "approved") ? "approved" : "pending")
                 : "pending";
               return (
-                <div key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
-                  style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s" }}
+                <button key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+                  aria-label={`Open content plan for ${plan.client_name || "untitled"}`}
+                  style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
                   onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
                   <div style={{ fontWeight: 600, fontSize: 13, color: C.text, fontFamily: SANS, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -341,17 +432,18 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                     {plan.updated_at ? `Saved ${new Date(plan.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
                     {plan.last_updated_by ? ` · ${plan.last_updated_by}` : ""}
                   </div>
-                </div>
+                </button>
               );
             })}
             {/* Dashed "New Plan" card */}
-            <div onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
-              style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 90, transition: "all 0.15s", color: C.meta }}
+            <button onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+              aria-label="Go to content plans"
+              style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 90, transition: "all 0.15s", color: C.meta, background: "transparent" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
               <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
               <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Plan</span>
-            </div>
+            </button>
           </div>
         </div>
       )}
@@ -375,8 +467,9 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {upcomingPosts.map(post => (
-                <div key={post.id} onClick={() => setActivePortal("scheduling")}
-                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "border-color 0.15s" }}
+                <button key={post.id} onClick={() => setActivePortal("scheduling")}
+                  aria-label={`View ${post.client_name} scheduled post`}
+                  style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "border-color 0.15s", width: "100%", textAlign: "left" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
                   onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
                   <div style={{ flexShrink: 0, textAlign: "center", minWidth: 44 }}>
@@ -399,7 +492,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                   {post.notify && (
                     <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, color: C.accent, background: "rgba(204,255,0,0.1)", borderRadius: 20, padding: "2px 8px", flexShrink: 0 }}>Notify</span>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -446,9 +539,14 @@ export default function DashboardPortal({
   loadAdminUsers, loadRoleToolDefaults,
   loadAllContentPlans,
   signOut,
+  workspaceClientId, setWorkspaceClientId,
+  workspaceCalendarId, setWorkspaceCalendarId,
+  newMonthForClient,
+  addClientDirect,
 }) {
   const { can } = useApp();
   const [adminInitialTab, setAdminInitialTab] = useState(null);
+  const [workspaceTab, setWorkspaceTab] = useState("grid");
 
   function openRolePerms() {
     setAdminInitialTab("roles");
@@ -474,6 +572,10 @@ export default function DashboardPortal({
         adminUsers={adminUsers}
         roleToolDefaults={roleToolDefaults}
         onOpenRolePerms={openRolePerms}
+        clients={clients || []}
+        workspaceClientId={workspaceClientId}
+        onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal("clients"); }}
+        addClientDirect={addClientDirect}
       />
 
       {/* ── Main content ── */}
@@ -579,6 +681,45 @@ export default function DashboardPortal({
         {activePortal === "grid" && can("grid_creator") && (
           <GridCreatorPortal setActivePortal={setActivePortal} />
         )}
+
+        {activePortal === "clients" && can("calendar_creator") && (() => {
+          const workspaceClient = clients?.find(c => c.id === workspaceClientId) || null;
+          const workspaceCalendar = allCalendars?.find(c => c.id === workspaceCalendarId) || null;
+
+          if (workspaceClient && workspaceCalendar) {
+            return (
+              <MonthWorkspace
+                calendar={workspaceCalendar}
+                client={workspaceClient}
+                allCalendars={allCalendars}
+                onBack={() => setWorkspaceCalendarId(null)}
+                onOpenCalendar={openCalendar}
+                activeTab={workspaceTab}
+                setActiveTab={setWorkspaceTab}
+              />
+            );
+          }
+
+          if (workspaceClient) {
+            return (
+              <ClientPortal
+                client={workspaceClient}
+                allCalendars={allCalendars}
+                onBack={() => setWorkspaceClientId(null)}
+                onSelectCalendar={(cal) => setWorkspaceCalendarId(cal.id)}
+                onNewMonth={newMonthForClient}
+              />
+            );
+          }
+
+          return (
+            <ClientListPortal
+              clients={clients || []}
+              allCalendars={allCalendars}
+              setWorkspaceClientId={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); }}
+            />
+          );
+        })()}
       </main>
 
       {/* ── Export overlay ── */}
@@ -615,7 +756,7 @@ export default function DashboardPortal({
           <div style={{ background: C.surface, borderRadius: 16, width: 360, padding: 28, border: `1px solid ${C.border}` }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 4, fontFamily: SANS }}>Edit Profile</div>
             <div style={{ fontSize: 12, color: C.meta, marginBottom: 18, fontFamily: SANS }}>This name appears in calendar footers and your account.</div>
-            <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..."
+            <input autoFocus aria-label="Your display name" value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..."
               style={{ width: "100%", padding: "10px 14px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, background: C.canvas, color: C.text, fontFamily: SANS }} />
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: "pointer", letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>Save</button>
@@ -654,7 +795,7 @@ export default function DashboardPortal({
             )}
             <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO }}>Add collaborator</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input value={shareEmail} onChange={e => setShareEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && addCollaborator(shareModal.cal)} placeholder="colleague@example.com"
+              <input aria-label="Collaborator email address" value={shareEmail} onChange={e => setShareEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && addCollaborator(shareModal.cal)} placeholder="colleague@example.com"
                 style={{ flex: 1, padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 13, outline: "none", background: C.canvas, color: C.text, fontFamily: SANS }} />
               <select value={sharePermission} onChange={e => setSharePermission(e.target.value)}
                 style={{ padding: "9px 10px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, outline: "none", background: C.canvas, color: C.text, fontFamily: SANS }}>
@@ -662,7 +803,7 @@ export default function DashboardPortal({
                 <option value="viewer">Viewer</option>
               </select>
             </div>
-            {shareError && <div style={{ fontSize: 12, color: "#ff4444", marginBottom: 10, fontFamily: SANS }}>{shareError}</div>}
+            {shareError && <div style={{ fontSize: 12, color: C.error, marginBottom: 10, fontFamily: SANS }}>{shareError}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => addCollaborator(shareModal.cal)} disabled={shareBusy || !shareEmail.trim()}
                 style={{ flex: 1, padding: "10px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: shareBusy || !shareEmail.trim() ? "default" : "pointer", opacity: shareEmail.trim() ? 1 : 0.4, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>

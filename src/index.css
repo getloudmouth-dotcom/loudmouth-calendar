@@ -101,6 +101,12 @@
   html { @apply font-sans; }
 }
 
+/* Calendar Builder animations */
+@keyframes driveShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes cardSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes offlinePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -109,13 +115,18 @@
   }
 }
 
-/* Focus rings */
+/* Focus rings — Loudmouth Green ring on all interactive elements */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: none !important;
-  outline-offset: 0 !important;
-  border-color: var(--brand) !important;
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px !important;
+  border-color: var(--ring) !important;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 body { margin: 0; background: var(--canvas); }

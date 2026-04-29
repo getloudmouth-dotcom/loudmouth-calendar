@@ -50,7 +50,9 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
 
         {myPosts.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 0", gap: 12 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>🗓</div>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1px" }}>CAL</span>
+            </div>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: SANS }}>No scheduled posts yet</div>
             <div style={{ fontSize: 13, color: C.meta, textAlign: "center", maxWidth: 360 }}>
               Open the Calendar Creator, then click "+ Schedule" on any calendar to add its posting dates here.

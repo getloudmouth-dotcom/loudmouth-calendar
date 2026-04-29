@@ -575,7 +575,7 @@ export default function ContentPlanPortal({
                             style={INPUT}
                           />
                           {overrideEmail !== null && overrideEmail !== client?.email && (
-                            <div style={{ fontSize: 11, color: "#ff4444", marginTop: 3, lineHeight: 1 }}>Using override — client's saved email unchanged</div>
+                            <div style={{ fontSize: 11, color: C.error, marginTop: 3, lineHeight: 1 }}>Using override — client's saved email unchanged</div>
                           )}
                         </div>
                       )}
@@ -590,14 +590,14 @@ export default function ContentPlanPortal({
                             style={INPUT}
                           />
                           {overridePhone !== null && overridePhone !== client?.phone && (
-                            <div style={{ fontSize: 11, color: "#ff4444", marginTop: 3, lineHeight: 1 }}>Using override — client's saved number unchanged</div>
+                            <div style={{ fontSize: 11, color: C.error, marginTop: 3, lineHeight: 1 }}>Using override — client's saved number unchanged</div>
                           )}
                         </div>
                       )}
                     </div>
                   )}
                   {cpShareSuccess && <div style={{ fontSize: 13, color: C.accent, fontWeight: 700, marginBottom: 10, lineHeight: 1 }}>{cpShareSuccess}</div>}
-                  {cpShareError && <div style={{ fontSize: 12, color: "#ff4444", marginBottom: 10, lineHeight: 1 }}>{cpShareError}</div>}
+                  {cpShareError && <div style={{ fontSize: 12, color: C.error, marginBottom: 10, lineHeight: 1 }}>{cpShareError}</div>}
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={() => doSendContentPlan(overridePhone, overrideEmail)}

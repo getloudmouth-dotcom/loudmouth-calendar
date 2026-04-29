@@ -123,8 +123,8 @@ export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUser
             title="Send a test reminder email right now"
             style={{
               background: testStatus === "sent" ? "rgba(127,217,158,0.12)" : testStatus === "error" ? "rgba(255,68,68,0.1)" : "transparent",
-              border: `1px solid ${testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? "#ff4444" : C.border}`,
-              color: testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? "#ff4444" : C.meta,
+              border: `1px solid ${testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? C.error : C.border}`,
+              color: testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? C.error : C.meta,
               borderRadius: 20,
               padding: "4px 10px",
               fontFamily: MONO,
@@ -143,7 +143,7 @@ export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUser
             disabled={removing}
             title="Remove from schedule"
             style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.meta, borderRadius: "50%", width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, lineHeight: 1, cursor: removing ? "default" : "pointer", flexShrink: 0, transition: "all 0.15s" }}
-            onMouseEnter={e => { if (!removing) { e.currentTarget.style.borderColor = "#ff4444"; e.currentTarget.style.color = "#ff4444"; } }}
+            onMouseEnter={e => { if (!removing) { e.currentTarget.style.borderColor = C.error; e.currentTarget.style.color = C.error; } }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}
           >
             {removing ? "…" : "×"}

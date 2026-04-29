@@ -29,7 +29,7 @@ export default function NavProfileMenu({ profileName, userEmail, currentCalendar
             {currentCalendarId && <NavMenuItem onClick={() => { setOpen(false); onHistory(); }}>Version History</NavMenuItem>}
             <NavMenuItem onClick={() => { setOpen(false); onEditProfile(); }}>Edit Profile</NavMenuItem>
             <div style={{ borderTop: `1px solid ${C.border}` }}>
-              <NavMenuItem onClick={() => { setOpen(false); onSignOut(); }} color="#ff4444">Sign out</NavMenuItem>
+              <NavMenuItem onClick={() => { setOpen(false); onSignOut(); }} color={C.error}>Sign out</NavMenuItem>
             </div>
           </div>
         </>

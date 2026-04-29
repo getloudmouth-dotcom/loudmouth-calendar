@@ -25,8 +25,10 @@ import ProfileSetupView from "./views/ProfileSetupView";
 import InviteSetupView from "./views/InviteSetupView";
 import PrivacyPolicyView from "./views/PrivacyPolicyView";
 import { AppContext } from "./AppContext";
+import AppDialog from "./components/AppDialog";
+import { C, SANS, MONO, dangerBtn, ghostBtn } from "./theme";
 import CalendarBuilder from "./portals/CalendarBuilder";
-import DashboardPortal from "./portals/DashboardPortal";
+import DashboardPortal, { Sidebar } from "./portals/DashboardPortal";
 
 // ── Billing Invoice Export View ───────────────────────────────────────────────
 // Rendered headlessly by Puppeteer when generating invoice PDFs.
@@ -222,7 +224,9 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [scheduledPosts, setScheduledPosts] = useState([]);
   const [showScheduleView, setShowScheduleView] = useState(false);
   const [schedulingCalId, setSchedulingCalId] = useState(null);
-  const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin'
+  const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin' | 'clients'
+  const [workspaceClientId, setWorkspaceClientId] = useState(null);
+  const [workspaceCalendarId, setWorkspaceCalendarId] = useState(null);
   // ── RBAC ──
   const [userProfile, setUserProfile] = useState(null);
   const [userToolAccess, setUserToolAccess] = useState([]);
@@ -269,6 +273,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [pinterestToken, setPinterestToken] = useState(null);
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const [pinterestPanelWidth, setPinterestPanelWidth] = useState(300);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, message: "", onConfirm: null });
   const cpAutoSaveTimerRef = useRef(null);
   // toast state removed — using sonner globally
   // ── Realtime ──
@@ -445,7 +450,7 @@ useEffect(() => {
         arr[postIdx] = post;
         return { ...p, [day]: arr };
       });
-    } catch (e) { alert("Drive drop failed: " + e.message); }
+    } catch (e) { showToast("Drive drop failed: " + e.message, "error"); }
     finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
 
@@ -484,7 +489,7 @@ useEffect(() => {
         return next;
       });
       if (newDays.length > 0) setSelectedDays(prev => [...new Set([...prev, ...newDays])]);
-    } catch (e) { alert("Drive batch import failed: " + e.message); }
+    } catch (e) { showToast("Drive batch import failed: " + e.message, "error"); }
     finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
   const daysInMonth = getDaysInMonth(year, month);
@@ -612,7 +617,7 @@ useEffect(() => {
         arr[postIdx] = post;
         return { ...p, [day]: arr };
       });
-    } catch(e) { alert("Upload failed: " + e.message); }
+    } catch(e) { showToast("Upload failed: " + e.message, "error"); }
     finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
 
@@ -640,7 +645,7 @@ useEffect(() => {
         return url;
       }));
     } catch(e) {
-      alert("Upload failed: " + e.message);
+      showToast("Upload failed: " + e.message, "error");
       setDriveUploadProgress({ active: false, done: 0, total: 0 });
       return;
     }
@@ -693,18 +698,24 @@ useEffect(() => {
     setAddingClient(false);
   }
 
+  async function addClientDirect(name) {
+    if (!name) return;
+    await supabase.from("clients").insert({ name, created_by: (await supabase.auth.getUser()).data.user?.id });
+    await loadClients();
+  }
+
   async function exportPDF() {
     // Auto-save silently before export so Puppeteer has data to pull from Supabase
     if (!currentCalendarId) {
       const saved = await saveDraft("Auto-save before export", { silent: true });
       if (!saved) {
-        alert("Could not save your calendar before exporting. Please save manually and try again.");
+        showToast("Could not save your calendar before exporting. Please save manually and try again.", "error");
         return;
       }
       await new Promise(r => setTimeout(r, 150)); // let state flush
     }
     if (!currentCalendarId) {
-      alert("Save failed. Please save your calendar manually first.");
+      showToast("Save failed. Please save your calendar manually first.", "error");
       return;
     }
     setExporting(true);
@@ -747,7 +758,7 @@ useEffect(() => {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Export error: " + err.message);
+      showToast("Export error: " + err.message, "error");
     } finally {
       clearInterval(_exportTimer);
       setExporting(false);
@@ -943,7 +954,7 @@ useEffect(() => {
     const name = profileInput.trim();
     if (!name) return;
     const { error } = await supabase.auth.updateUser({ data: { display_name: name } });
-    if (error) return alert("Failed to save: " + error.message);
+    if (error) { showToast("Failed to save: " + error.message, "error"); return; }
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (currentUser) {
       await supabase.from("profiles").update({
@@ -964,6 +975,10 @@ useEffect(() => {
     setUser(null); setShowDashboard(true); setAllCalendars([]);
     setCurrentCalendarId(null); setClientName(""); setSelectedDays([]); setPosts({});
     setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);
+  }
+
+  function showConfirm(message, onConfirm) {
+    setConfirmDialog({ open: true, message, onConfirm });
   }
 
   function showToast(msg, type = "info") {
@@ -1052,7 +1067,7 @@ useEffect(() => {
       if (desired.length > 0) await supabase.from("role_tool_defaults").insert(desired);
       setRoleToolDefaults(newMap);
     } catch (e) {
-      alert("Failed to save role permissions: " + e.message);
+      showToast("Failed to save role permissions: " + e.message, "error");
     }
     setRolePermsBusy(false);
   }
@@ -1100,7 +1115,7 @@ useEffect(() => {
       setEditingUser(null);
       await loadAdminUsers();
     } catch (e) {
-      alert("Failed to update user: " + e.message);
+      showToast("Failed to update user: " + e.message, "error");
     }
     setEditUserBusy(false);
   }
@@ -1119,7 +1134,7 @@ useEffect(() => {
       setEditingUser(null);
       await loadAdminUsers();
     } catch (e) {
-      alert("Failed to delete user: " + e.message);
+      showToast("Failed to delete user: " + e.message, "error");
     }
     setDeleteUserBusy(false);
   }
@@ -1198,11 +1213,11 @@ useEffect(() => {
   async function saveDraft(label = "", options = {}) {
     const silent = options.silent === true;
     if (!clientName.trim()) {
-      if (!silent) alert("Please select a client first.");
+      if (!silent) showToast("Please select a client first.", "warning");
       return false;
     }
     if (!user) {
-      if (!silent) alert("Please log in first.");
+      if (!silent) showToast("Please log in first.", "warning");
       return false;
     }
     const lbl = label || savingLabel || "Manual save";
@@ -1225,7 +1240,7 @@ useEffect(() => {
       }, { onConflict: "user_id,client_name,month,year" }).select().single());
     }
     if (calErr) {
-      if (!silent) alert("Save failed: " + calErr.message);
+      if (!silent) showToast("Save failed: " + calErr.message, "error");
       return false;
     }
     setCurrentCalendarId(calData.id);
@@ -1233,29 +1248,31 @@ useEffect(() => {
       calendar_id: calData.id, posts, label: lbl, user_id: user.id,
     });
     if (draftErr) {
-      if (!silent) alert("Save failed: " + draftErr.message);
+      if (!silent) showToast("Save failed: " + draftErr.message, "error");
       return false;
     }
     await loadAllCalendars();
     await loadDraftHistory(calData.id);
     setSavingLabel("");
-    if (!silent) alert(`Saved: ${clientName} — ${MONTHS[month]} ${year}`);
+    if (!silent) showToast(`Saved: ${clientName} — ${MONTHS[month]} ${year}`, "success");
     return true;
   }
 
-  async function restoreDraft(draft) {
-    if (!window.confirm(`Restore draft from ${new Date(draft.saved_at).toLocaleString()}?`)) return;
-    setPosts(draft.posts);
-    setShowDraftHistory(false);
+  function restoreDraft(draft) {
+    showConfirm(`Restore draft from ${new Date(draft.saved_at).toLocaleString()}?`, () => {
+      setPosts(draft.posts);
+      setShowDraftHistory(false);
+    });
   }
 
-  async function deleteCalendar(cal) {
-    if (!window.confirm(`Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`)) return;
-    await supabase.from("calendars").delete().eq("id", cal.id);
-    await loadAllCalendars();
-    if (currentCalendarId === cal.id) {
-      setCurrentCalendarId(null); setShowDashboard(true);
-    }
+  function deleteCalendar(cal) {
+    showConfirm(`Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`, async () => {
+      await supabase.from("calendars").delete().eq("id", cal.id);
+      await loadAllCalendars();
+      if (currentCalendarId === cal.id) {
+        setCurrentCalendarId(null); setShowDashboard(true);
+      }
+    });
   }
 
   // ── Schedule ──
@@ -1325,7 +1342,7 @@ useEffect(() => {
           notify: true,
         }));
         if (rows.length === 0) {
-          alert("This calendar has no selected days to schedule.");
+          showToast("This calendar has no selected days to schedule.", "warning");
           return;
         }
         const { error } = await supabase
@@ -1333,10 +1350,10 @@ useEffect(() => {
           .upsert(rows, { onConflict: "user_id,calendar_id,post_date", ignoreDuplicates: false });
         if (error) throw error;
         await loadScheduledPosts();
-        alert(`Scheduled ${rows.length} posting day${rows.length > 1 ? "s" : ""} for ${cal.client_name}.`);
+        showToast(`Scheduled ${rows.length} posting day${rows.length > 1 ? "s" : ""} for ${cal.client_name}.`, "success");
       }
     } catch (e) {
-      alert("Failed: " + e.message);
+      showToast("Failed: " + e.message, "error");
     } finally {
       setSchedulingCalId(null);
     }
@@ -1401,6 +1418,66 @@ useEffect(() => {
 
   const stepLabels = ["Setup", "Pick Days", "Content", "Preview"];
 
+  // ── New month for client (month continuity) ──
+  async function newMonthForClient(client, fromCalendar) {
+    let nextMonth, nextYear;
+    if (fromCalendar) {
+      nextMonth = (fromCalendar.month + 1) % 12;
+      nextYear = fromCalendar.month === 11 ? fromCalendar.year + 1 : fromCalendar.year;
+    } else {
+      nextMonth = today.getMonth();
+      nextYear = today.getFullYear();
+    }
+
+    const { data: newCal, error } = await supabase
+      .from("calendars")
+      .insert({
+        user_id: user.id,
+        client_name: client.name,
+        client_id: client.id,
+        month: nextMonth,
+        year: nextYear,
+        prev_calendar_id: fromCalendar?.id || null,
+        selected_days: [],
+        posts_per_page: 3,
+      })
+      .select()
+      .single();
+
+    if (error) { showToast("Failed to create new month: " + error.message, "error"); return; }
+
+    // Copy pinned posts from previous month
+    if (fromCalendar) {
+      const { data: drafts } = await supabase
+        .from("calendar_drafts")
+        .select("posts")
+        .eq("calendar_id", fromCalendar.id)
+        .order("saved_at", { ascending: false })
+        .limit(1);
+      if (drafts?.[0]?.posts) {
+        const prevPosts = drafts[0].posts;
+        const pinnedPosts = {};
+        Object.entries(prevPosts).forEach(([day, dayPosts]) => {
+          const pinned = (dayPosts || []).filter(p => p.pinned);
+          if (pinned.length) pinnedPosts[day] = pinned;
+        });
+        if (Object.keys(pinnedPosts).length) {
+          await supabase.from("calendar_drafts").insert({
+            calendar_id: newCal.id,
+            user_id: user.id,
+            label: `Pinned from ${MONTHS[fromCalendar.month]} ${fromCalendar.year}`,
+            posts: pinnedPosts,
+            saved_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    await loadAllCalendars();
+    setWorkspaceCalendarId(newCal.id);
+    showToast(`Created ${MONTHS[nextMonth]} ${nextYear} for ${client.name}`, "success");
+  }
+
   // ── Content Plan helpers ──
   async function loadAllContentPlans() {
     if (!user) return;
@@ -1411,15 +1488,16 @@ useEffect(() => {
     setAllContentPlans(data || []);
   }
 
-  async function deleteContentPlan(plan) {
-    if (!window.confirm(`Delete "${plan.client_name}" content plan? This cannot be undone.`)) return;
-    try {
-      await supabase.from("content_plan_items").delete().eq("plan_id", plan.id);
-      await supabase.from("content_plans").delete().eq("id", plan.id);
-      setAllContentPlans(prev => prev.filter(p => p.id !== plan.id));
-    } catch (err) {
-      console.error("Delete failed:", err);
-    }
+  function deleteContentPlan(plan) {
+    showConfirm(`Delete "${plan.client_name}" content plan? This cannot be undone.`, async () => {
+      try {
+        await supabase.from("content_plan_items").delete().eq("plan_id", plan.id);
+        await supabase.from("content_plans").delete().eq("id", plan.id);
+        setAllContentPlans(prev => prev.filter(p => p.id !== plan.id));
+      } catch (err) {
+        console.error("Delete failed:", err);
+      }
+    });
   }
 
   function generateCPItems(producedN, organicN, existing = []) {
@@ -1745,8 +1823,12 @@ useEffect(() => {
         pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
         pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
         signOut={signOut}
-
+        workspaceClientId={workspaceClientId} setWorkspaceClientId={setWorkspaceClientId}
+        workspaceCalendarId={workspaceCalendarId} setWorkspaceCalendarId={setWorkspaceCalendarId}
+        newMonthForClient={newMonthForClient}
+        addClientDirect={addClientDirect}
       />
+      <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
     </AppContext.Provider>
     </ErrorBoundary>
   );
@@ -1755,6 +1837,30 @@ useEffect(() => {
   return (
     <ErrorBoundary>
     <AppContext.Provider value={{ can, showToast, user, isOnline }}>
+      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+        {step <= 2 && (
+          <Sidebar
+            activePortal={activePortal}
+            setActivePortal={(key) => { setActivePortal(key); setShowDashboard(true); }}
+            profileName={profileName}
+            scheduledPosts={scheduledPosts}
+            can={can}
+            signOut={signOut}
+            setProfileInput={setProfileInput}
+            setEditingProfile={setEditingProfile}
+            loadAllContentPlans={loadAllContentPlans}
+            loadAdminUsers={loadAdminUsers}
+            loadRoleToolDefaults={loadRoleToolDefaults}
+            adminUsers={adminUsers || []}
+            roleToolDefaults={roleToolDefaults}
+            onOpenRolePerms={() => { setActivePortal("admin"); setShowDashboard(true); }}
+            clients={clients || []}
+            workspaceClientId={workspaceClientId}
+            onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal("clients"); setShowDashboard(true); }}
+            addClientDirect={addClientDirect}
+          />
+        )}
+        <div style={{ flex: 1, overflowY: "auto" }}>
       <CalendarBuilder
         step={step} setStep={setStep} stepLabels={stepLabels}
         clientName={clientName} setClientName={setClientName}
@@ -1800,8 +1906,24 @@ useEffect(() => {
         calCollaborators={calCollaborators}
 
       />
+        </div>
+      </div>
+      <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
     </AppContext.Provider>
     </ErrorBoundary>
   );
 
+}
+
+function ConfirmDialog({ confirmDialog, setConfirmDialog }) {
+  const close = () => setConfirmDialog(d => ({ ...d, open: false }));
+  return (
+    <AppDialog open={confirmDialog.open} onClose={close} title="Confirm">
+      <p style={{ fontSize: 14, color: C.meta, fontFamily: SANS, marginTop: 8, marginBottom: 24, lineHeight: "160%" }}>{confirmDialog.message}</p>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button onClick={close} style={ghostBtn}>Cancel</button>
+        <button onClick={() => { confirmDialog.onConfirm?.(); close(); }} style={dangerBtn}>Confirm</button>
+      </div>
+    </AppDialog>
+  );
 }
