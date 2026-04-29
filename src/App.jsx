@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, Component } from "react";
+import { toast as sonnerToast } from "sonner";
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -72,22 +73,22 @@ function BillingInvoiceExportView({ token }) {
       {/* Meta */}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 40 }}>
         <div>
-          <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Invoice #</div>
+          <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Invoice #</div>
           <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: "-0.5px" }}>{invoice.invoiceNumber}</div>
           <div style={{ marginTop: 20 }}>
-            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Bill To</div>
+            <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Bill To</div>
             <div style={{ fontWeight: 800, fontSize: 16 }}>{invoice.client?.name ?? ""}</div>
             {invoice.client?.company && <div style={{ color: "#888", fontSize: 13 }}>{invoice.client.company}</div>}
-            {invoice.client?.email && <div style={{ color: "#aaa", fontSize: 12 }}>{invoice.client.email}</div>}
+            {invoice.client?.email && <div style={{ color: "#767676", fontSize: 12 }}>{invoice.client.email}</div>}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
           <div style={{ marginBottom: 12 }}>
-            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Issue Date</div>
+            <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Issue Date</div>
             <div style={{ fontWeight: 600, fontSize: 14 }}>{fmtDate(invoice.issueDate)}</div>
           </div>
           <div>
-            <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Due Date</div>
+            <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 4 }}>Due Date</div>
             <div style={{ fontWeight: 800, fontSize: 14, color: "#E8001C" }}>{fmtDate(invoice.dueDate)}</div>
           </div>
         </div>
@@ -137,7 +138,7 @@ function BillingInvoiceExportView({ token }) {
       {/* Notes */}
       {invoice.notes && (
         <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid #f0f0f0" }}>
-          <div style={{ color: "#aaa", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Notes</div>
+          <div style={{ color: "#767676", fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Notes</div>
           <div style={{ color: "#666", fontSize: 13, lineHeight: 1.6 }}>{invoice.notes}</div>
         </div>
       )}
@@ -146,7 +147,7 @@ function BillingInvoiceExportView({ token }) {
       <div style={{ marginTop: 60, paddingTop: 24, borderTop: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ color: "#ccc", fontSize: 11 }}>billing@getloudmouth.us</div>
         {invoice.paymentUrl && (
-          <div style={{ color: "#aaa", fontSize: 11 }}>Pay at: {invoice.paymentUrl}</div>
+          <div style={{ color: "#767676", fontSize: 11 }}>Pay at: {invoice.paymentUrl}</div>
         )}
       </div>
     </div>
@@ -269,9 +270,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const [pinterestPanelWidth, setPinterestPanelWidth] = useState(300);
   const cpAutoSaveTimerRef = useRef(null);
-  // ── Toast ──
-  const [toast, setToast] = useState(null); // null | { msg, type }
-  const toastTimerRef = useRef(null);
+  // toast state removed — using sonner globally
   // ── Realtime ──
   const realtimeChannelRef = useRef(null);
 // Warm up the PDF export function on load to reduce cold start lag
@@ -287,10 +286,16 @@ useEffect(() => {
   useEffect(() => {
     function handleOnline() { setIsOnline(true); setWasOffline(true); setTimeout(() => setWasOffline(false), 3000); }
     function handleOffline() { setIsOnline(false); setWasOffline(false); }
+    function handleVisibility() { if (document.visibilityState === "visible" && user) loadAllCalendars(); }
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-    return () => { window.removeEventListener("online", handleOnline); window.removeEventListener("offline", handleOffline); };
-  }, []);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!driveOpen) return;
@@ -487,7 +492,7 @@ useEffect(() => {
   const permissions = useMemo(() => {
     if (!userProfile) return new Set();
     const dbDefaults = roleToolDefaults?.[userProfile.role];
-    const base = new Set(dbDefaults ?? (ROLE_TOOLS[userProfile.role] || []));
+    const base = new Set([...(ROLE_TOOLS[userProfile.role] || []), ...(dbDefaults ?? [])]);
     for (const t of userToolAccess) {
       if (t.granted) base.add(t.tool_key);
       else base.delete(t.tool_key);
@@ -959,9 +964,9 @@ useEffect(() => {
   }
 
   function showToast(msg, type = "info") {
-    setToast({ msg, type });
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+    if (type === "success") sonnerToast.success(msg);
+    else if (type === "error") sonnerToast.error(msg);
+    else sonnerToast(msg);
   }
 
   async function addCollaborator(cal) {
@@ -1152,6 +1157,7 @@ useEffect(() => {
     setCalendarNotes(cal.notes || "");
     setCalendarNotesImage(cal.notes_image || "");
     // Load most recent draft
+    setPosts([]);
     const { data } = await supabase.from("calendar_drafts")
       .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
     if (data?.[0]) setPosts(data[0].posts);
@@ -1197,12 +1203,24 @@ useEffect(() => {
       return false;
     }
     const lbl = label || savingLabel || "Manual save";
-    const { data: calData, error: calErr } = await supabase.from("calendars").upsert({
-      user_id: user.id, client_name: clientName, month, year,
-      posts_per_page: postsPerPage, builder_name: profileName,
-      selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,client_name,month,year" }).select().single();
+    let calData, calErr;
+    if (currentCalendarId) {
+      ({ data: calData, error: calErr } = await supabase.from("calendars")
+        .update({
+          posts_per_page: postsPerPage, builder_name: profileName,
+          selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentCalendarId)
+        .select().single());
+    } else {
+      ({ data: calData, error: calErr } = await supabase.from("calendars").upsert({
+        user_id: user.id, client_name: clientName, month, year,
+        posts_per_page: postsPerPage, builder_name: profileName,
+        selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,client_name,month,year" }).select().single());
+    }
     if (calErr) {
       if (!silent) alert("Save failed: " + calErr.message);
       return false;
@@ -1724,7 +1742,7 @@ useEffect(() => {
         pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
         pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
         signOut={signOut}
-        toast={toast}
+
       />
     </AppContext.Provider>
     </ErrorBoundary>
@@ -1777,7 +1795,7 @@ useEffect(() => {
         sharePermission={sharePermission} setSharePermission={setSharePermission}
         shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
         calCollaborators={calCollaborators}
-        toast={toast}
+
       />
     </AppContext.Provider>
     </ErrorBoundary>

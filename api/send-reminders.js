@@ -1,7 +1,10 @@
 // /api/send-reminders.js
-// Vercel cron: runs every morning at 8 AM CST (14:00 UTC).
-// Finds all scheduled_posts for today that haven't been emailed yet,
-// groups them by user, sends one email per user via Resend, then marks rows sent.
+// Vercel cron: runs daily at 14:00 UTC.
+//   → 9:00 AM CDT (UTC-5, Mar–Nov)  ✓ target
+//   → 8:00 AM CST (UTC-6, Nov–Mar)  — 1 hr early in winter; Vercel cron has no DST support
+//
+// "today" is computed in America/Chicago wall-clock time so post_date matching
+// is always correct regardless of UTC offset.
 //
 // Protected by Authorization: Bearer <CRON_SECRET>
 // Uses Supabase service role key to bypass RLS.
@@ -261,8 +264,8 @@ export default async function handler(req, res) {
 
   const supabase = getSupabaseAdmin();
 
-  // Today's date in YYYY-MM-DD (UTC — adjust if you want CST wall-clock date)
-  const today = new Date().toISOString().slice(0, 10);
+  // Use Central Time wall-clock date so post_date matching is always correct
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
 
   // Fetch all unsent rows for today
   const { data: rows, error: fetchErr } = await supabase

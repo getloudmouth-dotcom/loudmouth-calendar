@@ -53,7 +53,7 @@ export default function ContentPlanExportView({ token }) {
             {producedItems.map(item => (
               <tr key={item.id} style={{ border: "1px solid #ddd" }}>
                 <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #ddd", fontSize: 12 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em" }}>PRODUCED VIDEO #{item.item_number}</div>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: "#767676", letterSpacing: "0.06em" }}>PRODUCED VIDEO #{item.item_number}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, marginTop: 3 }}>{item.title}</div>
                   {item.reference_link && <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>INSPO: {item.reference_link}</div>}
                 </td>
@@ -69,7 +69,7 @@ export default function ContentPlanExportView({ token }) {
             {organicItems.map(item => (
               <tr key={item.id} style={{ border: "1px solid #ddd" }}>
                 <td style={{ padding: "12px 14px", verticalAlign: "top", border: "1px solid #ddd", fontSize: 12 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em" }}>ORGANIC VIDEO #{item.item_number}</div>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: "#767676", letterSpacing: "0.06em" }}>ORGANIC VIDEO #{item.item_number}</div>
                   <div style={{ fontSize: 12, fontWeight: 700, marginTop: 3 }}>{item.title}</div>
                   {item.reference_link && <div style={{ fontSize: 10, color: "#888", marginTop: 4 }}>INSPO: {item.reference_link}</div>}
                 </td>

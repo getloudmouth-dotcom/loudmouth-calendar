@@ -69,7 +69,7 @@ export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
         {/* Header */}
         <div style={{ padding: "16px 20px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontWeight: 700, fontSize: 15, color: "#111" }}>📁 Pick from Google Drive</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#aaa", lineHeight: 1 }}>✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#767676", lineHeight: 1 }}>✕</button>
         </div>
 
         {/* Folder input */}
@@ -122,7 +122,7 @@ export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
               <div style={{ fontSize: 11, fontWeight: 700, color: "#333" }}>Preview</div>
               <div style={{ aspectRatio: "4/5", background: "#f0f0f0", borderRadius: 8, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {!previewing && <span style={{ fontSize: 24 }}>⏳</span>}
-                {previewing === "error" && <span style={{ fontSize: 12, color: "#aaa" }}>Failed</span>}
+                {previewing === "error" && <span style={{ fontSize: 12, color: "#767676" }}>Failed</span>}
                 {previewing && previewing !== "error" && <img src={previewing} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
               </div>
               <div style={{ fontSize: 10, color: "#888", wordBreak: "break-word" }}>{selected.name}</div>

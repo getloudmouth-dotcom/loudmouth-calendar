@@ -330,7 +330,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
 
       {isReel && !isExporting && onPickReelLink && !post.videoUrl ? (
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-          <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#aaa" }}>Reel Link</div>
+          <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#767676" }}>Reel Link</div>
           <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
         </div>
       ) : isCarousel && totalSlides > 0 ? (
@@ -357,7 +357,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
           {!isExporting && (
             <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
               <button onClick={() => setShowPostingNotes(p => !p)} title="Posting notes" style={{ background: "none", border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1, opacity: showPostingNotes || post.postingNotes ? 1 : 0.4 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ display: "block", color: showPostingNotes || post.postingNotes ? "#c8a800" : "#888" }}>
+                <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ display: "block", color: showPostingNotes || post.postingNotes ? "#c8a800" : "#888" }}>
                   <path d="M3 3h13l5 5v13H3V3zm12 0v5h5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
                   <path d="M15 3v5h5" fill="rgba(0,0,0,0.15)"/>
                 </svg>

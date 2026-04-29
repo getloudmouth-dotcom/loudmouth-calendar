@@ -130,7 +130,7 @@ export default function ContentPlanPublicView({ token }) {
                 return (
                   <tr key={item.id} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                     <td style={{ padding: "14px 16px", verticalAlign: "top" }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 4 }}>PRODUCED VIDEO #{item.item_number}</div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: "#767676", letterSpacing: "0.06em", marginBottom: 4 }}>PRODUCED VIDEO #{item.item_number}</div>
                       {item.reference_link ? (
                         <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e", fontSize: 12, fontWeight: 600, textDecoration: "underline", wordBreak: "break-all" }}>LINK ↗</a>
                       ) : <span style={{ color: "#ddd", fontSize: 12 }}>—</span>}
@@ -167,7 +167,7 @@ export default function ContentPlanPublicView({ token }) {
                 return (
                   <tr key={item.id} style={{ borderBottom: "1px solid #f0f0f0", background: idx % 2 === 0 ? "white" : "#fafaf8" }}>
                     <td style={{ padding: "14px 16px", verticalAlign: "top" }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: "#aaa", letterSpacing: "0.06em", marginBottom: 4 }}>ORGANIC VIDEO #{item.item_number}</div>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: "#767676", letterSpacing: "0.06em", marginBottom: 4 }}>ORGANIC VIDEO #{item.item_number}</div>
                       {item.reference_link ? (
                         <a href={item.reference_link} target="_blank" rel="noreferrer" style={{ color: "#1a1a2e", fontSize: 12, fontWeight: 600, textDecoration: "underline", wordBreak: "break-all" }}>LINK ↗</a>
                       ) : <span style={{ color: "#ddd", fontSize: 12 }}>—</span>}
@@ -198,7 +198,7 @@ export default function ContentPlanPublicView({ token }) {
             </tbody>
           </table>
         </div>
-        <div style={{ marginTop: 32, padding: "16px 20px", background: "#f8f8f6", borderRadius: 10, fontSize: 12, color: "#aaa", textAlign: "center" }}>
+        <div style={{ marginTop: 32, padding: "16px 20px", background: "#f8f8f6", borderRadius: 10, fontSize: 12, color: "#767676", textAlign: "center" }}>
           Review each item and use the buttons to approve or deny. Your notes are saved automatically.
         </div>
       </div>

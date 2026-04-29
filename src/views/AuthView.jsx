@@ -1,29 +1,39 @@
+import { SANS, MONO, C, DISP, INPUT as inputStyle, LABEL as labelStyle } from "../theme";
+
 export default function AuthView({ authMode, setAuthMode, authEmail, setAuthEmail, authPassword, setAuthPassword, authError, authBusy, signIn, signUp, resetPassword }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#1a1a2e", fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
-      <div style={{ background: "white", borderRadius: 16, padding: 40, width: 360, boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
-        <div style={{ marginBottom: 28, display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-          <div style={{ fontWeight: 900, fontSize: 20, letterSpacing: "0.08em", color: "#1a1a2e", whiteSpace: "nowrap" }}>LOUDMOUTH HQ</div>
-          <div style={{ fontSize: 11, color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>by Loudmouth</div>
+    <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: C.canvas, fontFamily: SANS }}>
+      <div style={{ background: C.surface, borderRadius: 16, padding: 32, width: 360, border: `1px solid ${C.border}`, boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontFamily: DISP, fontSize: 22, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
+          <div style={{ fontSize: 10, color: C.meta, letterSpacing: "1.5px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1, marginTop: 4 }}>by Loudmouth</div>
         </div>
-        <div style={{ display: "flex", gap: 0, marginBottom: 24, border: "1.5px solid #e0e0e0", borderRadius: 8, overflow: "hidden" }}>
-          <button onClick={() => setAuthMode("login")} style={{ flex: 1, padding: "9px 0", background: authMode === "login" ? "#1a1a2e" : "white", color: authMode === "login" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Log In</button>
-          <button onClick={() => setAuthMode("signup")} style={{ flex: 1, padding: "9px 0", background: authMode === "signup" ? "#1a1a2e" : "white", color: authMode === "signup" ? "#D7FA06" : "#aaa", border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Sign Up</button>
+
+        <div style={{ display: "flex", marginBottom: 24, border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+          <button onClick={() => setAuthMode("login")} style={{ flex: 1, padding: "9px 0", background: authMode === "login" ? C.accent : "transparent", color: authMode === "login" ? "#000" : C.meta, border: "none", fontWeight: 700, fontSize: 10, cursor: "pointer", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>Log In</button>
+          <button onClick={() => setAuthMode("signup")} style={{ flex: 1, padding: "9px 0", background: authMode === "signup" ? C.accent : "transparent", color: authMode === "signup" ? "#000" : C.meta, border: "none", fontWeight: 700, fontSize: 10, cursor: "pointer", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>Sign Up</button>
         </div>
-        <label htmlFor="auth-email" style={{ fontSize: 11, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 }}>Email</label>
-        <input id="auth-email" type="email" placeholder="you@example.com" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 14, outline: "none", boxSizing: "border-box" }} />
-        <label htmlFor="auth-password" style={{ fontSize: 11, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4, fontWeight: 600 }}>Password</label>
-        <input id="auth-password" type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && (authMode === "login" ? signIn() : signUp())} style={{ width: "100%", padding: "10px 14px", border: "1.5px solid #e0e0e0", borderRadius: 8, fontSize: 13, marginBottom: 16, outline: "none", boxSizing: "border-box" }} />
-        {authError && <div style={{ fontSize: 12, color: authError.includes("Check") ? "#22aa66" : "#E8001C", marginBottom: 12, textAlign: "center" }}>{authError}</div>}
-        <button onClick={authMode === "login" ? signIn : signUp} disabled={authBusy} style={{ width: "100%", padding: "12px 0", background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 14, cursor: "pointer", letterSpacing: "0.06em" }}>
-          {authBusy ? "..." : authMode === "login" ? "LOG IN" : "CREATE ACCOUNT"}
+
+        <label htmlFor="auth-email" style={labelStyle}>Email</label>
+        <input id="auth-email" type="email" placeholder="you@example.com" value={authEmail} onChange={e => setAuthEmail(e.target.value)} style={{ ...inputStyle, marginBottom: 14 }} />
+
+        <label htmlFor="auth-password" style={labelStyle}>Password</label>
+        <input id="auth-password" type="password" placeholder="••••••••" value={authPassword} onChange={e => setAuthPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && (authMode === "login" ? signIn() : signUp())} style={{ ...inputStyle, marginBottom: 16 }} />
+
+        {authError && (
+          <div style={{ fontSize: 12, color: authError.includes("Check") ? "#7fd99e" : "#ff4444", marginBottom: 12, textAlign: "center", fontFamily: SANS, lineHeight: 1 }}>{authError}</div>
+        )}
+
+        <button onClick={authMode === "login" ? signIn : signUp} disabled={authBusy} style={{ width: "100%", padding: "11px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: "pointer", letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO, lineHeight: 1 }}>
+          {authBusy ? "..." : authMode === "login" ? "Log In" : "Create Account"}
         </button>
+
         {authMode === "login" && (
-          <button onClick={resetPassword} style={{ background: "none", border: "none", fontSize: 11, color: "#aaa", cursor: "pointer", marginTop: 12, width: "100%", textDecoration: "underline" }}>
+          <button onClick={resetPassword} style={{ background: "none", border: "none", fontSize: 10, color: C.meta, cursor: "pointer", marginTop: 14, width: "100%", fontFamily: MONO, textDecoration: "underline", lineHeight: 1 }}>
             Forgot password?
           </button>
         )}
       </div>
-    </div>
+    </main>
   );
 }
