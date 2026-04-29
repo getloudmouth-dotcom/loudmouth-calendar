@@ -286,10 +286,16 @@ useEffect(() => {
   useEffect(() => {
     function handleOnline() { setIsOnline(true); setWasOffline(true); setTimeout(() => setWasOffline(false), 3000); }
     function handleOffline() { setIsOnline(false); setWasOffline(false); }
+    function handleVisibility() { if (document.visibilityState === "visible" && user) loadAllCalendars(); }
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-    return () => { window.removeEventListener("online", handleOnline); window.removeEventListener("offline", handleOffline); };
-  }, []);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!driveOpen) return;
@@ -1163,6 +1169,7 @@ useEffect(() => {
     setCalendarNotes(cal.notes || "");
     setCalendarNotesImage(cal.notes_image || "");
     // Load most recent draft
+    setPosts([]);
     const { data } = await supabase.from("calendar_drafts")
       .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
     if (data?.[0]) setPosts(data[0].posts);
@@ -1208,12 +1215,24 @@ useEffect(() => {
       return false;
     }
     const lbl = label || savingLabel || "Manual save";
-    const { data: calData, error: calErr } = await supabase.from("calendars").upsert({
-      user_id: user.id, client_name: clientName, month, year,
-      posts_per_page: postsPerPage, builder_name: profileName,
-      selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,client_name,month,year" }).select().single();
+    let calData, calErr;
+    if (currentCalendarId) {
+      ({ data: calData, error: calErr } = await supabase.from("calendars")
+        .update({
+          posts_per_page: postsPerPage, builder_name: profileName,
+          selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentCalendarId)
+        .select().single());
+    } else {
+      ({ data: calData, error: calErr } = await supabase.from("calendars").upsert({
+        user_id: user.id, client_name: clientName, month, year,
+        posts_per_page: postsPerPage, builder_name: profileName,
+        selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,client_name,month,year" }).select().single());
+    }
     if (calErr) {
       if (!silent) alert("Save failed: " + calErr.message);
       return false;
