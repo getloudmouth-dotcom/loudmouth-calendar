@@ -9,6 +9,7 @@ import SchedulingPortal from "./SchedulingPortal";
 import AdminPortal from "./AdminPortal";
 import ContentPlanPortal from "./ContentPlanPortal";
 import BillingPortal from "./BillingPortal";
+import GridCreatorPortal from "./GridCreatorPortal";
 import { SANS, MONO, C, DISP } from "../theme";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -47,6 +48,14 @@ const icons = {
       <rect x="5" y="14" width="4" height="2" rx="0.5" fill="currentColor"/>
     </svg>
   ),
+  grid: (
+    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+      <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+      <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+      <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+    </svg>
+  ),
   home: (
     <svg aria-hidden="true" focusable="false" width="15" height="15" viewBox="0 0 24 24" fill="none">
       <path d="M3 12L12 3l9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -64,6 +73,7 @@ const icons = {
 
 const NAV_ITEMS = [
   { key: "calendar",     permission: "calendar_creator",     label: "Calendar Creator",    icon: icons.calendar },
+  { key: "grid",         permission: "grid_creator",         label: "Grid Creator",        icon: icons.grid },
   { key: "content-plan", permission: "content_plan_creator", label: "Content Plans",       icon: icons.contentPlan },
   { key: "scheduling",   permission: "content_scheduling",   label: "Scheduling",          icon: icons.scheduling },
   { key: "admin",        permission: "admin_portal",         label: "Admin",               icon: icons.admin },
@@ -564,6 +574,10 @@ export default function DashboardPortal({
 
         {activePortal === "billing" && can("billing") && (
           <BillingPortal setActivePortal={setActivePortal} />
+        )}
+
+        {activePortal === "grid" && can("grid_creator") && (
+          <GridCreatorPortal setActivePortal={setActivePortal} />
         )}
       </main>
 

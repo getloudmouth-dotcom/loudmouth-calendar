@@ -492,7 +492,7 @@ useEffect(() => {
   const permissions = useMemo(() => {
     if (!userProfile) return new Set();
     const dbDefaults = roleToolDefaults?.[userProfile.role];
-    const base = new Set(dbDefaults ?? (ROLE_TOOLS[userProfile.role] || []));
+    const base = new Set([...(ROLE_TOOLS[userProfile.role] || []), ...(dbDefaults ?? [])]);
     for (const t of userToolAccess) {
       if (t.granted) base.add(t.tool_key);
       else base.delete(t.tool_key);
