@@ -18,6 +18,7 @@ export default function GridCreatorPortal() {
   // Drive state (fully local, no App.jsx coupling)
   const [driveToken, setDriveToken] = useState(null);
   const [driveOpen, setDriveOpen] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
   const [drivePanelWidth, setDrivePanelWidth] = useState(300);
   const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0, day: null, postIdx: null });
 
@@ -215,15 +216,26 @@ export default function GridCreatorPortal() {
           {/* GRID */}
           <div style={{ marginTop: 0 }}>
             {gridItems.length === 0 ? (
-              <label style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 14, height: 280, cursor: "pointer",
-                border: `1.5px dashed ${C.border}`, borderRadius: 8,
-                color: C.meta, fontFamily: MONO, fontSize: 10, fontWeight: 700,
-                letterSpacing: "1.5px", textTransform: "uppercase",
-                transition: "border-color 0.15s",
-              }}>
-                <span style={{ fontSize: 32, opacity: 0.3 }}>📸</span>
+              <label
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 14, height: 280, cursor: "pointer",
+                  border: `1.5px dashed ${dragActive ? C.accent : C.border}`, borderRadius: 8,
+                  color: dragActive ? C.accent : C.meta, fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                  letterSpacing: "1.5px", textTransform: "uppercase",
+                  transition: "border-color 0.15s, color 0.15s",
+                }}
+                onDragOver={e => { e.preventDefault(); setDragActive(true); }}
+                onDragEnter={e => { e.preventDefault(); setDragActive(true); }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setDragActive(false);
+                  const files = e.dataTransfer.files;
+                  if (files?.length) handleBatchImport(files);
+                }}
+              >
+                <span style={{ fontSize: 32, opacity: dragActive ? 0.8 : 0.3 }}>📸</span>
                 Drop images here or click to add
                 <input type="file" accept="image/*" multiple style={{ display: "none" }}
                   onChange={e => { handleBatchImport(e.target.files); e.target.value = ""; }} />
