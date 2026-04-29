@@ -213,7 +213,7 @@ export default function CalendarBuilder({
                 <div style={{ display: "flex", gap: 10 }}>
                   {[2, 3, 4].map(n => (
                     <button key={n} onClick={() => setPostsPerPage(n)} style={{
-                      flex: 1, padding: "10px 0", border: `2px solid ${postsPerPage === n ? C.canvas : C.border}`,
+                      flex: 1, padding: "10px 0", border: `2px solid ${postsPerPage === n ? C.accent : C.border}`,
                       borderRadius: 7, fontWeight: 700, fontSize: 14, cursor: "pointer",
                       background: postsPerPage === n ? C.canvas : C.surface,
                       color: postsPerPage === n ? C.accent : C.meta, transition: "all 0.15s",
@@ -525,7 +525,7 @@ updatePost(day, postIdx, "urls", [post.url]);
   )}
 
 {step === 4 && (
-    <div className="cal-pages-outer" style={{ padding: "0 48px 48px", maxWidth: "none", margin: "0", background: C.canvas }}>
+    <div className="cal-pages-outer" style={{ padding: "0px 100px 100px", maxWidth: "none", margin: "0", background: C.canvas }}>
       {pages.map((pagePosts, pageIdx) => (
         <CalendarPage key={pageIdx} posts={pagePosts} allPosts={allPosts} clientName={clientName} month={month} year={year}
         onUpdatePost={(day, postIdx, field, val) => updatePost(day, postIdx, field, val)}
