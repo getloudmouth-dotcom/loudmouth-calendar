@@ -1123,29 +1123,17 @@ useEffect(() => {
 
   // ── Calendars ──
   async function loadAllCalendars() {
-    const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
+    const [{ data }, { data: collabs }] = await Promise.all([
+      supabase.from("calendars").select("*").order("updated_at", { ascending: false }),
+      supabase.from("calendar_collaborators").select("calendar_id, user_id, permission, profiles(id, name, email)"),
+    ]);
     const calendars = data || [];
     setAllCalendars(calendars);
-    if (calendars.length === 0) return;
-    // Load collaborators for all calendars
-    const calIds = calendars.map(c => c.id);
-    const { data: collabs } = await supabase
-      .from("calendar_collaborators")
-      .select("calendar_id, user_id, permission")
-      .in("calendar_id", calIds);
     if (!collabs?.length) return;
-    // Load profiles for all collaborator user_ids
-    const userIds = [...new Set(collabs.map(c => c.user_id))];
-    const { data: profilesData } = await supabase
-      .from("profiles")
-      .select("id, name, email")
-      .in("id", userIds);
-    const profileMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]));
-    // Build map: calId → [{user_id, name, email, permission}]
     const map = {};
     for (const c of collabs) {
       if (!map[c.calendar_id]) map[c.calendar_id] = [];
-      const profile = profileMap[c.user_id] || {};
+      const profile = c.profiles || {};
       map[c.calendar_id].push({ user_id: c.user_id, name: profile.name || profile.email || "Unknown", email: profile.email || "", permission: c.permission });
     }
     setCalCollaborators(map);
