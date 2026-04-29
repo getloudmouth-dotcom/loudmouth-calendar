@@ -231,6 +231,8 @@ export default function GridCreatorPortal() {
                 onDrop={e => {
                   e.preventDefault();
                   setDragActive(false);
+                  const raw = e.dataTransfer.getData("driveFileIds");
+                  if (raw) { handleDriveBatchImport(JSON.parse(raw)); return; }
                   const files = e.dataTransfer.files;
                   if (files?.length) handleBatchImport(files);
                 }}

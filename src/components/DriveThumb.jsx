@@ -22,7 +22,8 @@ async function makeThumbnailUrl(blob) {
 export const _thumbCache = new Map(); // persists for entire browser session
 
 export async function prefetchThumbnails(imageFiles, token) {
-  const toFetch = imageFiles.filter(f => !_thumbCache.has(f.id));
+  if (!token) return;
+  const toFetch = imageFiles.filter(f => f.id && !_thumbCache.has(f.id));
   if (!toFetch.length) return;
   const BATCH = 4;
   for (let i = 0; i < toFetch.length; i += BATCH) {
@@ -72,6 +73,7 @@ export default function DriveThumb({ fileId, thumbnailLink, token, name, imgStyl
       else setSrc("err");
       return;
     }
+    if (!fileId || !token) { setSrc("err"); return; }
     let dead = false;
     (async () => {
       try {
