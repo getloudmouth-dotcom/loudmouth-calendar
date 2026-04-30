@@ -3,7 +3,6 @@ import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import { Toaster } from "../components/ui/sonner";
 import NavProfileMenu from "../components/NavProfileMenu";
-import CollabAvatars from "../components/CollabAvatars";
 import CalendarListPortal from "./CalendarListPortal";
 import ClientListPortal from "./ClientListPortal";
 import ClientPortal from "./ClientPortal";
@@ -309,7 +308,7 @@ function SectionHeader({ label, action }) {
 }
 
 // ── Hub ───────────────────────────────────────────────────────────────────────
-function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans }) {
+function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans }) {
   const today = new Date();
   const { user } = useApp();
   const [hoveredHubCard, setHoveredHubCard] = useState(null);
@@ -374,7 +373,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                     <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
                       <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
                       {cal.user_id !== user?.id && (
-                        <span style={{ ...BADGE, flexShrink: 0 }}>SHARED</span>
+                        <span style={{ ...BADGE, flexShrink: 0 }}>By {calCreators?.[cal.user_id]?.name || "teammate"}</span>
                       )}
                     </div>
                     <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
@@ -382,7 +381,6 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
                     </div>
                   </div>
                 </div>
-                <CollabAvatars collaborators={calCollaborators?.[cal.id]} />
                 <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, letterSpacing: 0.5 }}>
                   {cal.updated_at ? `Saved ${new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
                   {cal.last_updated_by ? ` · ${cal.last_updated_by}` : ""}
@@ -528,11 +526,8 @@ export default function DashboardPortal({
   activePortal, setActivePortal,
   profileName, profileInput, setProfileInput, saveProfile, editingProfile, setEditingProfile,
   exporting, exportProgress, exportElapsed,
-  allCalendars, calCollaborators, schedulingCalId,
+  allCalendars, calCreators, schedulingCalId,
   openCalendar, newCalendar, deleteCalendar, addToSchedule,
-  setShareModal, setShareEmail, setShareError,
-  shareModal, shareEmail, shareError, shareBusy, addCollaborator, removeCollaborator,
-  sharePermission, setSharePermission,
   scheduledPosts, removeScheduledPost, toggleNotify,
   adminUsers, adminLoading,
   roleToolDefaults, rolePermsBusy, saveRoleToolDefaults,
@@ -609,7 +604,7 @@ export default function DashboardPortal({
             setActivePortal={setActivePortal}
             profileName={profileName}
             allCalendars={allCalendars}
-            calCollaborators={calCollaborators}
+            calCreators={calCreators}
             allContentPlans={allContentPlans}
             scheduledPosts={scheduledPosts}
             newCalendar={newCalendar}
@@ -622,10 +617,9 @@ export default function DashboardPortal({
 
         {activePortal === "calendar" && (
           <CalendarListPortal
-            allCalendars={allCalendars} calCollaborators={calCollaborators}
+            allCalendars={allCalendars} calCreators={calCreators}
             schedulingCalId={schedulingCalId} openCalendar={openCalendar}
             newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
-            setShareModal={setShareModal} setShareEmail={setShareEmail} setShareError={setShareError}
             setActivePortal={setActivePortal}
             scheduledPosts={scheduledPosts}
           />
@@ -795,57 +789,6 @@ export default function DashboardPortal({
         </div>
       )}
 
-      {/* ── Share modal ── */}
-      {shareModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={e => e.target === e.currentTarget && setShareModal(null)}>
-          <div style={{ background: C.surface, borderRadius: 16, width: 420, padding: 28, border: `1px solid ${C.border}`, maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.text, marginBottom: 4, fontFamily: SANS }}>Share Calendar</div>
-            <div style={{ fontSize: 11, color: C.meta, marginBottom: 20, fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px" }}>
-              {shareModal.cal.client_name} — {MONTHS[shareModal.cal.month]} {shareModal.cal.year}
-            </div>
-            {(calCollaborators[shareModal.cal.id] || []).length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO }}>Shared with</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {(calCollaborators[shareModal.cal.id] || []).map(c => (
-                    <div key={c.user_id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.canvas, borderRadius: 12, padding: "8px 12px", border: `1px solid ${C.border}` }}>
-                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.accent, color: "#000", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: MONO }}>{(c.name || "?")[0].toUpperCase()}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: SANS }}>{c.name}</div>
-                        <div style={{ fontSize: 11, color: C.meta, fontFamily: SANS }}>{c.email}</div>
-                      </div>
-                      <span style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px", color: c.permission === "editor" ? C.accent : C.meta, background: c.permission === "editor" ? "rgba(204,255,0,0.12)" : C.surface2, borderRadius: 20, padding: "2px 8px", fontFamily: MONO }}>{c.permission}</span>
-                      <button onClick={() => removeCollaborator(shareModal.cal.id, c.user_id)} style={{ background: "none", border: "none", color: C.meta, fontSize: 16, cursor: "pointer", padding: "0 4px" }}>×</button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginBottom: 10, fontFamily: MONO }}>Add collaborator</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              <input aria-label="Collaborator email address" value={shareEmail} onChange={e => setShareEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && addCollaborator(shareModal.cal)} placeholder="colleague@example.com"
-                style={{ flex: 1, padding: "9px 12px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 13, outline: "none", background: C.canvas, color: C.text, fontFamily: SANS }} />
-              <select value={sharePermission} onChange={e => setSharePermission(e.target.value)}
-                style={{ padding: "9px 10px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 12, outline: "none", background: C.canvas, color: C.text, fontFamily: SANS }}>
-                <option value="editor">Editor</option>
-                <option value="viewer">Viewer</option>
-              </select>
-            </div>
-            {shareError && <div style={{ fontSize: 12, color: C.error, marginBottom: 10, fontFamily: SANS }}>{shareError}</div>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => addCollaborator(shareModal.cal)} disabled={shareBusy || !shareEmail.trim()}
-                style={{ flex: 1, padding: "10px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: shareBusy || !shareEmail.trim() ? "default" : "pointer", opacity: shareEmail.trim() ? 1 : 0.4, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>
-                {shareBusy ? "Adding..." : "Add"}
-              </button>
-              <button onClick={() => { setShareModal(null); setShareEmail(""); setShareError(""); }}
-                style={{ padding: "10px 16px", background: "transparent", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontSize: 11, cursor: "pointer", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", fontWeight: 600 }}>
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Toaster theme="dark" position="bottom-right" richColors />
     </div>

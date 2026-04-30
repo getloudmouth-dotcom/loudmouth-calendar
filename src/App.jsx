@@ -243,13 +243,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [editUserForm, setEditUserForm] = useState({});
   const [editUserBusy, setEditUserBusy] = useState(false);
   const [deleteUserBusy, setDeleteUserBusy] = useState(false);
-  // ── Collaborators ──
-  const [calCollaborators, setCalCollaborators] = useState({}); // calId → [{user_id, name, email, permission}]
-  const [shareModal, setShareModal] = useState(null); // null | { cal }
-  const [shareEmail, setShareEmail] = useState("");
-  const [sharePermission, setSharePermission] = useState("editor");
-  const [shareBusy, setShareBusy] = useState(false);
-  const [shareError, setShareError] = useState("");
+  const [calCreators, setCalCreators] = useState({}); // userId → {name, email}
   // ── Content Plan Creator ──
   const [activeCPStep, setActiveCPStep] = useState(null);
   const [cpClientName, setCpClientName] = useState("");
@@ -999,33 +993,6 @@ useEffect(() => {
     else sonnerToast(msg);
   }
 
-  async function addCollaborator(cal) {
-    const email = shareEmail.trim();
-    if (!email) return;
-    setShareBusy(true); setShareError("");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/share-calendar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify({ calendarId: cal.id, collaboratorEmail: email, permission: sharePermission }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to share");
-      setShareEmail(""); setSharePermission("editor");
-      await loadAllCalendars();
-      showToast(`Shared with ${json.collaborator?.name || email}`, "success");
-    } catch (e) {
-      setShareError(e.message);
-    }
-    setShareBusy(false);
-  }
-
-  async function removeCollaborator(calId, userId) {
-    await supabase.from("calendar_collaborators")
-      .delete().eq("calendar_id", calId).eq("user_id", userId);
-    await loadAllCalendars();
-  }
 
   async function loadUserProfile(userId) {
     const [{ data: profile }, { data: access }] = await Promise.all([
@@ -1153,20 +1120,20 @@ useEffect(() => {
 
   // ── Calendars ──
   async function loadAllCalendars() {
-    const [{ data }, { data: collabs }] = await Promise.all([
-      supabase.from("calendars").select("*").order("updated_at", { ascending: false }),
-      supabase.from("calendar_collaborators").select("calendar_id, user_id, permission, profiles(id, name, email)"),
-    ]);
+    const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
     const calendars = data || [];
     setAllCalendars(calendars);
-    if (!collabs?.length) return;
-    const map = {};
-    for (const c of collabs) {
-      if (!map[c.calendar_id]) map[c.calendar_id] = [];
-      const profile = c.profiles || {};
-      map[c.calendar_id].push({ user_id: c.user_id, name: profile.name || profile.email || "Unknown", email: profile.email || "", permission: c.permission });
+
+    const creatorIds = [...new Set(calendars.map(c => c.user_id).filter(Boolean))];
+    if (creatorIds.length) {
+      const { data: creators } = await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .in("id", creatorIds);
+      const cmap = {};
+      for (const p of creators || []) cmap[p.id] = { name: p.name || p.email || "Unknown", email: p.email || "" };
+      setCalCreators(cmap);
     }
-    setCalCollaborators(map);
   }
 
   async function loadClients() {
@@ -1249,12 +1216,27 @@ useEffect(() => {
         .eq("id", currentCalendarId)
         .select().single());
     } else {
-      ({ data: calData, error: calErr } = await supabase.from("calendars").upsert({
-        user_id: user.id, client_name: clientName, month, year,
-        posts_per_page: postsPerPage, builder_name: profileName,
-        selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id,client_name,month,year" }).select().single());
+      const existing = allCalendars.find(
+        c => c.client_name?.toLowerCase() === clientName.toLowerCase() && c.month === month && c.year === year
+      );
+      if (existing) {
+        setCurrentCalendarId(existing.id);
+        ({ data: calData, error: calErr } = await supabase.from("calendars")
+          .update({
+            posts_per_page: postsPerPage, builder_name: profileName,
+            selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id)
+          .select().single());
+      } else {
+        ({ data: calData, error: calErr } = await supabase.from("calendars").insert({
+          user_id: user.id, client_name: clientName, month, year,
+          posts_per_page: postsPerPage, builder_name: profileName,
+          selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+          updated_at: new Date().toISOString(),
+        }).select().single());
+      }
     }
     if (calErr) {
       if (!silent) showToast("Save failed: " + calErr.message, "error");
@@ -1826,12 +1808,8 @@ useEffect(() => {
         profileName={profileName} profileInput={profileInput} setProfileInput={setProfileInput}
         saveProfile={saveProfile} editingProfile={editingProfile} setEditingProfile={setEditingProfile}
         exporting={exporting} exportProgress={exportProgress} exportElapsed={exportElapsed}
-        allCalendars={allCalendars} calCollaborators={calCollaborators} schedulingCalId={schedulingCalId}
+        allCalendars={allCalendars} calCreators={calCreators} schedulingCalId={schedulingCalId}
         openCalendar={openCalendar} newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={toggleSchedule}
-        setShareModal={setShareModal} setShareEmail={setShareEmail} setShareError={setShareError}
-        shareModal={shareModal} shareEmail={shareEmail} shareError={shareError}
-        shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
-        sharePermission={sharePermission} setSharePermission={setSharePermission}
         loadAdminUsers={loadAdminUsers} loadRoleToolDefaults={loadRoleToolDefaults} loadAllContentPlans={loadAllContentPlans}
         scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost} toggleNotify={toggleNotify}
         adminUsers={adminUsers} adminLoading={adminLoading}
@@ -1951,13 +1929,6 @@ useEffect(() => {
         handleDriveFileDrop={handleDriveFileDrop} handleMultiDriveFileDrop={handleMultiDriveFileDrop}
         handleDriveBatchImport={handleDriveBatchImport}
         connectDrive={connectDrive}
-        shareModal={shareModal} setShareModal={setShareModal}
-        shareEmail={shareEmail} setShareEmail={setShareEmail}
-        shareError={shareError} setShareError={setShareError}
-        sharePermission={sharePermission} setSharePermission={setSharePermission}
-        shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
-        calCollaborators={calCollaborators}
-
       />
         </div>
       </div>

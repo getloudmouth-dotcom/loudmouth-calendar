@@ -41,9 +41,6 @@ export default function CalendarBuilder({
   calendarNotes, setCalendarNotes, calendarNotesImage, setCalendarNotesImage,
   handleFiles, handleBatchImport, handleDriveFileDrop, handleMultiDriveFileDrop, handleDriveBatchImport,
   connectDrive,
-  shareModal, setShareModal, shareEmail, setShareEmail, shareError, setShareError,
-  sharePermission, setSharePermission, shareBusy, addCollaborator, removeCollaborator,
-  calCollaborators,
 }) {
   const { isOnline, showToast } = useApp();
   const [dragOver, setDragOver] = useState(null);

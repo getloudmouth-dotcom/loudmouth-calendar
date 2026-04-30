@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
-import CollabAvatars from "../components/CollabAvatars";
 import { SANS, MONO, C, btn, BTN_ROW, BADGE, PAGE_HEADER, PAGE_TITLE, DISPLAY_TITLE, DISPLAY_SUBTITLE } from "../theme";
 
 export default function CalendarListPortal({
-  allCalendars, calCollaborators,
+  allCalendars, calCreators,
   schedulingCalId, openCalendar, newCalendar, deleteCalendar, addToSchedule,
-  setShareModal, setShareEmail, setShareError,
   setActivePortal,
   scheduledPosts,
 }) {
@@ -63,14 +61,15 @@ export default function CalendarListPortal({
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: C.text, fontFamily: SANS, lineHeight: 1 }}>{cal.client_name}</div>
                 {cal.user_id !== user?.id && (
-                  <span style={{ ...BADGE, background: "transparent", color: C.meta, border: `1px solid ${C.border}` }}>Shared</span>
+                  <span style={{ ...BADGE, background: "transparent", color: C.meta, border: `1px solid ${C.border}` }}>
+                    By {calCreators?.[cal.user_id]?.name || "teammate"}
+                  </span>
                 )}
               </div>
               <div style={{ fontSize: 12, color: C.meta, marginBottom: 10, fontFamily: MONO, lineHeight: 1 }}>{MONTHS[cal.month]} {cal.year} · {(cal.selected_days || []).length} day{(cal.selected_days || []).length !== 1 ? "s" : ""}</div>
               <div style={{ fontSize: 10, color: C.meta, marginBottom: 12, fontFamily: MONO, lineHeight: 1, opacity: 0.7 }}>
                 Saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </div>
-              <CollabAvatars collaborators={calCollaborators[cal.id]} />
               <div style={{ ...BTN_ROW, marginTop: 4 }}>
                 <button
                   onClick={e => { e.stopPropagation(); openCalendar(cal); }}
@@ -79,14 +78,6 @@ export default function CalendarListPortal({
                   onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                 >Open</button>
 
-                {cal.user_id === user?.id && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setShareModal({ cal }); setShareEmail(""); setShareError(""); }}
-                    style={btn()}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.color = C.text; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}
-                  >Share</button>
-                )}
 
                 {(() => {
                   const isScheduled = (scheduledPosts || []).some(r => r.calendar_id === cal.id && r.user_id === user?.id);
