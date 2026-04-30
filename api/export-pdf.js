@@ -255,11 +255,19 @@ export default async function handler(req, res) {
       return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
     });
 
+    // Inject @page so Chromium uses the exact cal-page size for every PDF page,
+    // and add break-after outside @media print so it fires even if print media
+    // type isn't fully honoured by the headless renderer.
+    await page.addStyleTag({
+      content: `
+        @page { size: ${pageWidth}px ${pageHeight}px; margin: 0; }
+        html[data-pdf-export="1"] .cal-page { break-after: page; }
+      `,
+    });
+
     const pdfBuffer = await page.pdf({
-      width: `${pageWidth}px`,
-      height: `${pageHeight}px`,
       printBackground: true,
-      preferCSSPageSize: false,
+      preferCSSPageSize: true,
     });
 
     const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
