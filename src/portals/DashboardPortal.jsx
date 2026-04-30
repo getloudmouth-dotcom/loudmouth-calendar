@@ -363,25 +363,25 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
               onMouseLeave={() => setHoveredHubCard(null)}>
               <button onClick={() => openCalendar(cal)}
                 aria-label={`Open ${cal.client_name} calendar`}
-                style={{ width: 200, background: C.surface, border: `1px solid ${hoveredHubCard === cal.id ? C.accent : C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                style={{ width: 200, height: 110, background: C.surface, border: `1px solid ${hoveredHubCard === cal.id ? C.accent : C.border}`, borderRadius: 14, padding: "14px 16px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left", overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, minWidth: 0 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
                     <span style={{ fontFamily: MONO, fontSize: 7, color: "#000", lineHeight: 1.2 }}>{cal.year}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2, minWidth: 0 }}>
+                      <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, flexShrink: 0 }}>
+                        {MONTHS[cal.month].slice(0, 3)} {cal.year}
+                      </div>
                       {cal.user_id !== user?.id && (
-                        <span style={{ ...BADGE, flexShrink: 0 }}>By {calCreators?.[cal.user_id]?.name || "teammate"}</span>
+                        <span style={{ ...BADGE, overflow: "hidden", textOverflow: "ellipsis", maxWidth: 80 }}>By {calCreators?.[cal.user_id]?.name || "teammate"}</span>
                       )}
-                    </div>
-                    <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
-                      {MONTHS[cal.month].slice(0, 3)} {cal.year}
                     </div>
                   </div>
                 </div>
-                <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, letterSpacing: 0.5 }}>
+                <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, letterSpacing: 0.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {cal.updated_at ? `Saved ${new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
                   {cal.last_updated_by ? ` · ${cal.last_updated_by}` : ""}
                 </div>
@@ -407,7 +407,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
           {/* Dashed "New Calendar" card */}
           <button onClick={newCalendar}
             aria-label="Create new calendar"
-            style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta, background: "transparent" }}
+            style={{ width: 200, height: 110, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", transition: "all 0.15s", color: C.meta, background: "transparent" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
             <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
