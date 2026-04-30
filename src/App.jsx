@@ -1948,7 +1948,7 @@ useEffect(() => {
             adminUsers={adminUsers || []}
             roleToolDefaults={roleToolDefaults}
             onOpenRolePerms={() => { setActivePortal("admin"); setShowDashboard(true); }}
-            clients={clients || []}
+            clients={(clients || []).filter(c => c.smm_active !== false)}
             workspaceClientId={workspaceClientId}
             onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal("clients"); setShowDashboard(true); }}
             addClientDirect={addClientDirect}
@@ -1966,7 +1966,7 @@ useEffect(() => {
         toggleDay={toggleDay} changeDay={changeDay} addPostToDay={addPostToDay} removePostFromDay={removePostFromDay}
         swapPostContent={swapPostContent} removeImageFromPost={removeImageFromPost}
         updatePost={updatePost}
-        clients={clients}
+        clients={(clients || []).filter(c => c.smm_active !== false)}
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
         addNewClient={addNewClient}
