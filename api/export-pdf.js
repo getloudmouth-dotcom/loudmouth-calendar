@@ -247,27 +247,33 @@ export default async function handler(req, res) {
     // Wait for print styles to repaint before measuring.
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-    // Measure the first .cal-page to set PDF page dimensions.
-    const { pageWidth, pageHeight } = await page.evaluate(() => {
-      const el = document.querySelector(".cal-page");
-      if (!el) return { pageWidth: 1440, pageHeight: 1021 };
-      const r = el.getBoundingClientRect();
-      return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
+    // Measure all .cal-page elements and log count for server-side visibility.
+    const { pageWidth, pageHeight, pageCount } = await page.evaluate(() => {
+      const pages = document.querySelectorAll(".cal-page");
+      if (!pages.length) return { pageWidth: 1440, pageHeight: 1021, pageCount: 0 };
+      const r = pages[0].getBoundingClientRect();
+      return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height), pageCount: pages.length };
     });
+    console.log(`[export] pageCount=${pageCount} size=${pageWidth}x${pageHeight}`);
 
-    // Inject @page so Chromium uses the exact cal-page size for every PDF page,
-    // and add break-after outside @media print so it fires even if print media
-    // type isn't fully honoured by the headless renderer.
+    // Expand the viewport to cover all pages so Chromium fully paints pages 2+
+    // before PDF capture (they live below the initial 1200px viewport fold).
+    if (pageCount > 1) {
+      await page.setViewport({ width: pageWidth, height: pageHeight * pageCount + 200 });
+      await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    }
+
+    // Inject break-after unconditionally so page breaks fire even when @media
+    // print isn't fully honoured by the headless renderer.
     await page.addStyleTag({
-      content: `
-        @page { size: ${pageWidth}px ${pageHeight}px; margin: 0; }
-        html[data-pdf-export="1"] .cal-page { break-after: page; }
-      `,
+      content: `html[data-pdf-export="1"] .cal-page { break-after: page; }`,
     });
 
     const pdfBuffer = await page.pdf({
+      width: `${pageWidth}px`,
+      height: `${pageHeight}px`,
       printBackground: true,
-      preferCSSPageSize: true,
+      preferCSSPageSize: false,
     });
 
     const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
