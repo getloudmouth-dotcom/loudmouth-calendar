@@ -272,6 +272,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       pdf: base64Pdf,
       filename: `${cal.client_name}-content-calendar.pdf`,
+      _debug: { pageCount, pageWidth, pageHeight },
     });
 
   } catch (err) {
