@@ -21,12 +21,16 @@ function CalendarGridSkeleton() {
 export default function CalendarListPortal({
   allCalendars, calCreators,
   schedulingCalId, openCalendar, newCalendar, deleteCalendar, addToSchedule,
-  setActivePortal,
   scheduledPosts,
   calendarsLoading,
+  clients = [],
 }) {
   const { user } = useApp();
   const [hoveredCard, setHoveredCard] = useState(null);
+  const clientsById = new Map(clients.map(c => [c.id, c]));
+  const displayClientName = cal => (
+    (cal.client_id && clientsById.get(cal.client_id)?.name) || cal.client_name || "Unassigned"
+  );
 
   return (
     <div style={{ background: C.canvas, minHeight: "100vh", fontFamily: SANS }}>
@@ -85,7 +89,7 @@ export default function CalendarListPortal({
                 >×</button>
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: C.text, fontFamily: SANS, lineHeight: 1 }}>{cal.client_name}</div>
+                <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: C.text, fontFamily: SANS, lineHeight: 1 }}>{displayClientName(cal)}</div>
                 {cal.user_id !== user?.id && (
                   <span style={{ ...BADGE, background: "transparent", color: C.meta, border: `1px solid ${C.border}` }}>
                     By {calCreators?.[cal.user_id]?.name || "teammate"}

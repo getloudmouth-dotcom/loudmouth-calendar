@@ -355,7 +355,11 @@ function ScheduledPostRowSkeleton() {
 }
 
 // ── Hub ───────────────────────────────────────────────────────────────────────
-function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans, calendarsLoading, contentPlansLoading, scheduledPostsLoading }) {
+function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans, calendarsLoading, contentPlansLoading, scheduledPostsLoading, clients = [] }) {
+  const clientsById = new Map(clients.map(c => [c.id, c]));
+  const displayClientName = cal => (
+    (cal.client_id && clientsById.get(cal.client_id)?.name) || cal.client_name || "Unassigned"
+  );
   const today = new Date();
   const { user } = useApp();
   const [hoveredHubCard, setHoveredHubCard] = useState(null);
@@ -416,7 +420,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
               onMouseEnter={() => setHoveredHubCard(cal.id)}
               onMouseLeave={() => setHoveredHubCard(null)}>
               <button onClick={() => openCalendar(cal)}
-                aria-label={`Open ${cal.client_name} calendar`}
+                aria-label={`Open ${displayClientName(cal)} calendar`}
                 style={{ width: 200, height: 110, background: C.surface, border: `1px solid ${hoveredHubCard === cal.id ? C.accent : C.border}`, borderRadius: 14, padding: "14px 16px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left", overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, minWidth: 0 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -424,7 +428,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
                     <span style={{ fontFamily: MONO, fontSize: 7, color: "#000", lineHeight: 1.2 }}>{cal.year}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{displayClientName(cal)}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2, minWidth: 0 }}>
                       <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, flexShrink: 0 }}>
                         {MONTHS[cal.month].slice(0, 3)} {cal.year}
@@ -683,6 +687,7 @@ export default function DashboardPortal({
             calendarsLoading={calendarsLoading}
             contentPlansLoading={contentPlansLoading}
             scheduledPostsLoading={scheduledPostsLoading}
+            clients={clients || []}
           />
         )}
 
@@ -694,6 +699,7 @@ export default function DashboardPortal({
             setActivePortal={setActivePortal}
             scheduledPosts={scheduledPosts}
             calendarsLoading={calendarsLoading}
+            clients={clients || []}
           />
         )}
 

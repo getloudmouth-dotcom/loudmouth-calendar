@@ -17,7 +17,7 @@ class ErrorBoundary extends Component {
 // PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
 import { MONTHS, CONTENT_FIELDS, ROLE_TOOLS, ALL_TOOLS, newPost } from "./constants";
-import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, chunkArray, loadGsiScript, deleteCloudinaryAssets } from "./utils";
+import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, readCalendarIdFromUrl, setCalendarIdInUrl, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, chunkArray, loadGsiScript, deleteCloudinaryAssets } from "./utils";
 import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
 import AuthView from "./views/AuthView";
@@ -160,6 +160,7 @@ export default function App() {
   const today = new Date();
   const [step, setStep] = useState(() => (readExportToken() ? 4 : 1));
   const [clientName, setClientName] = useState("");
+  const [clientId, setClientId] = useState(null);
   const [clients, setClients] = useState([]);
   const [_builders, _setBuilders] = useState(() => {
     try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -276,6 +277,21 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   // ── Realtime ──
   const realtimeChannelRef = useRef(null);
   const lastSelfCalendarUpdateRef = useRef(null);
+  // ── Calendar restoration from URL ──
+  const restoreFromUrlRef = useRef(
+    readExportToken() || readContentPlanToken() || readCPExportToken() || readBillingExportToken()
+      ? null
+      : readCalendarIdFromUrl()
+  );
+  const restoreAttemptedRef = useRef(false);
+  const loadingDraftRef = useRef(false);
+  // Refs that always point at the latest function instance, so timer callbacks
+  // never close over stale versions and effects don't need to depend on them.
+  const saveDraftRef = useRef(null);
+  const saveContentPlanRef = useRef(null);
+  const openCalendarRef = useRef(null);
+  const scheduleSyncFnRef = useRef(null);
+  const showInviteSetupRef = useRef(false);
 // Warm up the PDF export function on load to reduce cold start lag
 useEffect(() => {
   if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
@@ -315,7 +331,7 @@ useEffect(() => {
   useEffect(() => {
     if (isUndoingRef.current) return;
     const timer = setTimeout(() => {
-      const snap = JSON.stringify({ posts, selectedDays, clientName, month, year, postsPerPage });
+      const snap = JSON.stringify({ posts, selectedDays, clientName, clientId, month, year, postsPerPage });
       const history = historyRef.current;
       if (history[historyIdxRef.current] === snap) return;
       history.splice(historyIdxRef.current + 1);
@@ -326,32 +342,32 @@ useEffect(() => {
       setCanRedo(false);
     }, 600);
     return () => clearTimeout(timer);
-  }, [posts, selectedDays, clientName, month, year, postsPerPage]);
+  }, [posts, selectedDays, clientName, clientId, month, year, postsPerPage]);
 
   useEffect(() => {
-    if (!clientName.trim() || !user || isUndoingRef.current) return;
+    if (!clientName.trim() || !user || isUndoingRef.current || loadingDraftRef.current) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
-      saveDraft("Autosave", { silent: true });
+      saveDraftRef.current?.("Autosave", { silent: true });
     }, 12000);
     return () => clearTimeout(autoSaveTimerRef.current);
-  }, [posts, selectedDays, month, year]);
+  }, [posts, selectedDays, month, year, clientName, clientId, currentCalendarId, postsPerPage, calendarNotes, calendarNotesImage, profileName, user]);
 
   useEffect(() => {
     function onKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (clientName.trim() && user) saveDraft();
+        if (clientName.trim() && user) saveDraftRef.current?.();
       }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [clientName, user, posts, selectedDays, month, year, postsPerPage, profileName]);
+  }, [clientName, user]);
 
   function restoreSnap(snap) {
     isUndoingRef.current = true;
     setPosts(snap.posts); setSelectedDays(snap.selectedDays);
-    setClientName(snap.clientName); setMonth(snap.month);
+    setClientName(snap.clientName); setClientId(snap.clientId ?? null); setMonth(snap.month);
     setYear(snap.year); setPostsPerPage(snap.postsPerPage);
     setTimeout(() => { isUndoingRef.current = false; }, 200);
   }
@@ -374,12 +390,12 @@ useEffect(() => {
 
   function resetCalendar() {
     // push current state first so reset is undoable
-    const snap = JSON.stringify({ posts, selectedDays, clientName, month, year, postsPerPage });
+    const snap = JSON.stringify({ posts, selectedDays, clientName, clientId, month, year, postsPerPage });
     historyRef.current.splice(historyIdxRef.current + 1);
     historyRef.current.push(snap);
     historyIdxRef.current = historyRef.current.length - 1;
     // now reset
-    setSelectedDays([]); setPosts({}); setClientName("");
+    setSelectedDays([]); setPosts({}); setClientName(""); setClientId(null);
     setMonth(today.getMonth()); setYear(today.getFullYear());
     setPostsPerPage(3); setStep(1);
   }
@@ -522,7 +538,7 @@ useEffect(() => {
     for (let d = 1; d <= daysInMonth; d++) cells.push(d);
     while (cells.length % 7 !== 0) cells.push(null);
     return cells;
-  }, [month, year, firstDay, daysInMonth]);
+  }, [firstDay, daysInMonth]);
 
   function toggleDay(day) {
     setSelectedDays(prev => {
@@ -689,9 +705,14 @@ useEffect(() => {
   async function addNewClient() {
     const name = newClientInput.trim();
     if (!name) return;
-    await supabase.from("clients").insert({ name, created_by: (await supabase.auth.getUser()).data.user?.id });
+    const { data: created } = await supabase
+      .from("clients")
+      .insert({ name, created_by: (await supabase.auth.getUser()).data.user?.id })
+      .select("id, name")
+      .single();
     await loadClients();
-    setClientName(name);
+    setClientName(created?.name || name);
+    setClientId(created?.id || null);
     setNewClientInput("");
     setAddingClient(false);
   }
@@ -865,13 +886,21 @@ useEffect(() => {
           setInviteName(name);
           setInviteEmail(session.user.email || "");
           setShowInviteSetup(true);
-        } else if (!showInviteSetup && !name) {
+        } else if (!showInviteSetupRef.current && !name) {
           setShowProfileSetup(true);
         }
       }
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Keep refs synced with their latest values for use inside timer callbacks
+  // and one-shot effects that shouldn't re-run when these change identity.
+  useEffect(() => { showInviteSetupRef.current = showInviteSetup; });
+  useEffect(() => { saveDraftRef.current = saveDraft; });
+  useEffect(() => { saveContentPlanRef.current = saveContentPlan; });
+  useEffect(() => { openCalendarRef.current = openCalendar; });
+  useEffect(() => { scheduleSyncFnRef.current = syncScheduleForCalendar; });
 
   // Keyed on `user` so load fns see fresh state — calling them inline after setUser races with the async commit.
   useEffect(() => {
@@ -883,7 +912,27 @@ useEffect(() => {
     loadScheduledPosts();
     loadUserProfile(user.id);
     loadRoleToolDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loaders are component-scoped fns with unstable identity; we want this to fire on user/showInviteSetup change only
   }, [user, showInviteSetup]);
+
+  // ── Restore open calendar from URL after first data load ────────────────
+  useEffect(() => {
+    if (restoreAttemptedRef.current) return;
+    if (!user || calendarsLoading) return;
+    restoreAttemptedRef.current = true;
+    const id = restoreFromUrlRef.current;
+    if (!id) return;
+    const cal = allCalendars.find(c => c.id === id);
+    if (cal) openCalendarRef.current?.(cal);
+    else setCalendarIdInUrl(null);
+  }, [user, calendarsLoading, allCalendars]);
+
+  // ── Keep ?calendarId= in sync with whatever calendar is open ────────────
+  useEffect(() => {
+    if (!restoreAttemptedRef.current) return;
+    if (!showDashboard && currentCalendarId) setCalendarIdInUrl(currentCalendarId);
+    else setCalendarIdInUrl(null);
+  }, [showDashboard, currentCalendarId]);
 
   // ── Realtime: keep clients list in sync across all sessions ──────────────
   useEffect(() => {
@@ -983,7 +1032,7 @@ useEffect(() => {
   async function signOut() {
     await supabase.auth.signOut();
     setUser(null); setShowDashboard(true); setAllCalendars([]);
-    setCurrentCalendarId(null); setClientName(""); setSelectedDays([]); setPosts({});
+    setCurrentCalendarId(null); setClientName(""); setClientId(null); setSelectedDays([]); setPosts({});
     setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);
     setCalendarsLoading(true); setContentPlansLoading(true); setScheduledPostsLoading(true);
   }
@@ -1158,7 +1207,15 @@ useEffect(() => {
 
   async function openCalendar(cal) {
     setCurrentCalendarId(cal.id);
-    setClientName(cal.client_name);
+    const liveClient = cal.client_id ? clients.find(c => c.id === cal.client_id) : null;
+    const resolvedName = liveClient?.name || cal.client_name || "";
+    setClientId(cal.client_id || null);
+    setClientName(resolvedName);
+    if (liveClient && liveClient.name && liveClient.name !== cal.client_name) {
+      // lazy heal: bring the denormalized snapshot back in line with the live client
+      supabase.from("calendars").update({ client_name: liveClient.name }).eq("id", cal.id)
+        .then(({ error }) => { if (error) console.warn("[lazy-heal] client_name update failed:", error.message); });
+    }
     setMonth(cal.month);
     setYear(cal.year);
     setPostsPerPage(cal.posts_per_page);
@@ -1167,11 +1224,17 @@ useEffect(() => {
     initialSelectedDaysRef.current = cal.selected_days || [];
     setCalendarNotes(cal.notes || "");
     setCalendarNotesImage(cal.notes_image || "");
-    // Load most recent draft
-    setPosts([]);
-    const { data } = await supabase.from("calendar_drafts")
-      .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
-    if (data?.[0]) setPosts(data[0].posts);
+    // Load most recent draft. Guard autosave so it can't write empty posts
+    // into the DB if this fetch is slow or fails.
+    loadingDraftRef.current = true;
+    setPosts({});
+    try {
+      const { data } = await supabase.from("calendar_drafts")
+        .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
+      if (data?.[0]) setPosts(data[0].posts);
+    } finally {
+      loadingDraftRef.current = false;
+    }
     setShowDashboard(false);
     setStep(1);
     loadDraftHistory(cal.id);
@@ -1182,6 +1245,11 @@ useEffect(() => {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "calendar_drafts", filter: `calendar_id=eq.${cal.id}` }, async (payload) => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (payload.new?.user_id && payload.new.user_id === currentUser?.id) return; // own save
+        // Pull the collaborator's posts into the canvas. Last-write-wins, same
+        // model as the calendars UPDATE handler below.
+        if (payload.new?.posts && typeof payload.new.posts === "object") {
+          setPosts(payload.new.posts);
+        }
         // Look up who saved
         let saverName = "Someone";
         if (payload.new?.user_id) {
@@ -1226,10 +1294,15 @@ useEffect(() => {
       return false;
     }
     const lbl = label || savingLabel || "Manual save";
+    // Always derive the canonical client_name from the live clients row when we have an id,
+    // so the denormalized snapshot can never disagree with clients.name.
+    const liveClient = clientId ? clients.find(c => c.id === clientId) : null;
+    const canonicalName = liveClient?.name || clientName;
     let calData, calErr;
     if (currentCalendarId) {
       ({ data: calData, error: calErr } = await supabase.from("calendars")
         .update({
+          client_id: clientId || null, client_name: canonicalName,
           month, year,
           posts_per_page: postsPerPage, builder_name: profileName,
           selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
@@ -1238,13 +1311,17 @@ useEffect(() => {
         .eq("id", currentCalendarId)
         .select().single());
     } else {
-      const existing = allCalendars.find(
-        c => c.client_name?.toLowerCase() === clientName.toLowerCase() && c.month === month && c.year === year
+      const existing = allCalendars.find(c =>
+        c.month === month && c.year === year && (
+          (clientId && c.client_id === clientId) ||
+          (!clientId && c.client_name?.toLowerCase() === canonicalName.toLowerCase())
+        )
       );
       if (existing) {
         setCurrentCalendarId(existing.id);
         ({ data: calData, error: calErr } = await supabase.from("calendars")
           .update({
+            client_id: clientId || null, client_name: canonicalName,
             month, year,
             posts_per_page: postsPerPage, builder_name: profileName,
             selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
@@ -1254,7 +1331,7 @@ useEffect(() => {
           .select().single());
       } else {
         ({ data: calData, error: calErr } = await supabase.from("calendars").insert({
-          user_id: user.id, client_name: clientName, month, year,
+          user_id: user.id, client_id: clientId || null, client_name: canonicalName, month, year,
           posts_per_page: postsPerPage, builder_name: profileName,
           selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
           updated_at: new Date().toISOString(),
@@ -1329,7 +1406,7 @@ useEffect(() => {
 
     if (!res.ok) {
       let body = {};
-      try { body = await res.json(); } catch {}
+      try { body = await res.json(); } catch { /* response wasn't JSON; fall back to empty body */ }
       if (res.status === 409 && body?.error === "client_has_invoices" && !force) {
         const n = body.invoice_count ?? "open";
         showConfirm(
@@ -1502,7 +1579,7 @@ useEffect(() => {
     realtimeChannelRef.current?.unsubscribe();
     realtimeChannelRef.current = null;
     setCurrentCalendarId(null);
-    setClientName(""); setSelectedDays([]); setPosts({});
+    setClientName(""); setClientId(null); setSelectedDays([]); setPosts({});
     setMonth(today.getMonth()); setYear(today.getFullYear());
     setPostsPerPage(3); setStep(1); setShowDashboard(false);
   }
@@ -1789,10 +1866,10 @@ useEffect(() => {
     if (!cpClientName.trim() || !user) return;
     if (cpAutoSaveTimerRef.current) clearTimeout(cpAutoSaveTimerRef.current);
     cpAutoSaveTimerRef.current = setTimeout(() => {
-      saveContentPlan(true);
+      saveContentPlanRef.current?.(true);
     }, 12000);
     return () => clearTimeout(cpAutoSaveTimerRef.current);
-  }, [cpItems, cpClientName, cpMonth, cpYear, cpShootDate]);
+  }, [cpItems, cpClientName, cpMonth, cpYear, cpShootDate, user]);
 
   // Auto-sync schedule when selected days change (only if user is already opted in)
   useEffect(() => {
@@ -1805,10 +1882,11 @@ useEffect(() => {
     if (!cal) return;
     const daysSnapshot = [...selectedDays];
     const timer = setTimeout(() => {
-      syncScheduleForCalendar({ ...cal, selected_days: daysSnapshot });
+      scheduleSyncFnRef.current?.({ ...cal, selected_days: daysSnapshot });
       initialSelectedDaysRef.current = daysSnapshot;
     }, 800);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally watches scheduledPosts.length only (not full array); syncScheduleForCalendar is invoked via ref
   }, [selectedDays, currentCalendarId, user?.id, scheduledPosts.length, allCalendars]);
 
   console.log("[App] render", { authLoading, user: !!user, showProfileSetup, showDashboard, exportMode, cpPublicToken: !!cpPublicToken, cpExportToken: !!cpExportToken });
@@ -1958,6 +2036,7 @@ useEffect(() => {
       <CalendarBuilder
         step={step} setStep={setStep} stepLabels={stepLabels}
         clientName={clientName} setClientName={setClientName}
+        clientId={clientId} setClientId={setClientId}
         month={month} setMonth={setMonth} year={year} setYear={setYear}
         selectedDays={selectedDays} setSelectedDays={setSelectedDays} posts={posts} setPosts={setPosts}
         postsPerPage={postsPerPage} setPostsPerPage={setPostsPerPage}

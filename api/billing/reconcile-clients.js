@@ -251,6 +251,7 @@ export default async function handler(req, res) {
       // current name to keep them connected.
       let postsRenamed = 0;
       let plansRenamed = 0;
+      let calendarsRenamed = 0;
       if (source.name && target.name && source.name !== target.name) {
         const { data: posts, error: postsErr } = await supabase
           .from("scheduled_posts")
@@ -267,6 +268,17 @@ export default async function handler(req, res) {
           .select("id");
         if (plansErr) return res.status(500).json({ error: `content_plans rename failed: ${plansErr.message}` });
         plansRenamed = plans?.length ?? 0;
+
+        // calendars.client_name is denormalized too — keep it in sync with the
+        // target so the hub doesn't render the merged-away source name.
+        const { data: cals, error: calNameErr } = await supabase
+          .from("calendars")
+          .update({ client_name: target.name })
+          .eq("client_id", target_client_id)
+          .eq("client_name", source.name)
+          .select("id");
+        if (calNameErr) return res.status(500).json({ error: `calendars rename failed: ${calNameErr.message}` });
+        calendarsRenamed = cals?.length ?? 0;
       }
 
       // Transfer FB id if target lacks one. UNIQUE constraint forces us to
@@ -301,6 +313,7 @@ export default async function handler(req, res) {
         ok: true,
         invoicesMoved: invMoved?.length ?? 0,
         calendarsMoved: calMoved?.length ?? 0,
+        calendarsRenamed,
         scheduledPostsRenamed: postsRenamed,
         contentPlansRenamed: plansRenamed,
         fbIdTransferred,

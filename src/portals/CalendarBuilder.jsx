@@ -17,6 +17,7 @@ import ReorderFeedGrid from "../components/ReorderFeedGrid";
 export default function CalendarBuilder({
   step, setStep, stepLabels,
   clientName, setClientName,
+  clientId, setClientId,
   month, setMonth, year, setYear,
   selectedDays, setSelectedDays, posts, setPosts,
   postsPerPage, setPostsPerPage,
@@ -220,9 +221,20 @@ export default function CalendarBuilder({
               <label style={labelStyle}>Client Name</label>
                 {!addingClient ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <select value={clientName} onChange={e => { if (e.target.value === "__add__") setAddingClient(true); else setClientName(e.target.value); }} style={inputStyle}>
+                    <select
+                      value={clientId || ""}
+                      onChange={e => {
+                        const v = e.target.value;
+                        if (v === "__add__") { setAddingClient(true); return; }
+                        if (!v) { setClientId(null); setClientName(""); return; }
+                        const picked = clients.find(c => c.id === v);
+                        setClientId(v);
+                        setClientName(picked?.name || "");
+                      }}
+                      style={inputStyle}
+                    >
                       <option value="">— Select a client —</option>
-                      {clients.map(c => <option key={c.id || c.name || c} value={c.name || c}>{c.name || c}</option>)}
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       <option value="__add__">+ Add new client...</option>
                     </select>
                   </div>
@@ -258,7 +270,7 @@ export default function CalendarBuilder({
                 </div>
               </div>
             </div>
-            <button onClick={() => setStep(2)} disabled={!clientName.trim()} style={{ ...primaryBtn, marginTop: 24, opacity: clientName.trim() ? 1 : 0.4 }}>
+            <button onClick={() => setStep(2)} disabled={!clientId} style={{ ...primaryBtn, marginTop: 24, opacity: clientId ? 1 : 0.4 }}>
               Next: Pick Posting Days &#8594;
             </button>
           </div>

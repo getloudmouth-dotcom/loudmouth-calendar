@@ -21,6 +21,21 @@ export function readBillingExportToken() {
   return new URLSearchParams(window.location.search).get("billingExportToken");
 }
 
+export function readCalendarIdFromUrl() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("calendarId");
+}
+
+export function setCalendarIdInUrl(id) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set("calendarId", id);
+  else url.searchParams.delete("calendarId");
+  const next = url.pathname + (url.search ? url.search : "") + url.hash;
+  if (next === window.location.pathname + window.location.search + window.location.hash) return;
+  window.history.replaceState(null, "", next);
+}
+
 export async function compressToBlob(file) {
   return new Promise(resolve => {
     const img = new Image();
