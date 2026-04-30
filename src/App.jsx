@@ -743,8 +743,6 @@ useEffect(() => {
         );
       }
       const data = await res.json();
-      // eslint-disable-next-line no-console
-      console.warn("[export debug]", data._debug);
       const bytes = Uint8Array.from(atob(data.pdf.replace(/[\s\r\n]/g, "")), c => c.charCodeAt(0));
       const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);

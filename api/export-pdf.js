@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 import { randomUUID } from "crypto";
+import { PDFDocument } from "pdf-lib";
 
 let _ratelimiter = null;
 function getRatelimiter(redis) {
@@ -255,24 +256,48 @@ export default async function handler(req, res) {
       await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
     }
 
-    // Inject break-after unconditionally so page breaks fire even when @media
-    // print isn't fully honoured by the headless renderer.
-    await page.addStyleTag({
-      content: `html[data-pdf-export="1"] .cal-page { break-after: page; }`,
+    // Chromium's headless PDF renderer collapses our flex/aspect-ratio cal-page
+    // layouts into a single page regardless of break-after / page-break-after.
+    // Render each page in isolation (hide siblings) and merge the resulting
+    // single-page PDFs with pdf-lib.
+    await page.evaluate(() => {
+      const style = document.createElement("style");
+      style.id = "export-page-isolate";
+      document.head.appendChild(style);
     });
 
-    const pdfBuffer = await page.pdf({
-      width: `${pageWidth}px`,
-      height: `${pageHeight}px`,
-      printBackground: true,
-      preferCSSPageSize: false,
-    });
+    const renderCount = Math.max(pageCount, 1);
+    const pdfBuffers = [];
+    for (let i = 0; i < renderCount; i++) {
+      await page.evaluate((idx) => {
+        document.getElementById("export-page-isolate").textContent = `
+          .cal-pages-outer > .cal-page { display: none !important; }
+          .cal-pages-outer > .cal-page:nth-child(${idx + 1}) { display: flex !important; }
+        `;
+      }, i);
+      await page.evaluate(
+        () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      );
+      const buf = await page.pdf({
+        width: `${pageWidth}px`,
+        height: `${pageHeight}px`,
+        printBackground: true,
+        preferCSSPageSize: false,
+      });
+      pdfBuffers.push(buf);
+    }
 
-    const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
+    const merged = await PDFDocument.create();
+    for (const buf of pdfBuffers) {
+      const src = await PDFDocument.load(buf);
+      const copied = await merged.copyPages(src, src.getPageIndices());
+      copied.forEach(p => merged.addPage(p));
+    }
+    const finalBytes = await merged.save();
+    const base64Pdf = Buffer.from(finalBytes).toString("base64");
     return res.status(200).json({
       pdf: base64Pdf,
       filename: `${cal.client_name}-content-calendar.pdf`,
-      _debug: { pageCount, pageWidth, pageHeight },
     });
 
   } catch (err) {
