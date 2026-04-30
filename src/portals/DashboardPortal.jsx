@@ -86,8 +86,6 @@ const TOOL_ITEMS = [
   { key: "scheduling",   permission: "content_scheduling",   label: "Scheduling",   icon: icons.scheduling },
   { key: "content-plan", permission: "content_plan_creator", label: "Content Plans",icon: icons.contentPlan },
   { key: "grid",         permission: "grid_creator",         label: "Grid Creator", icon: icons.grid },
-  { key: "admin",        permission: "admin_portal",         label: "Admin",        icon: icons.admin },
-  { key: "billing",      permission: "billing",              label: "Billing",      icon: icons.billing },
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -128,6 +126,10 @@ export function Sidebar({ activePortal, setActivePortal, profileName, scheduledP
             onHistory={() => {}}
             onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
             onSignOut={signOut}
+            isAdmin={can("admin_portal")}
+            onAdminPortal={() => navigateTool("admin", "admin_portal")}
+            hasBilling={can("billing")}
+            onBillingPortal={() => setActivePortal("billing")}
           />
         </div>
         <button
@@ -307,9 +309,10 @@ function SectionHeader({ label, action }) {
 }
 
 // ── Hub ───────────────────────────────────────────────────────────────────────
-function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, allContentPlans, scheduledPosts, newCalendar, openCalendar, can, loadAllContentPlans }) {
+function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans }) {
   const today = new Date();
   const { user } = useApp();
+  const [hoveredHubCard, setHoveredHubCard] = useState(null);
   const firstName = profileName ? profileName.split(" ")[0] : null;
 
   const DAY_GREETINGS = [
@@ -356,34 +359,52 @@ function Hub({ setActivePortal, profileName, allCalendars, calCollaborators, all
         <SectionHeader label="Recently Edited Calendars" />
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
           {recentCals.map(cal => (
-            <button key={cal.id} onClick={() => openCalendar(cal)}
-              aria-label={`Open ${cal.client_name} calendar`}
-              style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left" }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
-              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 7, color: "#000", lineHeight: 1.2 }}>{cal.year}</span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
-                    {cal.user_id !== user?.id && (
-                      <span style={{ ...BADGE, flexShrink: 0 }}>SHARED</span>
-                    )}
+            <div key={cal.id} style={{ position: "relative", flexShrink: 0 }}
+              onMouseEnter={() => setHoveredHubCard(cal.id)}
+              onMouseLeave={() => setHoveredHubCard(null)}>
+              <button onClick={() => openCalendar(cal)}
+                aria-label={`Open ${cal.client_name} calendar`}
+                style={{ width: 200, background: C.surface, border: `1px solid ${hoveredHubCard === cal.id ? C.accent : C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: C.accent, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 8, textTransform: "uppercase", letterSpacing: 0.5, color: "#000", lineHeight: 1.2 }}>{MONTHS[cal.month].slice(0, 3)}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 7, color: "#000", lineHeight: 1.2 }}>{cal.year}</span>
                   </div>
-                  <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
-                    {MONTHS[cal.month].slice(0, 3)} {cal.year}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontFamily: SANS }}>{cal.client_name}</div>
+                      {cal.user_id !== user?.id && (
+                        <span style={{ ...BADGE, flexShrink: 0 }}>SHARED</span>
+                      )}
+                    </div>
+                    <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>
+                      {MONTHS[cal.month].slice(0, 3)} {cal.year}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <CollabAvatars collaborators={calCollaborators?.[cal.id]} />
-              <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, letterSpacing: 0.5 }}>
-                {cal.updated_at ? `Saved ${new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
-                {cal.last_updated_by ? ` · ${cal.last_updated_by}` : ""}
-              </div>
-            </button>
+                <CollabAvatars collaborators={calCollaborators?.[cal.id]} />
+                <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, letterSpacing: 0.5 }}>
+                  {cal.updated_at ? `Saved ${new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : "—"}
+                  {cal.last_updated_by ? ` · ${cal.last_updated_by}` : ""}
+                </div>
+              </button>
+              {cal.user_id === user?.id && (
+                <button
+                  onClick={e => { e.stopPropagation(); deleteCalendar(cal); }}
+                  style={{
+                    position: "absolute", top: 8, right: 8,
+                    padding: "4px 7px", fontSize: 14, lineHeight: 1,
+                    opacity: hoveredHubCard === cal.id ? 1 : 0,
+                    pointerEvents: hoveredHubCard === cal.id ? "auto" : "none",
+                    color: C.meta, border: "none", background: "transparent", cursor: "pointer",
+                    transition: "opacity 0.15s",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = C.error; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = C.meta; }}
+                  title="Delete calendar"
+                >×</button>
+              )}
+            </div>
           ))}
           {/* Dashed "New Calendar" card */}
           <button onClick={newCalendar}
@@ -543,6 +564,8 @@ export default function DashboardPortal({
   workspaceCalendarId, setWorkspaceCalendarId,
   newMonthForClient,
   addClientDirect,
+  toggleClientSmmActive,
+  deleteClient,
 }) {
   const { can } = useApp();
   const [adminInitialTab, setAdminInitialTab] = useState(null);
@@ -572,7 +595,7 @@ export default function DashboardPortal({
         adminUsers={adminUsers}
         roleToolDefaults={roleToolDefaults}
         onOpenRolePerms={openRolePerms}
-        clients={clients || []}
+        clients={(clients || []).filter(c => c.smm_active !== false)}
         workspaceClientId={workspaceClientId}
         onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal("clients"); }}
         addClientDirect={addClientDirect}
@@ -591,6 +614,7 @@ export default function DashboardPortal({
             scheduledPosts={scheduledPosts}
             newCalendar={newCalendar}
             openCalendar={openCalendar}
+            deleteCalendar={deleteCalendar}
             can={can}
             loadAllContentPlans={loadAllContentPlans}
           />
@@ -633,6 +657,8 @@ export default function DashboardPortal({
             doDeleteUser={doDeleteUser} deleteUserBusy={deleteUserBusy} currentUserId={currentUserId}
             setActivePortal={setActivePortal}
             initialTab={adminInitialTab}
+            clients={clients || []}
+            toggleClientSmmActive={toggleClientSmmActive}
           />
         )}
 
@@ -696,6 +722,7 @@ export default function DashboardPortal({
                 onOpenCalendar={openCalendar}
                 activeTab={workspaceTab}
                 setActiveTab={setWorkspaceTab}
+                deleteCalendar={deleteCalendar}
               />
             );
           }
@@ -708,6 +735,7 @@ export default function DashboardPortal({
                 onBack={() => setWorkspaceClientId(null)}
                 onSelectCalendar={(cal) => setWorkspaceCalendarId(cal.id)}
                 onNewMonth={newMonthForClient}
+                deleteCalendar={deleteCalendar}
               />
             );
           }
@@ -717,6 +745,7 @@ export default function DashboardPortal({
               clients={clients || []}
               allCalendars={allCalendars}
               setWorkspaceClientId={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); }}
+              deleteClient={deleteClient}
             />
           );
         })()}

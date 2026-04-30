@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ROLE_TOOLS, ALL_TOOLS } from "../constants";
 
-import { SANS, MONO, C, PAGE_HEADER, PAGE_TITLE } from "../theme";
+import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE } from "../theme";
 
 const ROLES = [
   { key: "admin",           label: "Admin" },
@@ -95,6 +95,8 @@ export default function AdminPortal({
   doDeleteUser, deleteUserBusy, currentUserId,
   setActivePortal,
   initialTab,
+  clients,
+  toggleClientSmmActive,
 }) {
   const [tab, setTab] = useState(initialTab ?? "team");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -126,8 +128,30 @@ export default function AdminPortal({
       {/* ── Header ── */}
       <div style={PAGE_HEADER}>
         <div style={PAGE_TITLE}>Admin Portal</div>
+      </div>
 
-
+      {/* ── Tab bar ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 44px", borderBottom: `1px solid ${C.border}`, background: C.canvas }}>
+        {[
+          { key: "team",    label: "Team" },
+          { key: "roles",   label: "Role Perms" },
+          { key: "clients", label: "Clients" },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            style={{
+              background: "none", border: "none", borderBottom: tab === t.key ? `2px solid ${C.accent}` : "2px solid transparent",
+              padding: "12px 4px", marginBottom: -1, cursor: "pointer",
+              fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.2px",
+              color: tab === t.key ? C.accent : C.meta, transition: "color 0.12s",
+            }}
+            onMouseEnter={e => { if (tab !== t.key) e.currentTarget.style.color = C.text; }}
+            onMouseLeave={e => { if (tab !== t.key) e.currentTarget.style.color = C.meta; }}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* ── Team tab ── */}
@@ -265,6 +289,65 @@ export default function AdminPortal({
               </button>
               <button onClick={() => { setLocalPerms(roleToolDefaults); setPermsDirty(false); }} style={{ background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, padding: "10px 18px", borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Discard</button>
               <span style={{ fontFamily: MONO, fontSize: 10, color: C.meta, letterSpacing: "0.5px" }}>Unsaved changes</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Clients tab ── */}
+      {tab === "clients" && (
+        <div style={{ padding: "40px 48px" }}>
+          <SectionHeader>Client Visibility</SectionHeader>
+          <div style={{ fontFamily: MONO, fontSize: 10, color: C.meta, letterSpacing: "0.8px", marginTop: -10, marginBottom: 24, lineHeight: 1.7 }}>
+            Toggle which clients appear in the sidebar SMM workflow.<br />
+            Hide one-off or invoicing-only clients that don't need calendars, grids, or scheduled posts.
+          </div>
+          {(!clients || clients.length === 0) ? (
+            <div style={{ textAlign: "center", padding: "80px 0", color: C.meta, fontFamily: MONO, fontSize: 11, letterSpacing: "1px", textTransform: "uppercase" }}>
+              No clients yet — add one via Billing
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {clients.map(client => {
+                const active = client.smm_active !== false;
+                return (
+                  <div
+                    key={client.id}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 14,
+                      padding: "12px 16px", borderRadius: 10,
+                      background: C.surface, border: `1px solid ${C.border}`,
+                      opacity: active ? 1 : 0.55, transition: "opacity 0.15s",
+                    }}
+                  >
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: active ? C.accent : "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }}>
+                      <span style={{ fontFamily: DISP, fontSize: 14, color: active ? "#000" : C.meta, lineHeight: 1 }}>
+                        {(client.name || "?")[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 14, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{client.name}</div>
+                      {client.company && (
+                        <div style={{ fontFamily: MONO, fontSize: 10, color: C.meta, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{client.company}</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => toggleClientSmmActive(client.id, active)}
+                      style={{
+                        border: "none", borderRadius: 20, padding: "6px 14px", cursor: "pointer",
+                        fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px",
+                        background: active ? "rgba(204,255,0,0.15)" : "rgba(255,255,255,0.08)",
+                        color: active ? C.accent : C.meta,
+                        transition: "background 0.15s, color 0.15s",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = active ? "rgba(204,255,0,0.25)" : "rgba(255,255,255,0.14)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = active ? "rgba(204,255,0,0.15)" : "rgba(255,255,255,0.08)"; }}
+                    >
+                      {active ? "SMM Active" : "Hidden"}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

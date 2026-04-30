@@ -17,7 +17,7 @@ class ErrorBoundary extends Component {
 // PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
 import { MONTHS, CONTENT_FIELDS, ROLE_TOOLS, ALL_TOOLS, newPost } from "./constants";
-import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, formatDate, chunkArray, loadGsiScript } from "./utils";
+import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, chunkArray, loadGsiScript, deleteCloudinaryAssets } from "./utils";
 import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
 import AuthView from "./views/AuthView";
@@ -222,7 +222,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [wasOffline, setWasOffline] = useState(false);
   const [scheduledPosts, setScheduledPosts] = useState([]);
-  const [showScheduleView, setShowScheduleView] = useState(false);
+
   const [schedulingCalId, setSchedulingCalId] = useState(null);
   const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin' | 'clients'
   const [workspaceClientId, setWorkspaceClientId] = useState(null);
@@ -230,7 +230,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   // ── RBAC ──
   const [userProfile, setUserProfile] = useState(null);
   const [userToolAccess, setUserToolAccess] = useState([]);
-  const [showAdminView, setShowAdminView] = useState(false);
+  const [, setShowAdminView] = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [roleToolDefaults, setRoleToolDefaults] = useState(null); // null = not loaded yet
@@ -887,6 +887,18 @@ useEffect(() => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ── Realtime: keep clients list in sync across all sessions ──────────────
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("clients-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, () => {
+        loadClients();
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [user]);
+
   async function signIn() {
     setAuthBusy(true); setAuthError("");
     const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
@@ -1158,8 +1170,13 @@ useEffect(() => {
   }
 
   async function loadClients() {
-    const { data } = await supabase.from("clients").select("id, name, email, phone").order("name", { ascending: true });
+    const { data } = await supabase.from("clients").select("id, name, email, phone, smm_active").order("name", { ascending: true });
     if (data?.length) setClients(data.filter(c => c.name));
+  }
+
+  async function toggleClientSmmActive(id, current) {
+    await supabase.from("clients").update({ smm_active: !current }).eq("id", id);
+    setClients(prev => prev.map(c => c.id === id ? { ...c, smm_active: !current } : c));
   }
 
 
@@ -1267,11 +1284,45 @@ useEffect(() => {
 
   function deleteCalendar(cal) {
     showConfirm(`Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`, async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: drafts } = await supabase.from("calendar_drafts").select("posts").eq("calendar_id", cal.id);
+      const urls = [cal.notes_image, ...(drafts ?? []).flatMap(d =>
+        Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])
+      )].filter(Boolean);
+      await deleteCloudinaryAssets([...new Set(urls)], session?.access_token);
       await supabase.from("calendars").delete().eq("id", cal.id);
       await loadAllCalendars();
-      if (currentCalendarId === cal.id) {
-        setCurrentCalendarId(null); setShowDashboard(true);
+      if (currentCalendarId === cal.id) { setCurrentCalendarId(null); setShowDashboard(true); }
+      if (workspaceCalendarId === cal.id) setWorkspaceCalendarId(null);
+    });
+  }
+
+  async function deleteClient(client) {
+    showConfirm(`Delete "${client.name}" and ALL their calendar data? This cannot be undone.`, async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const clientCals = allCalendars.filter(c => c.client_id === client.id);
+      const calIds = clientCals.map(c => c.id);
+
+      if (calIds.length) {
+        await supabase.from("calendars").update({ prev_calendar_id: null }).in("prev_calendar_id", calIds);
       }
+
+      const { data: allDrafts } = calIds.length
+        ? await supabase.from("calendar_drafts").select("posts").in("calendar_id", calIds)
+        : { data: [] };
+
+      const urls = [
+        ...clientCals.map(c => c.notes_image).filter(Boolean),
+        ...(allDrafts ?? []).flatMap(d => Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])),
+      ];
+      await deleteCloudinaryAssets([...new Set(urls)], session?.access_token);
+
+      if (calIds.length) await supabase.from("calendars").delete().in("id", calIds);
+      await supabase.from("clients").delete().eq("id", client.id);
+
+      await Promise.all([loadClients(), loadAllCalendars()]);
+      if (workspaceClientId === client.id) { setWorkspaceClientId(null); setWorkspaceCalendarId(null); }
+      showToast(`Deleted "${client.name}" and all their data.`, "success");
     });
   }
 
@@ -1827,6 +1878,8 @@ useEffect(() => {
         workspaceCalendarId={workspaceCalendarId} setWorkspaceCalendarId={setWorkspaceCalendarId}
         newMonthForClient={newMonthForClient}
         addClientDirect={addClientDirect}
+        toggleClientSmmActive={toggleClientSmmActive}
+        deleteClient={deleteClient}
       />
       <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
     </AppContext.Provider>

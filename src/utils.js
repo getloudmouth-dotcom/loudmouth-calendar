@@ -83,3 +83,18 @@ export function loadGsiScript() {
 export function getSlideCropX(post, slideIdx) { return post.cropXs?.[slideIdx] ?? post.cropX ?? 50; }
 export function getSlideCropY(post, slideIdx) { return post.cropYs?.[slideIdx] ?? post.cropY ?? 50; }
 export function getSlideScale(post, slideIdx) { return post.scales?.[slideIdx] ?? post.scale ?? 1; }
+
+
+export async function deleteCloudinaryAssets(urls, accessToken) {
+  const cloudinaryUrls = (urls ?? []).filter(u => typeof u === "string" && u.includes("res.cloudinary.com"));
+  if (!cloudinaryUrls.length) return;
+  try {
+    await fetch("/api/delete-assets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+      body: JSON.stringify({ urls: cloudinaryUrls }),
+    });
+  } catch (e) {
+    console.warn("[deleteCloudinaryAssets] non-fatal:", e.message);
+  }
+}
