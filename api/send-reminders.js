@@ -10,6 +10,7 @@
 // Uses Supabase service role key to bypass RLS.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 // ── Supabase admin client (service role, bypasses RLS) ──────────────────────
 let _sbAdmin = null;
@@ -187,7 +188,7 @@ function escHtml(str) {
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Only allow GET (Vercel cron) or POST (manual trigger / test)
   if (req.method !== "GET" && req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -385,3 +386,5 @@ export default async function handler(req, res) {
     errors: errors.length > 0 ? errors : undefined,
   });
 }
+
+export default withSentry(handler);

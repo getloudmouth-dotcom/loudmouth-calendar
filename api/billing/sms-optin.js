@@ -4,6 +4,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
+import { withSentry } from '../_sentry.js';
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -24,7 +25,7 @@ async function sendEmail({ to, subject, html }) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const authHeader = req.headers.authorization;
@@ -75,3 +76,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ ok: true });
 }
+
+export default withSentry(handler);

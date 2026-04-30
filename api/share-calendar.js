@@ -4,6 +4,7 @@
 // Caller must be the calendar owner. Adds a collaborator and sends an email notification.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -31,7 +32,7 @@ async function sendEmail({ to, subject, html }) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const authHeader = req.headers.authorization;
@@ -124,3 +125,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ success: true, collaborator: { id: collaboratorProfile.id, name: collaboratorProfile.name, email: collaboratorProfile.email, permission } });
 }
+
+export default withSentry(handler);

@@ -9,6 +9,7 @@ import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 import { randomUUID } from "crypto";
 import { PDFDocument } from "pdf-lib";
+import { withSentry } from './_sentry.js';
 
 let _ratelimiter = null;
 function getRatelimiter(redis) {
@@ -114,7 +115,7 @@ async function launchBrowser() {
 
 const APP_URL = resolveAppUrl();
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Warm-up ping — returns immediately to keep function hot
   if (req.method === "HEAD") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).end();
@@ -307,3 +308,5 @@ export default async function handler(req, res) {
     if (browser) await browser.close();
   }
 }
+
+export default withSentry(handler);

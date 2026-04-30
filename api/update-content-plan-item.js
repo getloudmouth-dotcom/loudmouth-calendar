@@ -4,6 +4,7 @@
 // Access is gated by share token — no Supabase auth required.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 const ALLOWED_FIELDS = ["approval_status", "client_notes"];
 const VALID_APPROVAL_STATUSES = ["pending", "approved", "denied"];
@@ -18,7 +19,7 @@ function getSupabaseAdmin() {
   return _supabaseCache.client;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const { token, itemId, field, value } = req.body || {};
@@ -71,3 +72,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ success: true });
 }
+
+export default withSentry(handler);

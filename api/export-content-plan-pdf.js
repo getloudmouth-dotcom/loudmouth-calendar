@@ -9,6 +9,7 @@ import puppeteer from "puppeteer-core";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { randomUUID } from "crypto";
+import { withSentry } from './_sentry.js';
 
 let _redisCache = { url: "", token: "", client: null };
 function getRedis() {
@@ -69,7 +70,7 @@ async function launchBrowser() {
 
 const APP_URL = resolveAppUrl();
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const authHeader = req.headers.authorization;
@@ -146,3 +147,5 @@ export default async function handler(req, res) {
     if (browser) await browser.close();
   }
 }
+
+export default withSentry(handler);

@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, Component } from "react";
 import { toast as sonnerToast } from "sonner";
+import { Sentry } from "./sentry.js";
 
 class ErrorBoundary extends Component {
   state = { error: null };
@@ -866,6 +867,7 @@ useEffect(() => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
       if (session?.user) {
+        Sentry.setUser({ id: session.user.id, email: session.user.email });
         const name = session.user.user_metadata?.display_name || "";
         setProfileName(name);
         if (window.location.hash.includes("type=invite")) {
@@ -875,11 +877,14 @@ useEffect(() => {
         } else if (!name) {
           setShowProfileSetup(true);
         }
+      } else {
+        Sentry.setUser(null);
       }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        Sentry.setUser({ id: session.user.id, email: session.user.email });
         const name = session.user.user_metadata?.display_name || "";
         setProfileName(name);
         if (window.location.hash.includes("type=invite")) {
@@ -889,6 +894,8 @@ useEffect(() => {
         } else if (!showInviteSetupRef.current && !name) {
           setShowProfileSetup(true);
         }
+      } else {
+        Sentry.setUser(null);
       }
     });
     return () => subscription.unsubscribe();
@@ -1031,6 +1038,7 @@ useEffect(() => {
 
   async function signOut() {
     await supabase.auth.signOut();
+    Sentry.setUser(null);
     setUser(null); setShowDashboard(true); setAllCalendars([]);
     setCurrentCalendarId(null); setClientName(""); setClientId(null); setSelectedDays([]); setPosts({});
     setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);

@@ -5,6 +5,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import twilio from "twilio";
+import { withSentry } from './_sentry.js';
 
 let _sbCache = { url: "", key: "", client: null };
 function getSupabaseAdmin() {
@@ -48,7 +49,7 @@ async function sendSms({ to, body }) {
   await client.messages.create({ to, from, body });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const authHeader = req.headers.authorization;
@@ -145,3 +146,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ success: true, url: publicUrl, partialErrors: errors.length ? errors : undefined });
 }
+
+export default withSentry(handler);

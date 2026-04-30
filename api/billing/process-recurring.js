@@ -7,6 +7,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { freshBooksHeaders } from "./freshbooks.js";
+import { withSentry } from '../_sentry.js';
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
 function getSupabaseAdmin() {
@@ -221,7 +222,7 @@ async function sendInvoiceEmail(invoice, client, lineItems) {
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST" && req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -392,3 +393,5 @@ export default async function handler(req, res) {
   console.log(`[recurring] Done — ${succeeded} created, ${failed} failed`);
   return res.status(200).json({ ok: true, processed: results.length, succeeded, failed, results });
 }
+
+export default withSentry(handler);

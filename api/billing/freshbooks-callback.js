@@ -3,6 +3,7 @@
 // then persists them directly to Supabase so the app can start using them immediately.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from '../_sentry.js';
 
 const ACCOUNT_ID = "A4BW8E";
 
@@ -13,7 +14,7 @@ function getSupabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { code, error } = req.query;
 
   if (error) {
@@ -80,3 +81,5 @@ export default async function handler(req, res) {
     </body></html>
   `);
 }
+
+export default withSentry(handler);

@@ -1,9 +1,10 @@
+import { withSentry } from './_sentry.js';
 // Pinterest API v5 — authenticated board/pin listing + OAuth token exchange
 
 const PINTEREST_TOKEN_URL = "https://api.pinterest.com/v5/oauth/token";
 const PINTEREST_API = "https://api.pinterest.com/v5";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
   const { action, boardId, token, code, verifier } = req.query;
@@ -91,3 +92,5 @@ export default async function handler(req, res) {
 
   return res.status(400).json({ error: "Unknown action" });
 }
+
+export default withSentry(handler);

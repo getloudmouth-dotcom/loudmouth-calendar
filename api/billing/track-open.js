@@ -8,6 +8,7 @@
 // Note: iOS Mail blocks tracking pixels by default. 'viewed' is best-effort only.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from '../_sentry.js';
 
 // 1×1 transparent GIF (smallest valid GIF — 35 bytes)
 const PIXEL = Buffer.from(
@@ -22,7 +23,7 @@ function getSupabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // Always return the pixel — tracking is best-effort and must not error visibly
   const sendPixel = () => {
     res.setHeader("Content-Type", "image/gif");
@@ -67,3 +68,5 @@ export default async function handler(req, res) {
 
   sendPixel();
 }
+
+export default withSentry(handler);

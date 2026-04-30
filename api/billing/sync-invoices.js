@@ -5,6 +5,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { freshBooksHeaders } from "./freshbooks.js";
+import { withSentry } from '../_sentry.js';
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -32,7 +33,7 @@ function parseDueDate(raw) {
   return null;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -204,3 +205,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ created, updated, skipped, deleted, total: allFbInvoices.length, errors });
 }
+
+export default withSentry(handler);

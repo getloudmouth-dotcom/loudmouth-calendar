@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
+import { withSentry } from './_sentry.js';
 
 const kv = new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN });
 const ratelimit = new Ratelimit({ redis: kv, limiter: Ratelimit.slidingWindow(30, "1 m"), prefix: "rl:pinterest" });
@@ -108,7 +109,7 @@ function extractPinsFromHtml(html) {
   return pins;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
   const { url } = req.query;
@@ -182,3 +183,5 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: "fetch_failed", message: "Something went wrong loading the board. Please try again." });
   }
 }
+
+export default withSentry(handler);

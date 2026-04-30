@@ -4,6 +4,7 @@
 // gone stale. Mirrors the existing freshbooks-callback.js redirect URI.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from '../_sentry.js';
 
 const ACCOUNT_ID = "A4BW8E";
 const REDIRECT_URI = "https://loudmouth-calendar.vercel.app/api/billing/freshbooks-callback";
@@ -15,7 +16,7 @@ function getSupabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -66,3 +67,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ status, authorize_url: authorizeUrl });
 }
+
+export default withSentry(handler);

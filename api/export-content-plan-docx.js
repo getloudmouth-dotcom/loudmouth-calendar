@@ -5,6 +5,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import {
+import { withSentry } from './_sentry.js';
   Document,
   Packer,
   Paragraph,
@@ -107,7 +108,7 @@ function contentRow(item) {
   return new TableRow({ children: [titleCell, neededCell, creatorCell, approvalCell] });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const authHeader = req.headers.authorization;
@@ -185,3 +186,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ docx: base64, filename });
 }
+
+export default withSentry(handler);

@@ -4,6 +4,7 @@
 // (the token itself is the credential; it expires in 120s and is single-use).
 
 import { Redis } from "@upstash/redis";
+import { withSentry } from '../_sentry.js';
 
 let _redisCache = { url: "", token: "", client: null };
 function getRedis() {
@@ -17,7 +18,7 @@ function getRedis() {
   return _redisCache.client;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { token } = req.query;
   if (!token) return res.status(400).json({ error: "Missing token" });
 
@@ -43,3 +44,5 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", origin);
   return res.status(200).json(payload);
 }
+
+export default withSentry(handler);

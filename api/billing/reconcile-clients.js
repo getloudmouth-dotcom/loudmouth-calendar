@@ -16,6 +16,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { freshBooksHeaders } from "./freshbooks.js";
+import { withSentry } from '../_sentry.js';
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -83,7 +84,7 @@ async function fetchOneFbClient(accountId, fbId) {
   return data?.response?.result?.client ?? null;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.status(401).json({ error: "Missing authorization token" });
@@ -325,3 +326,5 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ error: "Method not allowed" });
 }
+
+export default withSentry(handler);

@@ -3,6 +3,7 @@
 // Deletes Cloudinary assets by URL. Called before deleting calendars/clients.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 const CLOUD_NAME = "djaxz6tef";
 
@@ -36,7 +37,7 @@ async function deleteByPublicIds(publicIds, auth) {
   return res.json();
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const authHeader = req.headers.authorization;
@@ -66,3 +67,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
+export default withSentry(handler);

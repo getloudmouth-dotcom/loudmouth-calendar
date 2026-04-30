@@ -10,6 +10,7 @@ import { randomUUID } from "crypto";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 import twilio from "twilio";
+import { withSentry } from '../_sentry.js';
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
 function getSupabaseAdmin() {
@@ -333,7 +334,7 @@ async function sendSms(invoice) {
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -433,3 +434,5 @@ export default async function handler(req, res) {
     warnings: errors.length > 0 ? errors : undefined,
   });
 }
+
+export default withSentry(handler);

@@ -7,6 +7,7 @@
 // Requires: CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET env vars
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 const CLOUD_NAME = "djaxz6tef";
 
@@ -111,7 +112,7 @@ async function getReferencedPublicIds(sb) {
   return referencedPublicIds;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (token !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -152,3 +153,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+export default withSentry(handler);

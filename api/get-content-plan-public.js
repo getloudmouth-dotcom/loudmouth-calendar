@@ -4,6 +4,7 @@
 // Access is gated by the share token, not by Supabase auth.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 let _supabaseCache = { url: "", key: "", client: null };
 function getSupabaseAdmin() {
@@ -15,7 +16,7 @@ function getSupabaseAdmin() {
   return _supabaseCache.client;
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
   const { token } = req.query;
@@ -49,3 +50,5 @@ export default async function handler(req, res) {
     share: { allow_client_notes: share.allow_client_notes },
   });
 }
+
+export default withSentry(handler);

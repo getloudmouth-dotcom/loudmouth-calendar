@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { Sentry } from './api/_sentry.js';
 import express from 'express';
 import sharp from 'sharp';
 
@@ -41,6 +42,7 @@ app.post('/api/export-pdf', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'export-pdf load failed' });
   }
 });
@@ -50,6 +52,7 @@ app.get('/api/export-data', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'export-data load failed' });
   }
 });
@@ -60,6 +63,7 @@ app.get('/api/export-content-plan-data', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'export-content-plan-data load failed' });
   }
 });
@@ -70,6 +74,7 @@ app.post('/api/export-content-plan-pdf', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'export-content-plan-pdf load failed' });
   }
 });
@@ -80,6 +85,7 @@ app.post('/api/export-content-plan-docx', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'export-content-plan-docx load failed' });
   }
 });
@@ -90,6 +96,7 @@ app.post('/api/invite-user', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'invite-user load failed' });
   }
 });
@@ -100,6 +107,7 @@ app.post('/api/share-calendar', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'share-calendar load failed' });
   }
 });
@@ -110,6 +118,7 @@ app.post('/api/share-content-plan', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'share-content-plan load failed' });
   }
 });
@@ -120,6 +129,7 @@ app.get('/api/get-content-plan-public', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'get-content-plan-public load failed' });
   }
 });
@@ -130,6 +140,7 @@ app.post('/api/update-content-plan-item', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'update-content-plan-item load failed' });
   }
 });
@@ -140,6 +151,7 @@ app.post('/api/send-reminders', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'send-reminders load failed' });
   }
 });
@@ -150,6 +162,7 @@ app.post('/api/delete-assets', async (req, res) => {
     return handler(req, res);
   } catch (e) {
     console.error(e);
+    Sentry.captureException(e);
     res.status(500).json({ error: e.message || 'delete-assets load failed' });
   }
 });
@@ -176,6 +189,7 @@ for (const route of billingRoutes) {
       return handler(req, res);
     } catch (e) {
       console.error(e);
+      Sentry.captureException(e);
       res.status(500).json({ error: e.message || `${route} load failed` });
     }
   });

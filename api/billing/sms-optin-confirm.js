@@ -3,6 +3,7 @@
 // Sets sms_consent_at and clears the one-time token.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from '../_sentry.js';
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -11,7 +12,7 @@ function getSupabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
   const { token } = req.query;
@@ -61,3 +62,5 @@ function page(accentColor, heading, subheading, body) {
 </body>
 </html>`;
 }
+
+export default withSentry(handler);

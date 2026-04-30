@@ -4,6 +4,7 @@
 // Deletes a user's auth account, profile, and tool access. Admins only. Cannot delete self.
 
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -12,7 +13,7 @@ function getSupabaseAdmin() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const authHeader = req.headers.authorization;
@@ -47,3 +48,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ success: true });
 }
+
+export default withSentry(handler);

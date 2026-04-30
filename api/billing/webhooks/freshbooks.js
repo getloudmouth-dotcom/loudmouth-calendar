@@ -14,6 +14,7 @@
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import { freshBooksHeaders } from "../freshbooks.js";
+import { withSentry } from '../../_sentry.js';
 
 // ── Supabase (service role — bypasses RLS for webhook writes) ─────────────────
 function getSupabaseAdmin() {
@@ -158,7 +159,7 @@ async function sendPaymentConfirmation(invoice) {
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const webhookSecret = process.env.FRESHBOOKS_WEBHOOK_SECRET;
@@ -299,3 +300,5 @@ export default async function handler(req, res) {
   console.log(`[fb-webhook] Invoice ${invoice.invoice_number} marked paid via FreshBooks payment ${object_id}`);
   return res.status(200).json({ ok: true, invoiceId: invoice.id });
 }
+
+export default withSentry(handler);

@@ -2,6 +2,7 @@ import sharp from "sharp";
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 import { createClient } from "@supabase/supabase-js";
+import { withSentry } from './_sentry.js';
 
 const kv = new Redis({
   url: process.env.KV_REST_API_URL,
@@ -19,7 +20,7 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
   );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { fileId } = req.query;
   const auth = req.headers.authorization;
 
@@ -128,3 +129,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
+export default withSentry(handler);
