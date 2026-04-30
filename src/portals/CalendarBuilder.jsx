@@ -46,6 +46,43 @@ export default function CalendarBuilder({
   const [dragOver, setDragOver] = useState(null);
   const [hoveredPostCard, setHoveredPostCard] = useState(null);
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [monthChangeConfirm, setMonthChangeConfirm] = useState(null);
+
+  const handleMonthYearChange = (nextMonth, nextYear) => {
+    if (nextMonth === month && nextYear === year) return;
+    const newDaysInMonth = new Date(nextYear, nextMonth + 1, 0).getDate();
+    const orphanedSelected = selectedDays.filter(d => d > newDaysInMonth);
+    const orphanedFromPosts = Object.keys(posts)
+      .map(Number)
+      .filter(d => d > newDaysInMonth && (posts[d]?.length ?? 0) > 0);
+    const orphanedDays = Array.from(new Set([...orphanedSelected, ...orphanedFromPosts])).sort((a, b) => a - b);
+    const hasContent = selectedDays.length > 0 || Object.keys(posts).some(d => (posts[d]?.length ?? 0) > 0);
+
+    const apply = () => {
+      setMonth(nextMonth);
+      setYear(nextYear);
+      if (orphanedDays.length > 0) {
+        setSelectedDays(prev => prev.filter(d => d <= newDaysInMonth));
+        setPosts(prev => {
+          const next = { ...prev };
+          orphanedDays.forEach(d => delete next[d]);
+          return next;
+        });
+      }
+      setMonthChangeConfirm(null);
+      if (hasContent) {
+        showToast(
+          orphanedDays.length > 0
+            ? `Switched to ${MONTHS[nextMonth]} ${nextYear}. Removed ${orphanedDays.length} day${orphanedDays.length === 1 ? "" : "s"} that don't exist in ${MONTHS[nextMonth]}.`
+            : `Switched to ${MONTHS[nextMonth]} ${nextYear} — your content is intact.`,
+          "success"
+        );
+      }
+    };
+
+    if (orphanedDays.length === 0) { apply(); return; }
+    setMonthChangeConfirm({ nextMonth, nextYear, orphanedDays, apply });
+  };
 
   return (
 <div style={{ fontFamily: SANS, minHeight: "100vh", background: C.canvas }}>
@@ -199,13 +236,13 @@ export default function CalendarBuilder({
               </div>
               <div>
                 <label style={labelStyle}>Month</label>
-                <select value={month} onChange={e => { setMonth(Number(e.target.value)); setSelectedDays([]); setPosts({}); }} style={inputStyle}>
+                <select value={month} onChange={e => handleMonthYearChange(Number(e.target.value), year)} style={inputStyle}>
                   {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>Year</label>
-                <input type="number" value={year} min={2024} max={2030} onChange={e => { setYear(Number(e.target.value)); setSelectedDays([]); setPosts({}); }} style={inputStyle} />
+                <input type="number" value={year} min={2024} max={2030} onChange={e => handleMonthYearChange(month, Number(e.target.value))} style={inputStyle} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>Posts Per Page</label>
@@ -628,6 +665,27 @@ input:focus, select:focus, textarea:focus { border-color: ${C.accent} !important
       <button onClick={() => setResetConfirm(false)} style={ghostBtn}>Cancel</button>
       <button onClick={() => { resetCalendar(); setResetConfirm(false); }} style={dangerBtn}>Reset</button>
     </div>
+  </AppDialog>
+  <AppDialog
+    open={!!monthChangeConfirm}
+    onClose={() => setMonthChangeConfirm(null)}
+    title={monthChangeConfirm ? `Switch to ${MONTHS[monthChangeConfirm.nextMonth]} ${monthChangeConfirm.nextYear}?` : ""}
+  >
+    {monthChangeConfirm && (
+      <>
+        <p style={{ fontSize: 14, color: C.meta, fontFamily: SANS, marginTop: 8, marginBottom: 24, lineHeight: "160%" }}>
+          Your selected days and content will move over.{" "}
+          <span style={{ color: C.text, fontWeight: 700 }}>
+            {monthChangeConfirm.orphanedDays.length} day{monthChangeConfirm.orphanedDays.length === 1 ? "" : "s"} won't exist in {MONTHS[monthChangeConfirm.nextMonth]}
+          </span>{" "}
+          and will be removed: {monthChangeConfirm.orphanedDays.join(", ")}. You can undo this.
+        </p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={() => setMonthChangeConfirm(null)} style={ghostBtn}>Cancel</button>
+          <button onClick={monthChangeConfirm.apply} style={primaryBtn}>Switch month</button>
+        </div>
+      </>
+    )}
   </AppDialog>
 </div>
   );
