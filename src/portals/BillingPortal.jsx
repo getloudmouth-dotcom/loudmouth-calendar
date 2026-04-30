@@ -9,6 +9,7 @@ import { supabase } from "../supabase";
 import { useApp } from "../AppContext";
 import AppDialog from "../components/AppDialog";
 import Skeleton from "../components/Skeleton";
+import ReconcileClientsTab from "./ReconcileClientsTab";
 
 function InvoiceRowSkeleton() {
   return (
@@ -413,9 +414,9 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
 
       {/* ── Tabs + actions ── */}
       <div style={{ background: C.canvas, borderBottom: `1px solid ${C.border}`, padding: "0 44px", display: "flex", alignItems: "center", gap: 0 }}>
-        {["invoices", "clients"].map(t => (
+        {(can("admin_portal") ? ["invoices", "clients", "reconcile"] : ["invoices", "clients"]).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", borderBottom: tab === t ? `2px solid ${C.accent}` : "2px solid transparent", color: tab === t ? C.text : C.meta, fontWeight: tab === t ? 700 : 500, fontSize: 13, fontFamily: SANS, padding: "14px 0", marginRight: 32, cursor: "pointer", letterSpacing: "0.02em", textTransform: "capitalize" }}>
-            {t === "invoices" ? "Invoices" : "Clients"}
+            {t === "invoices" ? "Invoices" : t === "clients" ? "Clients" : "Reconcile"}
           </button>
         ))}
         <div style={{ flex: 1 }} />
@@ -620,6 +621,11 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
           )}
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {/* RECONCILE TAB (admin only)                                            */}
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {tab === "reconcile" && can("admin_portal") && <ReconcileClientsTab />}
 
       {/* ════════════════════════════════════════════════════════════════════ */}
       {/* NEW CLIENT MODAL                                                      */}

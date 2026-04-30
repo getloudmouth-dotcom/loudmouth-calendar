@@ -160,6 +160,7 @@ const billingRoutes = [
   '/api/billing/invoices',
   '/api/billing/sync-clients',
   '/api/billing/sync-invoices',
+  '/api/billing/reconcile-clients',
   '/api/billing/process-recurring',
   '/api/billing/send-invoice',
   '/api/billing/sms-optin',

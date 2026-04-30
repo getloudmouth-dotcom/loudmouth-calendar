@@ -24,6 +24,16 @@ function normalizePhone(raw) {
   return raw; // already E.164 or international — leave as-is
 }
 
+// Org-first defaulting: when the user leaves name blank but provides a
+// company, the company is the canonical client name. Mirrors the priority
+// applied in sync-clients.js so manual creates stay consistent with sync.
+function resolveClientName({ name, company }) {
+  const n = name?.trim();
+  if (n) return n;
+  const c = company?.trim();
+  return c || null;
+}
+
 export default async function handler(req, res) {
   // ── Auth ──────────────────────────────────────────────────────────────────
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -62,15 +72,17 @@ export default async function handler(req, res) {
     if (!name?.trim() && !company?.trim()) return res.status(400).json({ error: "name or company is required" });
 
     const normalizedPhone = normalizePhone(phone?.trim());
+    const resolvedName = resolveClientName({ name, company });
+    const resolvedCompany = company?.trim() || null;
 
     // 1. Insert into Supabase first
     const { data: client, error: insertError } = await supabase
       .from("clients")
       .insert({
-        name: name.trim(),
+        name: resolvedName,
         email: email?.trim() || null,
         phone: normalizedPhone || null,
-        company: company?.trim() || null,
+        company: resolvedCompany,
         created_by: user.id,
       })
       .select()
@@ -87,20 +99,27 @@ export default async function handler(req, res) {
 
     try {
       const headers = await freshBooksHeaders();
+      // If the saved name equals the company, the user only typed a business
+      // name — don't split it into fname/lname or FB will register a person
+      // named "Sip Matcha Bar" inside the org "Sip Matcha Bar".
+      const isOrgDerivedName =
+        !!resolvedCompany && resolvedName === resolvedCompany;
+      const fbClient = {
+        email: email?.trim() || "",
+        organization: resolvedCompany || "",
+        mobile: normalizedPhone || "",
+      };
+      if (!isOrgDerivedName && resolvedName) {
+        const parts = resolvedName.split(" ");
+        fbClient.fname = parts[0] ?? resolvedName;
+        fbClient.lname = parts.slice(1).join(" ") || "";
+      }
       const fbRes = await fetch(
         `https://api.freshbooks.com/accounting/account/${accountId}/users/clients`,
         {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            client: {
-              fname: name.trim().split(" ")[0] ?? name.trim(),
-              lname: name.trim().split(" ").slice(1).join(" ") || "",
-              email: email?.trim() || "",
-              organization: company?.trim() || "",
-              mobile: normalizedPhone || "",
-            },
-          }),
+          body: JSON.stringify({ client: fbClient }),
         }
       );
 
@@ -139,6 +158,8 @@ export default async function handler(req, res) {
     if (!name?.trim() && !company?.trim()) return res.status(400).json({ error: "name or company is required" });
 
     const normalizedPhone = normalizePhone(phone?.trim());
+    const resolvedName = resolveClientName({ name, company });
+    const resolvedCompany = company?.trim() || null;
 
     // 1. Fetch existing client (need freshbooks_contact_id)
     const { data: existing, error: fetchErr } = await supabase
@@ -153,10 +174,10 @@ export default async function handler(req, res) {
     const { data: updated, error: updateErr } = await supabase
       .from("clients")
       .update({
-        name: name?.trim() || null,
+        name: resolvedName,
         email: email?.trim() || null,
         phone: normalizedPhone || null,
-        company: company?.trim() || null,
+        company: resolvedCompany,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -169,23 +190,26 @@ export default async function handler(req, res) {
     const accountId = process.env.FRESHBOOKS_ACCOUNT_ID;
     if (accountId && existing.freshbooks_contact_id) {
       try {
-        const nameTrimmed = updated.name ?? "";
-        const nameParts = nameTrimmed.split(" ");
         const headers = await freshBooksHeaders();
+        // Don't split a company-derived name into fname/lname — see POST.
+        const isOrgDerivedName =
+          !!updated.company && updated.name === updated.company;
+        const fbBody = {
+          organization: updated.company ?? "",
+          email: updated.email ?? "",
+          bus_phone: updated.phone ?? "",
+        };
+        if (!isOrgDerivedName && updated.name) {
+          const nameParts = updated.name.split(" ");
+          fbBody.fname = nameParts[0] ?? "";
+          fbBody.lname = nameParts.slice(1).join(" ") ?? "";
+        }
         const fbRes = await fetch(
           `https://api.freshbooks.com/accounting/account/${accountId}/users/clients/${existing.freshbooks_contact_id}`,
           {
             method: "PUT",
             headers,
-            body: JSON.stringify({
-              client: {
-                fname: nameParts[0] ?? "",
-                lname: nameParts.slice(1).join(" ") ?? "",
-                organization: updated.company ?? "",
-                email: updated.email ?? "",
-                bus_phone: updated.phone ?? "",
-              },
-            }),
+            body: JSON.stringify({ client: fbBody }),
           }
         );
         if (fbRes.ok) {
