@@ -850,14 +850,8 @@ useEffect(() => {
           setInviteName(name);
           setInviteEmail(session.user.email || "");
           setShowInviteSetup(true);
-        } else {
-          if (!name) setShowProfileSetup(true);
-          loadAllCalendars();
-          loadAllContentPlans();
-          loadClients();
-          loadScheduledPosts();
-          loadUserProfile(session.user.id);
-          loadRoleToolDefaults();
+        } else if (!name) {
+          setShowProfileSetup(true);
         }
       }
     });
@@ -870,19 +864,25 @@ useEffect(() => {
           setInviteName(name);
           setInviteEmail(session.user.email || "");
           setShowInviteSetup(true);
-        } else if (!showInviteSetup) {
-          if (!name) setShowProfileSetup(true);
-          loadAllCalendars();
-          loadAllContentPlans();
-          loadClients();
-          loadScheduledPosts();
-          loadUserProfile(session.user.id);
-          loadRoleToolDefaults();
+        } else if (!showInviteSetup && !name) {
+          setShowProfileSetup(true);
         }
       }
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Keyed on `user` so load fns see fresh state — calling them inline after setUser races with the async commit.
+  useEffect(() => {
+    if (!user) return;
+    if (showInviteSetup) return;
+    loadAllCalendars();
+    loadAllContentPlans();
+    loadClients();
+    loadScheduledPosts();
+    loadUserProfile(user.id);
+    loadRoleToolDefaults();
+  }, [user, showInviteSetup]);
 
   // ── Realtime: keep clients list in sync across all sessions ──────────────
   useEffect(() => {
@@ -1525,7 +1525,7 @@ useEffect(() => {
 
   // ── Content Plan helpers ──
   async function loadAllContentPlans() {
-    if (!user) return;
+    if (!user) { setContentPlansLoading(false); return; }
     try {
       const { data } = await supabase
         .from("content_plans")
