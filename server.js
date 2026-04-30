@@ -154,4 +154,29 @@ app.post('/api/delete-assets', async (req, res) => {
   }
 });
 
+// ── Billing routes (all methods — mirrors Vercel's file-based routing) ───────
+const billingRoutes = [
+  '/api/billing/clients',
+  '/api/billing/invoices',
+  '/api/billing/sync-clients',
+  '/api/billing/sync-invoices',
+  '/api/billing/process-recurring',
+  '/api/billing/send-invoice',
+  '/api/billing/sms-optin',
+  '/api/billing/sms-optin-confirm',
+  '/api/billing/freshbooks-callback',
+];
+for (const route of billingRoutes) {
+  const file = route.replace('/api/', './api/') + '.js';
+  app.all(route, async (req, res) => {
+    try {
+      const { default: handler } = await import(file);
+      return handler(req, res);
+    } catch (e) {
+      console.error(e);
+      res.status(500).json({ error: e.message || `${route} load failed` });
+    }
+  });
+}
+
 app.listen(3001, () => console.log('API server running on port 3001'));

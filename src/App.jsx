@@ -1290,25 +1290,49 @@ useEffect(() => {
   async function deleteClient(client) {
     showConfirm(`Delete "${client.name}" and ALL their calendar data? This cannot be undone.`, async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        showToast("Session expired — sign in again.", "error");
+        return;
+      }
+
+      // Capture client's calendars BEFORE the API call — once the client row is
+      // deleted, calendars cascade to client_id=NULL and we lose the mapping.
       const clientCals = allCalendars.filter(c => c.client_id === client.id);
       const calIds = clientCals.map(c => c.id);
 
-      if (calIds.length) {
-        await supabase.from("calendars").update({ prev_calendar_id: null }).in("prev_calendar_id", calIds);
+      const res = await fetch(`/api/billing/clients?id=${encodeURIComponent(client.id)}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!res.ok) {
+        let body = {};
+        try { body = await res.json(); } catch {}
+        if (res.status === 409 && body?.error === "client_has_invoices") {
+          showToast(
+            body.message || `Cannot delete — "${client.name}" has ${body.invoice_count ?? "open"} invoice(s). Delete those first.`,
+            "error"
+          );
+        } else {
+          showToast(`Delete failed: ${body?.error || res.statusText}`, "error");
+        }
+        return;
       }
 
-      const { data: allDrafts } = calIds.length
-        ? await supabase.from("calendar_drafts").select("posts").in("calendar_id", calIds)
-        : { data: [] };
-
-      const urls = [
-        ...clientCals.map(c => c.notes_image).filter(Boolean),
-        ...(allDrafts ?? []).flatMap(d => Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])),
-      ];
-      await deleteCloudinaryAssets([...new Set(urls)], session?.access_token);
-
-      if (calIds.length) await supabase.from("calendars").delete().in("id", calIds);
-      await supabase.from("clients").delete().eq("id", client.id);
+      // Client row gone + FreshBooks archived. Clean up orphaned calendars + assets.
+      if (calIds.length) {
+        await supabase.from("calendars").update({ prev_calendar_id: null }).in("prev_calendar_id", calIds);
+        const { data: allDrafts } = await supabase
+          .from("calendar_drafts")
+          .select("posts")
+          .in("calendar_id", calIds);
+        const urls = [
+          ...clientCals.map(c => c.notes_image).filter(Boolean),
+          ...(allDrafts ?? []).flatMap(d => Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])),
+        ];
+        await deleteCloudinaryAssets([...new Set(urls)], session.access_token);
+        await supabase.from("calendars").delete().in("id", calIds);
+      }
 
       await Promise.all([loadClients(), loadAllCalendars()]);
       if (workspaceClientId === client.id) { setWorkspaceClientId(null); setWorkspaceCalendarId(null); }

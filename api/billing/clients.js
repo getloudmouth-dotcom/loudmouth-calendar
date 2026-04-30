@@ -1,7 +1,8 @@
 // api/billing/clients.js
-// GET   /api/billing/clients        — list all clients
-// POST  /api/billing/clients        — create client in Supabase + sync to FreshBooks
-// PATCH /api/billing/clients?id=X   — update client in Supabase + sync to FreshBooks
+// GET    /api/billing/clients        — list all clients
+// POST   /api/billing/clients        — create client in Supabase + sync to FreshBooks
+// PATCH  /api/billing/clients?id=X   — update client in Supabase + sync to FreshBooks
+// DELETE /api/billing/clients?id=X   — archive in FreshBooks (vis_state=2) + delete from Supabase
 
 import { createClient } from "@supabase/supabase-js";
 import { freshBooksHeaders } from "./freshbooks.js";
@@ -201,6 +202,72 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json(updated);
+  }
+
+  // ── DELETE — archive in FreshBooks + delete locally ──────────────────────
+  if (req.method === "DELETE") {
+    if (profile.role !== "admin") {
+      return res.status(403).json({ error: "Admin role required to delete clients" });
+    }
+
+    const id = req.query.id;
+    if (!id) return res.status(400).json({ error: "id is required" });
+
+    const { data: existing, error: fetchErr } = await supabase
+      .from("clients")
+      .select("id, name, freshbooks_contact_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !existing) return res.status(404).json({ error: "Client not found" });
+
+    const { count: invoiceCount, error: invoiceErr } = await supabase
+      .from("invoices")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", id);
+
+    if (invoiceErr) return res.status(500).json({ error: invoiceErr.message });
+
+    if ((invoiceCount ?? 0) > 0) {
+      return res.status(409).json({
+        error: "client_has_invoices",
+        invoice_count: invoiceCount,
+        message: `"${existing.name}" has ${invoiceCount} invoice(s). Delete those first.`,
+      });
+    }
+
+    let archivedInFreshbooks = false;
+    const accountId = process.env.FRESHBOOKS_ACCOUNT_ID;
+    if (accountId && existing.freshbooks_contact_id) {
+      const headers = await freshBooksHeaders();
+      const fbRes = await fetch(
+        `https://api.freshbooks.com/accounting/account/${accountId}/users/clients/${existing.freshbooks_contact_id}`,
+        {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ client: { vis_state: 2 } }),
+        }
+      );
+
+      if (fbRes.ok) {
+        archivedInFreshbooks = true;
+      } else if (fbRes.status === 404) {
+        // FB already lost the record — proceed with local delete
+        console.warn(`FreshBooks client ${existing.freshbooks_contact_id} not found; archive skipped.`);
+      } else {
+        const body = await fbRes.text();
+        return res.status(502).json({
+          error: "freshbooks_archive_failed",
+          status: fbRes.status,
+          body,
+        });
+      }
+    }
+
+    const { error: deleteErr } = await supabase.from("clients").delete().eq("id", id);
+    if (deleteErr) return res.status(500).json({ error: deleteErr.message });
+
+    return res.status(200).json({ ok: true, archived_in_freshbooks: archivedInFreshbooks });
   }
 
   return res.status(405).json({ error: "Method not allowed" });

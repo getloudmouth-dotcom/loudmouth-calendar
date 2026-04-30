@@ -88,8 +88,8 @@ function emptyLine() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function BillingPortal({ setActivePortal }) {
-  const { showToast } = useApp();
+export default function BillingPortal({ setActivePortal, deleteClient }) {
+  const { showToast, can } = useApp();
   const [tab, setTab] = useState("invoices");
   const [token, setToken] = useState(null);
   const [markPaidConfirm, setMarkPaidConfirm] = useState(null);
@@ -578,9 +578,19 @@ export default function BillingPortal({ setActivePortal }) {
                           <span style={{ fontSize: 9, color: "#949494", background: "rgba(255,255,255,0.07)", borderRadius: 20, padding: "2px 7px", fontWeight: 700, letterSpacing: "0.5px", fontFamily: "'Space Mono', monospace", textTransform: "uppercase", lineHeight: 1 }}>SMS Not Opted In</span>
                         )}
                       </div>
-                      <button onClick={() => openEditClient(c)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, color: "#949494", fontSize: 10, padding: "4px 12px", cursor: "pointer", fontWeight: 700, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>
-                        Edit
-                      </button>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <button onClick={() => openEditClient(c)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 24, color: "#949494", fontSize: 10, padding: "4px 12px", cursor: "pointer", fontWeight: 700, fontFamily: "'Space Mono', monospace", textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}>
+                          Edit
+                        </button>
+                        {can("admin_portal") && deleteClient && (
+                          <button
+                            onClick={() => deleteClient(c)}
+                            style={{ background: "transparent", border: `1px solid rgba(232,0,28,0.35)`, borderRadius: 24, color: C.error, fontSize: 10, padding: "4px 12px", cursor: "pointer", fontWeight: 700, fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px", lineHeight: 1 }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {!c.sms_consent_at && c.email && (
                       <button

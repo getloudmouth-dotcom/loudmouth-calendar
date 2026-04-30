@@ -769,7 +769,7 @@ export default function DashboardPortal({
         )}
 
         {activePortal === "billing" && can("billing") && (
-          <BillingPortal setActivePortal={setActivePortal} />
+          <BillingPortal setActivePortal={setActivePortal} deleteClient={deleteClient} />
         )}
 
         {activePortal === "grid" && can("grid_creator") && (
