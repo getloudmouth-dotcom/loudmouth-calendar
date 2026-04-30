@@ -275,6 +275,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   // toast state removed — using sonner globally
   // ── Realtime ──
   const realtimeChannelRef = useRef(null);
+  const lastSelfCalendarUpdateRef = useRef(null);
 // Warm up the PDF export function on load to reduce cold start lag
 useEffect(() => {
   if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
@@ -334,7 +335,7 @@ useEffect(() => {
       saveDraft("Autosave", { silent: true });
     }, 12000);
     return () => clearTimeout(autoSaveTimerRef.current);
-  }, [posts, selectedDays]);
+  }, [posts, selectedDays, month, year]);
 
   useEffect(() => {
     function onKeyDown(e) {
@@ -1190,6 +1191,18 @@ useEffect(() => {
         showToast(`Updated by ${saverName}`, "info");
         loadDraftHistory(cal.id);
       })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "calendars", filter: `id=eq.${cal.id}` }, (payload) => {
+        if (payload.new?.updated_at && payload.new.updated_at === lastSelfCalendarUpdateRef.current) return; // own write
+        const row = payload.new;
+        if (typeof row.month === "number") setMonth(row.month);
+        if (typeof row.year === "number") setYear(row.year);
+        if (typeof row.posts_per_page === "number") setPostsPerPage(row.posts_per_page);
+        if (typeof row.builder_name === "string") setBuilderName(row.builder_name);
+        if (Array.isArray(row.selected_days)) setSelectedDays(row.selected_days);
+        if (typeof row.notes === "string") setCalendarNotes(row.notes);
+        if (typeof row.notes_image === "string") setCalendarNotesImage(row.notes_image);
+        loadAllCalendars();
+      })
       .subscribe();
     realtimeChannelRef.current = channel;
   }
@@ -1217,6 +1230,7 @@ useEffect(() => {
     if (currentCalendarId) {
       ({ data: calData, error: calErr } = await supabase.from("calendars")
         .update({
+          month, year,
           posts_per_page: postsPerPage, builder_name: profileName,
           selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
           updated_at: new Date().toISOString(),
@@ -1231,6 +1245,7 @@ useEffect(() => {
         setCurrentCalendarId(existing.id);
         ({ data: calData, error: calErr } = await supabase.from("calendars")
           .update({
+            month, year,
             posts_per_page: postsPerPage, builder_name: profileName,
             selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
             updated_at: new Date().toISOString(),
@@ -1251,6 +1266,7 @@ useEffect(() => {
       return false;
     }
     setCurrentCalendarId(calData.id);
+    if (calData?.updated_at) lastSelfCalendarUpdateRef.current = calData.updated_at;
     const { error: draftErr } = await supabase.from("calendar_drafts").insert({
       calendar_id: calData.id, posts, label: lbl, user_id: user.id,
     });
