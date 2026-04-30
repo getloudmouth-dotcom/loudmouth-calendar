@@ -8,6 +8,48 @@ import { SANS, MONO, C, INPUT, LABEL, ghostBtn, primaryBtn, dangerBtn, PAGE_HEAD
 import { supabase } from "../supabase";
 import { useApp } from "../AppContext";
 import AppDialog from "../components/AppDialog";
+import Skeleton from "../components/Skeleton";
+
+function InvoiceRowSkeleton() {
+  return (
+    <tr style={{ borderBottom: "1px solid #111" }}>
+      <td style={{ padding: "14px 16px 14px 0" }}><Skeleton width={70} height={12} /></td>
+      <td style={{ padding: "14px 16px 14px 0" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <Skeleton width={130} height={11} />
+          <Skeleton width={90} height={9} />
+        </div>
+      </td>
+      <td style={{ padding: "14px 16px 14px 0" }}><Skeleton width={70} height={10} /></td>
+      <td style={{ padding: "14px 16px 14px 0" }}><Skeleton width={70} height={10} /></td>
+      <td style={{ padding: "14px 16px 14px 0" }}><Skeleton width={60} height={12} /></td>
+      <td style={{ padding: "14px 16px 14px 0" }}><Skeleton width={60} height={18} radius={20} /></td>
+      <td style={{ padding: "14px 0" }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          <Skeleton width={50} height={20} radius={20} />
+          <Skeleton width={70} height={20} radius={20} />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function ClientCardSkeleton() {
+  return (
+    <div style={{ background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 12, padding: "20px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <Skeleton width="55%" height={14} />
+      <Skeleton width="35%" height={10} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+        <Skeleton width="80%" height={9} />
+        <Skeleton width="60%" height={9} />
+      </div>
+      <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
+        <Skeleton width={70} height={16} radius={20} />
+        <Skeleton width={92} height={16} radius={20} />
+      </div>
+    </div>
+  );
+}
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
@@ -409,7 +451,24 @@ export default function BillingPortal({ setActivePortal }) {
             </div>
           )}
           {loadingI ? (
-            <div style={{ color: "#444", fontSize: 13, padding: "40px 0" }}>Loading invoices...</div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #1e1e1e" }}>
+                    {["Invoice #", "Client", "Issue Date", "Due Date", "Total", "Status", "Actions"].map(h => (
+                      <th key={h} style={{ textAlign: "left", color: "#444", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", padding: "0 16px 12px 0" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <InvoiceRowSkeleton />
+                  <InvoiceRowSkeleton />
+                  <InvoiceRowSkeleton />
+                  <InvoiceRowSkeleton />
+                  <InvoiceRowSkeleton />
+                </tbody>
+              </table>
+            </div>
           ) : invoices.length === 0 ? (
             <div style={{ color: "#333", fontSize: 14, padding: "60px 0", textAlign: "center" }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
@@ -482,7 +541,14 @@ export default function BillingPortal({ setActivePortal }) {
             </div>
           )}
           {loadingC ? (
-            <div style={{ color: "#949494", fontSize: 13, padding: "40px 0", lineHeight: 1 }}>Loading clients...</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+              <ClientCardSkeleton />
+              <ClientCardSkeleton />
+              <ClientCardSkeleton />
+              <ClientCardSkeleton />
+              <ClientCardSkeleton />
+              <ClientCardSkeleton />
+            </div>
           ) : clients.length === 0 ? (
             <div style={{ color: "#949494", fontSize: 14, padding: "60px 0", textAlign: "center", lineHeight: 1 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>👤</div>

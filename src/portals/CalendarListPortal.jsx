@@ -2,12 +2,28 @@ import { useState } from "react";
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import { SANS, MONO, C, btn, BTN_ROW, BADGE, PAGE_HEADER, PAGE_TITLE, DISPLAY_TITLE, DISPLAY_SUBTITLE } from "../theme";
+import Skeleton from "../components/Skeleton";
+
+function CalendarGridSkeleton() {
+  return (
+    <div style={{ background: C.surface, borderRadius: 12, padding: 20, border: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
+      <Skeleton width="60%" height={14} />
+      <Skeleton width="45%" height={10} />
+      <Skeleton width="35%" height={9} />
+      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <Skeleton width={56} height={22} radius={20} />
+        <Skeleton width={72} height={22} radius={20} />
+      </div>
+    </div>
+  );
+}
 
 export default function CalendarListPortal({
   allCalendars, calCreators,
   schedulingCalId, openCalendar, newCalendar, deleteCalendar, addToSchedule,
   setActivePortal,
   scheduledPosts,
+  calendarsLoading,
 }) {
   const { user } = useApp();
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -25,7 +41,7 @@ export default function CalendarListPortal({
           <div style={DISPLAY_TITLE}>Calendars</div>
           <div style={DISPLAY_SUBTITLE}>{allCalendars.length} calendar{allCalendars.length !== 1 ? "s" : ""}</div>
         </div>
-        {allCalendars.length === 0 && (
+        {!calendarsLoading && allCalendars.length === 0 && (
           <div style={{ padding: "80px 0" }}>
             <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, marginBottom: 12 }}>No calendars yet</div>
             <div style={{ fontSize: 14, color: C.text, fontFamily: SANS, fontWeight: 700, marginBottom: 8 }}>Create your first calendar</div>
@@ -34,6 +50,16 @@ export default function CalendarListPortal({
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+          {calendarsLoading && allCalendars.length === 0 && (
+            <>
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+            </>
+          )}
           {allCalendars.map(cal => (
             <div
               key={cal.id}

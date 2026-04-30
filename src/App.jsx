@@ -222,6 +222,9 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [wasOffline, setWasOffline] = useState(false);
   const [scheduledPosts, setScheduledPosts] = useState([]);
+  const [calendarsLoading, setCalendarsLoading] = useState(true);
+  const [contentPlansLoading, setContentPlansLoading] = useState(true);
+  const [scheduledPostsLoading, setScheduledPostsLoading] = useState(true);
 
   const [schedulingCalId, setSchedulingCalId] = useState(null);
   const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin' | 'clients'
@@ -981,6 +984,7 @@ useEffect(() => {
     setUser(null); setShowDashboard(true); setAllCalendars([]);
     setCurrentCalendarId(null); setClientName(""); setSelectedDays([]); setPosts({});
     setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);
+    setCalendarsLoading(true); setContentPlansLoading(true); setScheduledPostsLoading(true);
   }
 
   function showConfirm(message, onConfirm) {
@@ -1120,19 +1124,23 @@ useEffect(() => {
 
   // ── Calendars ──
   async function loadAllCalendars() {
-    const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
-    const calendars = data || [];
-    setAllCalendars(calendars);
+    try {
+      const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
+      const calendars = data || [];
+      setAllCalendars(calendars);
 
-    const creatorIds = [...new Set(calendars.map(c => c.user_id).filter(Boolean))];
-    if (creatorIds.length) {
-      const { data: creators } = await supabase
-        .from("profiles")
-        .select("id, name, email")
-        .in("id", creatorIds);
-      const cmap = {};
-      for (const p of creators || []) cmap[p.id] = { name: p.name || p.email || "Unknown", email: p.email || "" };
-      setCalCreators(cmap);
+      const creatorIds = [...new Set(calendars.map(c => c.user_id).filter(Boolean))];
+      if (creatorIds.length) {
+        const { data: creators } = await supabase
+          .from("profiles")
+          .select("id, name, email")
+          .in("id", creatorIds);
+        const cmap = {};
+        for (const p of creators || []) cmap[p.id] = { name: p.name || p.email || "Unknown", email: p.email || "" };
+        setCalCreators(cmap);
+      }
+    } finally {
+      setCalendarsLoading(false);
     }
   }
 
@@ -1310,25 +1318,29 @@ useEffect(() => {
 
   // ── Schedule ──
   async function loadScheduledPosts() {
-    const { data: posts } = await supabase
-      .from("scheduled_posts")
-      .select("*")
-      .order("post_date", { ascending: true });
+    try {
+      const { data: posts } = await supabase
+        .from("scheduled_posts")
+        .select("*")
+        .order("post_date", { ascending: true });
 
-    const allPosts = posts || [];
+      const allPosts = posts || [];
 
-    // Fetch profiles for all visible user_ids (to show names in "who's opted in")
-    const userIds = [...new Set(allPosts.map(r => r.user_id))];
-    let profileMap = {};
-    if (userIds.length > 0) {
-      const { data: profileRows } = await supabase
-        .from("profiles")
-        .select("id, name, email")
-        .in("id", userIds);
-      for (const p of profileRows || []) profileMap[p.id] = p;
+      // Fetch profiles for all visible user_ids (to show names in "who's opted in")
+      const userIds = [...new Set(allPosts.map(r => r.user_id))];
+      let profileMap = {};
+      if (userIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, name, email")
+          .in("id", userIds);
+        for (const p of profileRows || []) profileMap[p.id] = p;
+      }
+
+      setScheduledPosts(allPosts.map(r => ({ ...r, profile: profileMap[r.user_id] || null })));
+    } finally {
+      setScheduledPostsLoading(false);
     }
-
-    setScheduledPosts(allPosts.map(r => ({ ...r, profile: profileMap[r.user_id] || null })));
   }
 
   async function loadDraftPostsFor(calId) {
@@ -1514,11 +1526,15 @@ useEffect(() => {
   // ── Content Plan helpers ──
   async function loadAllContentPlans() {
     if (!user) return;
-    const { data } = await supabase
-      .from("content_plans")
-      .select("*, clients(id, name, email, phone)")
-      .order("updated_at", { ascending: false });
-    setAllContentPlans(data || []);
+    try {
+      const { data } = await supabase
+        .from("content_plans")
+        .select("*, clients(id, name, email, phone)")
+        .order("updated_at", { ascending: false });
+      setAllContentPlans(data || []);
+    } finally {
+      setContentPlansLoading(false);
+    }
   }
 
   function deleteContentPlan(plan) {
@@ -1812,6 +1828,7 @@ useEffect(() => {
         openCalendar={openCalendar} newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={toggleSchedule}
         loadAdminUsers={loadAdminUsers} loadRoleToolDefaults={loadRoleToolDefaults} loadAllContentPlans={loadAllContentPlans}
         scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost} toggleNotify={toggleNotify}
+        calendarsLoading={calendarsLoading} contentPlansLoading={contentPlansLoading} scheduledPostsLoading={scheduledPostsLoading}
         adminUsers={adminUsers} adminLoading={adminLoading}
         roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}
         inviteModal={inviteModal} setInviteModal={setInviteModal}

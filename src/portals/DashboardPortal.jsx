@@ -13,6 +13,7 @@ import ContentPlanPortal from "./ContentPlanPortal";
 import BillingPortal from "./BillingPortal";
 import GridCreatorPortal from "./GridCreatorPortal";
 import { SANS, MONO, C, DISP, BADGE } from "../theme";
+import Skeleton from "../components/Skeleton";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const icons = {
@@ -307,8 +308,54 @@ function SectionHeader({ label, action }) {
   );
 }
 
+// ── Hub skeletons ─────────────────────────────────────────────────────────────
+function CalendarCardSkeleton() {
+  return (
+    <div style={{ width: 200, height: 110, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        <Skeleton width={36} height={36} radius={8} />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+          <Skeleton width="80%" height={10} />
+          <Skeleton width="55%" height={8} />
+        </div>
+      </div>
+      <Skeleton width="70%" height={8} style={{ marginTop: "auto" }} />
+    </div>
+  );
+}
+
+function ContentPlanCardSkeleton() {
+  return (
+    <div style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8, minHeight: 110 }}>
+      <Skeleton width="75%" height={11} />
+      <Skeleton width="45%" height={9} />
+      <div style={{ display: "flex", gap: 5 }}>
+        <Skeleton width={56} height={16} radius={20} />
+        <Skeleton width={72} height={16} radius={20} />
+      </div>
+      <Skeleton width="60%" height={8} style={{ marginTop: "auto" }} />
+    </div>
+  );
+}
+
+function ScheduledPostRowSkeleton() {
+  return (
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, width: "100%" }}>
+      <div style={{ flexShrink: 0, minWidth: 44, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <Skeleton width={28} height={22} />
+        <Skeleton width={24} height={8} />
+      </div>
+      <div style={{ width: 1, height: 32, background: C.border, flexShrink: 0 }} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+        <Skeleton width="40%" height={11} />
+        <Skeleton width="60%" height={8} />
+      </div>
+    </div>
+  );
+}
+
 // ── Hub ───────────────────────────────────────────────────────────────────────
-function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans }) {
+function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans, calendarsLoading, contentPlansLoading, scheduledPostsLoading }) {
   const today = new Date();
   const { user } = useApp();
   const [hoveredHubCard, setHoveredHubCard] = useState(null);
@@ -357,6 +404,13 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
       <div style={{ marginBottom: 40 }}>
         <SectionHeader label="Recently Edited Calendars" />
         <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+          {calendarsLoading && recentCals.length === 0 && (
+            <>
+              <CalendarCardSkeleton />
+              <CalendarCardSkeleton />
+              <CalendarCardSkeleton />
+            </>
+          )}
           {recentCals.map(cal => (
             <div key={cal.id} style={{ position: "relative", flexShrink: 0 }}
               onMouseEnter={() => setHoveredHubCard(cal.id)}
@@ -421,6 +475,13 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
         <div style={{ marginBottom: 40 }}>
           <SectionHeader label="Recent Content Plans" />
           <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
+            {contentPlansLoading && recentPlans.length === 0 && (
+              <>
+                <ContentPlanCardSkeleton />
+                <ContentPlanCardSkeleton />
+                <ContentPlanCardSkeleton />
+              </>
+            )}
             {recentPlans.map(plan => {
               const planStatus = plan.items
                 ? (plan.items.every(i => i.approval_status === "approved") ? "approved" : "pending")
@@ -481,7 +542,13 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
               </button>
             }
           />
-          {upcomingPosts.length === 0 ? (
+          {scheduledPostsLoading && upcomingPosts.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <ScheduledPostRowSkeleton />
+              <ScheduledPostRowSkeleton />
+              <ScheduledPostRowSkeleton />
+            </div>
+          ) : upcomingPosts.length === 0 ? (
             <div style={{ fontFamily: MONO, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "24px 0" }}>No upcoming posts</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -561,6 +628,7 @@ export default function DashboardPortal({
   addClientDirect,
   toggleClientSmmActive,
   deleteClient,
+  calendarsLoading, contentPlansLoading, scheduledPostsLoading,
 }) {
   const { can } = useApp();
   const [adminInitialTab, setAdminInitialTab] = useState(null);
@@ -612,6 +680,9 @@ export default function DashboardPortal({
             deleteCalendar={deleteCalendar}
             can={can}
             loadAllContentPlans={loadAllContentPlans}
+            calendarsLoading={calendarsLoading}
+            contentPlansLoading={contentPlansLoading}
+            scheduledPostsLoading={scheduledPostsLoading}
           />
         )}
 
@@ -622,6 +693,7 @@ export default function DashboardPortal({
             newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
             setActivePortal={setActivePortal}
             scheduledPosts={scheduledPosts}
+            calendarsLoading={calendarsLoading}
           />
         )}
 
@@ -633,6 +705,7 @@ export default function DashboardPortal({
             setActivePortal={setActivePortal}
             allCalendars={allCalendars}
             openCalendar={openCalendar}
+            scheduledPostsLoading={scheduledPostsLoading}
           />
         )}
 
@@ -669,6 +742,7 @@ export default function DashboardPortal({
             cpItems={cpItems} setCpItems={setCpItems}
             cpSaving={cpSaving}
             allContentPlans={allContentPlans}
+            contentPlansLoading={contentPlansLoading}
             clients={clients} setClients={setClients}
             addingClient={addingClient} setAddingClient={setAddingClient}
             newClientInput={newClientInput} setNewClientInput={setNewClientInput}

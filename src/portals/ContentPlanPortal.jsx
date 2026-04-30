@@ -5,6 +5,20 @@ import { useState, useEffect } from "react";
 import PinterestPanel from "../components/PinterestPanel";
 
 import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn, PAGE_HEADER, PAGE_TITLE } from "../theme";
+import Skeleton from "../components/Skeleton";
+
+function ContentPlanCardSkeleton() {
+  return (
+    <div style={{ background: C.surface, borderRadius: 12, padding: 20, border: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
+      <Skeleton width="65%" height={14} />
+      <Skeleton width="40%" height={11} />
+      <div style={{ marginTop: 4 }}>
+        <Skeleton width={110} height={18} radius={20} />
+      </div>
+      <Skeleton width="55%" height={9} style={{ marginTop: 4 }} />
+    </div>
+  );
+}
 
 const approvalStyle = status => ({
   background: status === "approved" ? "rgba(204,255,0,0.1)" : status === "denied" ? "rgba(255,68,68,0.12)" : C.surface2,
@@ -42,6 +56,7 @@ export default function ContentPlanPortal({
   pinterestOpen, setPinterestOpen,
   pinterestPanelWidth, setPinterestPanelWidth,
   setActivePortal,
+  contentPlansLoading,
 }) {
   const { showToast, user } = useApp();
   const [creators, setCreators] = useState([]);
@@ -102,7 +117,16 @@ export default function ContentPlanPortal({
                 <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
               </div>
             </div>
-            {allContentPlans.length === 0 ? (
+            {contentPlansLoading && allContentPlans.length === 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+                <ContentPlanCardSkeleton />
+                <ContentPlanCardSkeleton />
+                <ContentPlanCardSkeleton />
+                <ContentPlanCardSkeleton />
+                <ContentPlanCardSkeleton />
+                <ContentPlanCardSkeleton />
+              </div>
+            ) : allContentPlans.length === 0 ? (
               <div style={{ textAlign: "center", padding: "80px 0" }}>
                 <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8, lineHeight: 1 }}>No content plans yet</div>

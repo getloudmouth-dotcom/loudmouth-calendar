@@ -2,6 +2,23 @@ import { useState, useEffect } from "react";
 import { ROLE_TOOLS, ALL_TOOLS } from "../constants";
 
 import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE } from "../theme";
+import Skeleton from "../components/Skeleton";
+
+function TeamRowSkeleton() {
+  return (
+    <div style={{ background: C.surface, borderRadius: 12, padding: "16px 20px", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 14 }}>
+      <Skeleton width={38} height={38} radius={19} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+        <Skeleton width="30%" height={12} />
+        <Skeleton width="55%" height={9} />
+      </div>
+      <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
+        <Skeleton width={50} height={18} radius={6} />
+        <Skeleton width={64} height={18} radius={6} />
+      </div>
+    </div>
+  );
+}
 
 const ROLES = [
   { key: "admin",           label: "Admin" },
@@ -158,7 +175,13 @@ export default function AdminPortal({
       {tab === "team" && (
         <div style={{ padding: "40px 48px" }}>
           {adminLoading ? (
-            <div style={{ textAlign: "center", padding: "80px 0", color: C.meta, fontFamily: MONO, fontSize: 12, letterSpacing: "1px" }}>Loading...</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <TeamRowSkeleton />
+              <TeamRowSkeleton />
+              <TeamRowSkeleton />
+              <TeamRowSkeleton />
+              <TeamRowSkeleton />
+            </div>
           ) : (
             <div>
               <SectionHeader>{TEAM_QUIPS[adminUsers.length - 1] || "the team"}</SectionHeader>
