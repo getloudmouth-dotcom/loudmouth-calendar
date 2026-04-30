@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { uploadToCloudinary } from "../utils";
+import { useApp } from "../AppContext";
 
 export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
+  const { showToast } = useApp();
   const [folderUrl, setFolderUrl] = useState(() => localStorage.getItem("lm_driveFolder") || "");
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -58,7 +60,7 @@ export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
       const url = await uploadToCloudinary(blob);
       onSelect(url);
       onClose();
-    } catch { alert("Failed to upload image"); }
+    } catch { showToast("Failed to upload image", "error"); }
     setAdding(false);
   }
 

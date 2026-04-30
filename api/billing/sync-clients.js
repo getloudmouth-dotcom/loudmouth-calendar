@@ -25,6 +25,25 @@ function parseName(fname, lname) {
   return [fname, lname].filter(Boolean).join(" ").trim();
 }
 
+// Org-first naming: a FreshBooks client's "true" name is the organization
+// when set, falling back to the person's name. This makes "Sip Matcha Bar"
+// (org) win over "Val" (fname) so the canonical client name reflects the
+// business, which is what shows up in invoicing and the client list.
+function pickClientName({ organization, fname, lname }) {
+  const org = organization?.trim();
+  if (org) return org;
+  const person = parseName(fname, lname);
+  return person || null;
+}
+
+// The previous derivation used parseName-first with org as fallback. To detect
+// whether a local row was auto-derived (and is therefore safe to re-derive),
+// we check against both the old and new rules. A row that matches either is
+// considered auto-derived; a row matching neither is a manual override.
+function legacyClientName({ organization, fname, lname }) {
+  return parseName(fname, lname) || organization?.trim() || null;
+}
+
 function fbPhone(client) {
   return client.bus_phone || client.mob_phone || client.home_phone || "";
 }
@@ -103,20 +122,32 @@ export default async function handler(req, res) {
     const fbId = String(fb.id);
     // FreshBooks timestamps are UTC but have no timezone suffix — append " UTC"
     const fbUpdated = new Date(`${fb.updated} UTC`);
-    const name = parseName(fb.fname, fb.lname) || fb.organization || null;
-    const company = fb.organization || null;
+    const name = pickClientName(fb);
+    const legacyName = legacyClientName(fb);
+    const company = fb.organization?.trim() || null;
     const email = fb.email || null;
     const phone = normalizePhone(fbPhone(fb)) || null;
 
     // Primary lookup: match by freshbooks_contact_id
     let local = byFbId[fbId];
 
-    // Fallback: if not found by FB ID, check if an unsynced local client has the same name
-    if (!local && name) {
-      local = unsyncedByName[name.toLowerCase()];
+    // Fallback: if not found by FB ID, check if an unsynced local client has
+    // the same name. Try the new org-first name first, then the legacy name —
+    // either match means the local row corresponds to this FB client.
+    if (!local) {
+      const candidates = [name, legacyName].filter(Boolean);
+      for (const candidate of candidates) {
+        local = unsyncedByName[candidate.toLowerCase()];
+        if (local) break;
+      }
       if (local) {
-        // Link existing local record to FreshBooks — update its freshbooks_contact_id
+        // Link existing local record to FreshBooks. Also adopt the org-first
+        // name and FB's company/email/phone so the canonical record updates.
         await supabase.from("clients").update({
+          name: name ?? local.name,
+          company: company ?? local.company,
+          email: email ?? local.email,
+          phone: phone ?? local.phone,
           freshbooks_contact_id: fbId,
           freshbooks_updated_at: fbUpdated.toISOString(),
           updated_at: new Date().toISOString(),
@@ -151,8 +182,14 @@ export default async function handler(req, res) {
 
     if (fbUpdated > localFbUpdatedAt) {
       // ── FreshBooks is newer — overwrite local ────────────────────────────
+      // Re-derive name only when the local name was auto-derived (matches the
+      // current or legacy rule). A name that matches neither was edited by a
+      // user — preserve it.
+      const nameWasAutoDerived =
+        !local.name || local.name === legacyName || local.name === name;
+      const nextName = nameWasAutoDerived ? (name ?? local.name) : local.name;
       await supabase.from("clients").update({
-        name: name ?? local.name,
+        name: nextName,
         company: company ?? local.company,
         email: email ?? local.email,
         phone: phone ?? local.phone,
@@ -163,22 +200,29 @@ export default async function handler(req, res) {
     } else if (localUpdatedAt > localFbUpdatedAt) {
       // ── Local is newer — push to FreshBooks ──────────────────────────────
       try {
-        const nameParts = (local.name ?? "").split(" ");
         const headers = await freshBooksHeaders();
+        // When the local name was derived from the company (org-first), don't
+        // push fname/lname back — that would clobber FB's person record by
+        // splitting the company name. Only push fname/lname when the local
+        // name is genuinely a person name distinct from company.
+        const isOrgDerivedName =
+          !!local.company && local.name === local.company;
+        const fbBody = {
+          organization: local.company ?? "",
+          email: local.email ?? "",
+          bus_phone: local.phone ?? "",
+        };
+        if (!isOrgDerivedName && local.name) {
+          const nameParts = local.name.split(" ");
+          fbBody.fname = nameParts[0] ?? "";
+          fbBody.lname = nameParts.slice(1).join(" ") ?? "";
+        }
         const pushRes = await fetch(
           `https://api.freshbooks.com/accounting/account/${accountId}/users/clients/${fbId}`,
           {
             method: "PUT",
             headers,
-            body: JSON.stringify({
-              client: {
-                fname: nameParts[0] ?? "",
-                lname: nameParts.slice(1).join(" ") ?? "",
-                organization: local.company ?? "",
-                email: local.email ?? "",
-                bus_phone: local.phone ?? "",
-              },
-            }),
+            body: JSON.stringify({ client: fbBody }),
           }
         );
         if (pushRes.ok) {

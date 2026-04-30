@@ -1,8 +1,9 @@
 import { useState } from "react";
+import AppDialog from "../components/AppDialog";
 import { useApp } from "../AppContext";
 import { MONTHS, CONTENT_TYPES, newPost } from "../constants";
 import { getDayName, formatDate } from "../utils";
-import { C, SANS, DISP, LABEL as labelStyle, INPUT as inputStyle, primaryBtn, ghostBtn as secondaryBtn } from "../theme";
+import { C, SANS, DISP, LABEL as labelStyle, INPUT as inputStyle, primaryBtn, ghostBtn, ghostBtn as secondaryBtn, dangerBtn } from "../theme";
 import DatePicker from "../components/DatePicker";
 import NavProfileMenu from "../components/NavProfileMenu";
 import SaveMenu from "../components/SaveMenu";
@@ -16,6 +17,7 @@ import ReorderFeedGrid from "../components/ReorderFeedGrid";
 export default function CalendarBuilder({
   step, setStep, stepLabels,
   clientName, setClientName,
+  clientId, setClientId,
   month, setMonth, year, setYear,
   selectedDays, setSelectedDays, posts, setPosts,
   postsPerPage, setPostsPerPage,
@@ -40,13 +42,48 @@ export default function CalendarBuilder({
   calendarNotes, setCalendarNotes, calendarNotesImage, setCalendarNotesImage,
   handleFiles, handleBatchImport, handleDriveFileDrop, handleMultiDriveFileDrop, handleDriveBatchImport,
   connectDrive,
-  shareModal, setShareModal, shareEmail, setShareEmail, shareError, setShareError,
-  sharePermission, setSharePermission, shareBusy, addCollaborator, removeCollaborator,
-  calCollaborators,
 }) {
-  const { isOnline } = useApp();
+  const { isOnline, showToast } = useApp();
   const [dragOver, setDragOver] = useState(null);
   const [hoveredPostCard, setHoveredPostCard] = useState(null);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [monthChangeConfirm, setMonthChangeConfirm] = useState(null);
+
+  const handleMonthYearChange = (nextMonth, nextYear) => {
+    if (nextMonth === month && nextYear === year) return;
+    const newDaysInMonth = new Date(nextYear, nextMonth + 1, 0).getDate();
+    const orphanedSelected = selectedDays.filter(d => d > newDaysInMonth);
+    const orphanedFromPosts = Object.keys(posts)
+      .map(Number)
+      .filter(d => d > newDaysInMonth && (posts[d]?.length ?? 0) > 0);
+    const orphanedDays = Array.from(new Set([...orphanedSelected, ...orphanedFromPosts])).sort((a, b) => a - b);
+    const hasContent = selectedDays.length > 0 || Object.keys(posts).some(d => (posts[d]?.length ?? 0) > 0);
+
+    const apply = () => {
+      setMonth(nextMonth);
+      setYear(nextYear);
+      if (orphanedDays.length > 0) {
+        setSelectedDays(prev => prev.filter(d => d <= newDaysInMonth));
+        setPosts(prev => {
+          const next = { ...prev };
+          orphanedDays.forEach(d => delete next[d]);
+          return next;
+        });
+      }
+      setMonthChangeConfirm(null);
+      if (hasContent) {
+        showToast(
+          orphanedDays.length > 0
+            ? `Switched to ${MONTHS[nextMonth]} ${nextYear}. Removed ${orphanedDays.length} day${orphanedDays.length === 1 ? "" : "s"} that don't exist in ${MONTHS[nextMonth]}.`
+            : `Switched to ${MONTHS[nextMonth]} ${nextYear} — your content is intact.`,
+          "success"
+        );
+      }
+    };
+
+    if (orphanedDays.length === 0) { apply(); return; }
+    setMonthChangeConfirm({ nextMonth, nextYear, orphanedDays, apply });
+  };
 
   return (
 <div style={{ fontFamily: SANS, minHeight: "100vh", background: C.canvas }}>
@@ -61,7 +98,7 @@ export default function CalendarBuilder({
       {stepLabels.map((label, i) => {
         const s = i + 1;
         return (
-          <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); if (s === 4) { fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {}); if (clientName.trim() && user) saveDraft("Auto-save on preview", { silent: true }); } }} style={{
+          <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); if (s === 4) { fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {}); if (clientName.trim()) saveDraft("Auto-save on preview", { silent: true }); } }} style={{
             background: step === s ? C.accent : "rgba(255,255,255,0.07)",
             color: step === s ? "#000" : C.meta,
             border: "none", padding: "6px 16px", borderRadius: 20,
@@ -74,7 +111,7 @@ export default function CalendarBuilder({
 
     <button onClick={undo} disabled={!canUndo} title="Undo" aria-label="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? C.text : C.meta, border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
       <button onClick={redo} disabled={!canRedo} title="Redo" aria-label="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? C.text : C.meta, border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
-      <button onClick={() => { if (window.confirm("Reset calendar to blank? You can undo this.")) resetCalendar(); }} title="Reset calendar" aria-label="Reset calendar" style={{ background: "rgba(255,255,255,0.08)", color: C.meta, border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
+      <button onClick={() => setResetConfirm(true)} title="Reset calendar" aria-label="Reset calendar" style={{ background: "rgba(255,255,255,0.08)", color: C.meta, border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
       {clientName && <SaveMenu onSave={() => saveDraft()} onExport={exportPDF} showExport={step === 4} />}
       <NavProfileMenu
         profileName={profileName}
@@ -88,7 +125,7 @@ export default function CalendarBuilder({
     </nav>
     <main>
     {(!isOnline || wasOffline) && (
-      <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 99998, display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", backdropFilter: "blur(8px)", background: isOnline ? "rgba(20, 160, 80, 0.92)" : "rgba(20,20,40,0.95)", border: isOnline ? "1px solid rgba(100,220,140,0.4)" : "1px solid rgba(232,0,28,0.4)", transition: "background 0.4s, border 0.4s", whiteSpace: "nowrap" }}>
+      <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 99998, display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.5)", background: isOnline ? "rgba(20, 160, 80, 1)" : "#141428", border: isOnline ? "1px solid rgba(100,220,140,0.4)" : "1px solid rgba(232,0,28,0.4)", transition: "background 0.4s, border 0.4s", whiteSpace: "nowrap" }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#6fec9f" : "#E8001C", boxShadow: isOnline ? "0 0 8px #6fec9f" : "0 0 8px #E8001C", flexShrink: 0, animation: isOnline ? "none" : "offlinePulse 1.4s ease-in-out infinite" }} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text, letterSpacing: "0.02em" }}>
@@ -103,7 +140,7 @@ export default function CalendarBuilder({
     )}
 
     {exporting && (
-    <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, backdropFilter: "blur(4px)" }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,15,25,0.95)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
       <svg aria-hidden="true" focusable="false" width="48" height="48" viewBox="0 0 48 48">
         <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
         <circle cx="24" cy="24" r="20" fill="none" stroke={C.accent} strokeWidth="4"
@@ -184,9 +221,20 @@ export default function CalendarBuilder({
               <label style={labelStyle}>Client Name</label>
                 {!addingClient ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <select value={clientName} onChange={e => { if (e.target.value === "__add__") setAddingClient(true); else setClientName(e.target.value); }} style={inputStyle}>
+                    <select
+                      value={clientId || ""}
+                      onChange={e => {
+                        const v = e.target.value;
+                        if (v === "__add__") { setAddingClient(true); return; }
+                        if (!v) { setClientId(null); setClientName(""); return; }
+                        const picked = clients.find(c => c.id === v);
+                        setClientId(v);
+                        setClientName(picked?.name || "");
+                      }}
+                      style={inputStyle}
+                    >
                       <option value="">— Select a client —</option>
-                      {clients.map(c => <option key={c.id || c.name || c} value={c.name || c}>{c.name || c}</option>)}
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       <option value="__add__">+ Add new client...</option>
                     </select>
                   </div>
@@ -200,13 +248,13 @@ export default function CalendarBuilder({
               </div>
               <div>
                 <label style={labelStyle}>Month</label>
-                <select value={month} onChange={e => { setMonth(Number(e.target.value)); setSelectedDays([]); setPosts({}); }} style={inputStyle}>
+                <select value={month} onChange={e => handleMonthYearChange(Number(e.target.value), year)} style={inputStyle}>
                   {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>Year</label>
-                <input type="number" value={year} min={2024} max={2030} onChange={e => { setYear(Number(e.target.value)); setSelectedDays([]); setPosts({}); }} style={inputStyle} />
+                <input type="number" value={year} min={2024} max={2030} onChange={e => handleMonthYearChange(month, Number(e.target.value))} style={inputStyle} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>Posts Per Page</label>
@@ -222,7 +270,7 @@ export default function CalendarBuilder({
                 </div>
               </div>
             </div>
-            <button onClick={() => setStep(2)} disabled={!clientName.trim()} style={{ ...primaryBtn, marginTop: 24, opacity: clientName.trim() ? 1 : 0.4 }}>
+            <button onClick={() => setStep(2)} disabled={!clientId} style={{ ...primaryBtn, marginTop: 24, opacity: clientId ? 1 : 0.4 }}>
               Next: Pick Posting Days &#8594;
             </button>
           </div>
@@ -493,7 +541,7 @@ updatePost(day, postIdx, "urls", [post.url]);
           </div>
           </div>
         {step === 3 && (
-          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
+          <div style={{ background: "#fff", border: "1px solid #dbdbdb", borderRadius: 12, padding: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
             <ReorderFeedGrid
               allPosts={allPosts.filter(p => p.contentType !== "Story")}
               onSwap={swapPostContent}
@@ -502,6 +550,7 @@ updatePost(day, postIdx, "urls", [post.url]);
               driveUploadProgress={driveUploadProgress}
               pinnedCount={pinnedCount}
               setPinnedCount={setPinnedCount}
+              lightMode
             />
           </div>
         )}
@@ -595,7 +644,7 @@ updatePost(day, postIdx, "urls", [post.url]);
     token={driveToken}
     isOpen={driveOpen}
     onClose={() => setDriveOpen(false)}
-    onTokenExpired={() => { setDriveToken(null); setDriveOpen(false); alert("Drive session expired — click Drive to reconnect."); }}
+    onTokenExpired={() => { setDriveToken(null); setDriveOpen(false); showToast("Drive session expired — click Drive to reconnect.", "error"); }}
     width={drivePanelWidth}
     onWidthChange={setDrivePanelWidth}
     linkPickMode={linkPickMode}
@@ -606,11 +655,7 @@ updatePost(day, postIdx, "urls", [post.url]);
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@600&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    @keyframes driveShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-    @keyframes cardSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    @keyframes offlinePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    input:focus, select:focus, textarea:focus { border-color: ${C.accent} !important; }
+input:focus, select:focus, textarea:focus { border-color: ${C.accent} !important; }
     /* Headless PDF: Chromium may not apply @media print for page.pdf(); hide chrome like .no-print */
     html[data-pdf-export="1"] .no-print,
     html[data-pdf-export="1"] [data-drive-toggle],
@@ -626,6 +671,34 @@ updatePost(day, postIdx, "urls", [post.url]);
     }
   `}</style>
   <Toaster theme="dark" position="bottom-right" richColors />
+  <AppDialog open={resetConfirm} onClose={() => setResetConfirm(false)} title="Reset calendar">
+    <p style={{ fontSize: 14, color: C.meta, fontFamily: SANS, marginTop: 8, marginBottom: 24, lineHeight: "160%" }}>Reset calendar to blank? You can undo this.</p>
+    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+      <button onClick={() => setResetConfirm(false)} style={ghostBtn}>Cancel</button>
+      <button onClick={() => { resetCalendar(); setResetConfirm(false); }} style={dangerBtn}>Reset</button>
+    </div>
+  </AppDialog>
+  <AppDialog
+    open={!!monthChangeConfirm}
+    onClose={() => setMonthChangeConfirm(null)}
+    title={monthChangeConfirm ? `Switch to ${MONTHS[monthChangeConfirm.nextMonth]} ${monthChangeConfirm.nextYear}?` : ""}
+  >
+    {monthChangeConfirm && (
+      <>
+        <p style={{ fontSize: 14, color: C.meta, fontFamily: SANS, marginTop: 8, marginBottom: 24, lineHeight: "160%" }}>
+          Your selected days and content will move over.{" "}
+          <span style={{ color: C.text, fontWeight: 700 }}>
+            {monthChangeConfirm.orphanedDays.length} day{monthChangeConfirm.orphanedDays.length === 1 ? "" : "s"} won't exist in {MONTHS[monthChangeConfirm.nextMonth]}
+          </span>{" "}
+          and will be removed: {monthChangeConfirm.orphanedDays.join(", ")}. You can undo this.
+        </p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={() => setMonthChangeConfirm(null)} style={ghostBtn}>Cancel</button>
+          <button onClick={monthChangeConfirm.apply} style={primaryBtn}>Switch month</button>
+        </div>
+      </>
+    )}
+  </AppDialog>
 </div>
   );
 }

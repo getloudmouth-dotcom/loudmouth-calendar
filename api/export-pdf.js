@@ -8,6 +8,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { Ratelimit } from "@upstash/ratelimit";
 import { randomUUID } from "crypto";
+import { PDFDocument } from "pdf-lib";
 
 let _ratelimiter = null;
 function getRatelimiter(redis) {
@@ -155,7 +156,7 @@ export default async function handler(req, res) {
   if (calErr || !cal) {
     return res.status(404).json({ error: "Calendar not found" });
   }
-  if (cal.user_id !== user.id) return res.status(403).json({ error: "Forbidden" });
+  // Calendars are workspace-wide visible — any authenticated user may export.
 
   // 2. Fetch the most recent draft snapshot
   const { data: draft, error: draftErr } = await supabase
@@ -239,22 +240,61 @@ export default async function handler(req, res) {
     // Wait for print styles to repaint before measuring.
     await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-    // Measure the first .cal-page to set PDF page dimensions.
-    const { pageWidth, pageHeight } = await page.evaluate(() => {
-      const el = document.querySelector(".cal-page");
-      if (!el) return { pageWidth: 1440, pageHeight: 1021 };
-      const r = el.getBoundingClientRect();
-      return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height) };
+    // Measure all .cal-page elements and log count for server-side visibility.
+    const { pageWidth, pageHeight, pageCount } = await page.evaluate(() => {
+      const pages = document.querySelectorAll(".cal-page");
+      if (!pages.length) return { pageWidth: 1440, pageHeight: 1021, pageCount: 0 };
+      const r = pages[0].getBoundingClientRect();
+      return { pageWidth: Math.round(r.width), pageHeight: Math.round(r.height), pageCount: pages.length };
+    });
+    console.log(`[export] pageCount=${pageCount} size=${pageWidth}x${pageHeight}`);
+
+    // Expand the viewport to cover all pages so Chromium fully paints pages 2+
+    // before PDF capture (they live below the initial 1200px viewport fold).
+    if (pageCount > 1) {
+      await page.setViewport({ width: pageWidth, height: pageHeight * pageCount + 200 });
+      await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    }
+
+    // Chromium's headless PDF renderer collapses our flex/aspect-ratio cal-page
+    // layouts into a single page regardless of break-after / page-break-after.
+    // Render each page in isolation (hide siblings) and merge the resulting
+    // single-page PDFs with pdf-lib.
+    await page.evaluate(() => {
+      const style = document.createElement("style");
+      style.id = "export-page-isolate";
+      document.head.appendChild(style);
     });
 
-    const pdfBuffer = await page.pdf({
-      width: `${pageWidth}px`,
-      height: `${pageHeight}px`,
-      printBackground: true,
-      preferCSSPageSize: false,
-    });
+    const renderCount = Math.max(pageCount, 1);
+    const pdfBuffers = [];
+    for (let i = 0; i < renderCount; i++) {
+      await page.evaluate((idx) => {
+        document.getElementById("export-page-isolate").textContent = `
+          .cal-pages-outer > .cal-page { display: none !important; }
+          .cal-pages-outer > .cal-page:nth-child(${idx + 1}) { display: flex !important; }
+        `;
+      }, i);
+      await page.evaluate(
+        () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+      );
+      const buf = await page.pdf({
+        width: `${pageWidth}px`,
+        height: `${pageHeight}px`,
+        printBackground: true,
+        preferCSSPageSize: false,
+      });
+      pdfBuffers.push(buf);
+    }
 
-    const base64Pdf = Buffer.from(pdfBuffer).toString("base64");
+    const merged = await PDFDocument.create();
+    for (const buf of pdfBuffers) {
+      const src = await PDFDocument.load(buf);
+      const copied = await merged.copyPages(src, src.getPageIndices());
+      copied.forEach(p => merged.addPage(p));
+    }
+    const finalBytes = await merged.save();
+    const base64Pdf = Buffer.from(finalBytes).toString("base64");
     return res.status(200).json({
       pdf: base64Pdf,
       filename: `${cal.client_name}-content-calendar.pdf`,

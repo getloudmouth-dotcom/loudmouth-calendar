@@ -106,7 +106,7 @@ export default async function handler(req, res) {
     (localClients ?? []).map(c => [String(c.freshbooks_contact_id), c])
   );
 
-  let created = 0, updated = 0, skipped = 0;
+  let created = 0, updated = 0, skipped = 0, deleted = 0;
   const errors = [];
 
   for (const fb of allFbInvoices) {
@@ -183,5 +183,24 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ created, updated, skipped, total: allFbInvoices.length, errors });
+  // Delete local rows whose FB invoice no longer exists. Skip if FB returned
+  // zero — a 200 + empty list usually means a misconfigured account/token, and
+  // we'd rather no-op than wipe the table.
+  if (allFbInvoices.length > 0) {
+    const fbIdSet = new Set(allFbInvoices.map(fb => String(fb.id)));
+    const orphanIds = (localInvoices ?? [])
+      .filter(inv => inv.freshbooks_invoice_id && !fbIdSet.has(inv.freshbooks_invoice_id))
+      .map(inv => inv.id);
+
+    if (orphanIds.length > 0) {
+      const { error: delErr } = await supabase.from("invoices").delete().in("id", orphanIds);
+      if (delErr) {
+        errors.push({ error: `Orphan delete failed: ${delErr.message}` });
+      } else {
+        deleted = orphanIds.length;
+      }
+    }
+  }
+
+  return res.status(200).json({ created, updated, skipped, deleted, total: allFbInvoices.length, errors });
 }

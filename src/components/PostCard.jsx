@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { getSlideCropX, getSlideCropY, getSlideScale, getDayName, formatDate, compressToBlob, uploadToCloudinary } from "../utils";
 import { CONTENT_TYPES } from "../constants";
 import DraggableImage from "./DraggableImage";
+import { useApp } from "../AppContext";
 
 const CAPTION_EMOJIS = ["❤️","🔥","✨","🙌","👏","💯","🎉","😍","😂","🤣","😊","🥰","🙏","👀","💪","🌟","⭐","🚀","💫","🌈","🎯","💡","📸","🎶","🌺","🌸","💎","👑","🦋","🌙","☀️","🌊","🍀","🌿","💚","💙","💜","🖤","🤍","❤️‍🔥"];
 
 export default function PostCard({ post, month, year, onUpdate, isExporting, onDriveDrop, onFilesDrop, driveUploadProgress, onPickReelLink }) {
+  const { showToast } = useApp();
   const [slideIdx, setSlideIdx] = useState(0);
   const [reframing, setReframing] = useState(false);
   const [dropHighlight, setDropHighlight] = useState(false);
@@ -102,7 +104,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
       } else {
         onUpdate("imageUrls", [url]);
       }
-    } catch(e) { alert("Upload failed: " + e.message); }
+    } catch(e) { showToast("Upload failed: " + e.message, "error"); }
     setReframing(false);
   }
 

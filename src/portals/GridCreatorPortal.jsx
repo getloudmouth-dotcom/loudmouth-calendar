@@ -173,16 +173,16 @@ export default function GridCreatorPortal() {
 
       {/* MAIN CONTENT */}
       <div style={{ flex: 1, overflowY: "auto", padding: "40px 44px", paddingRight: driveOpen ? drivePanelWidth + 60 : 44, transition: "padding-right 0.2s ease" }}>
-        <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <div style={{ maxWidth: 520, margin: "0 auto", background: "#fff", borderRadius: 8, overflow: "hidden" }}>
 
           {/* PROFILE HEADER MOCK */}
-          <div style={{ marginBottom: 0, padding: "20px 0 16px", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ marginBottom: 0, padding: "20px 16px 16px", borderBottom: "1px solid #dbdbdb" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
               {/* Avatar */}
               <div style={{
                 width: 72, height: 72, borderRadius: "50%", flexShrink: 0,
                 border: `2px solid ${C.accent}`,
-                background: `linear-gradient(135deg, ${C.surface2} 0%, ${C.surface} 100%)`,
+                background: "#f0f0f0",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 <span style={{ fontSize: 26, opacity: 0.4 }}>👤</span>
@@ -191,25 +191,25 @@ export default function GridCreatorPortal() {
               {/* Handle + stats */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 13, fontFamily: MONO, color: C.meta, fontWeight: 700 }}>@</span>
+                  <span style={{ fontSize: 13, fontFamily: MONO, color: "#8e8e8e", fontWeight: 700 }}>@</span>
                   <input
                     value={handle}
                     onChange={e => setHandle(e.target.value)}
                     placeholder="username"
                     style={{
                       background: "transparent", border: "none", outline: "none",
-                      fontSize: 15, fontWeight: 700, color: C.text, fontFamily: SANS,
+                      fontSize: 15, fontWeight: 700, color: "#000", fontFamily: SANS,
                       width: "100%", minWidth: 0,
                     }}
                   />
                 </div>
                 <div style={{ display: "flex", gap: 20, fontSize: 12, fontFamily: SANS }}>
                   <span>
-                    <strong style={{ color: C.text }}>{postCount}</strong>
-                    <span style={{ color: C.meta, marginLeft: 4 }}>posts</span>
+                    <strong style={{ color: "#000" }}>{postCount}</strong>
+                    <span style={{ color: "#8e8e8e", marginLeft: 4 }}>posts</span>
                   </span>
-                  <span style={{ color: C.meta }}>— followers</span>
-                  <span style={{ color: C.meta }}>— following</span>
+                  <span style={{ color: "#8e8e8e" }}>— followers</span>
+                  <span style={{ color: "#8e8e8e" }}>— following</span>
                 </div>
               </div>
             </div>
@@ -223,10 +223,10 @@ export default function GridCreatorPortal() {
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                   gap: 14, height: 280,
                   border: `1.5px dashed ${C.accent}`, borderRadius: 8,
-                  background: C.surface,
+                  background: "#f5f5f5",
                 }}>
-                  <div style={{ width: 36, height: 36, border: `3.5px solid ${C.border}`, borderTop: `3.5px solid ${C.accent}`, borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: C.meta, fontFamily: MONO, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  <div style={{ width: 36, height: 36, border: "3.5px solid #dbdbdb", borderTop: `3.5px solid ${C.accent}`, borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#8e8e8e", fontFamily: MONO, letterSpacing: "0.06em", textTransform: "uppercase" }}>
                     {driveUploadProgress.total > 1 ? `${driveUploadProgress.done} / ${driveUploadProgress.total} uploading` : "Uploading..."}
                   </span>
                 </div>
@@ -235,8 +235,8 @@ export default function GridCreatorPortal() {
                 style={{
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                   gap: 14, height: 280, cursor: "pointer",
-                  border: `1.5px dashed ${dragActive ? C.accent : C.border}`, borderRadius: 8,
-                  color: dragActive ? C.accent : C.meta, fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                  border: `1.5px dashed ${dragActive ? C.accent : "#dbdbdb"}`, borderRadius: 8,
+                  color: dragActive ? C.accent : "#8e8e8e", fontFamily: MONO, fontSize: 10, fontWeight: 700,
                   letterSpacing: "1.5px", textTransform: "uppercase",
                   transition: "border-color 0.15s, color 0.15s",
                 }}
@@ -268,6 +268,7 @@ export default function GridCreatorPortal() {
                   driveUploadProgress={driveUploadProgress}
                   pinnedCount={pinnedCount}
                   setPinnedCount={setPinnedCount}
+                  lightMode
                 />
               </div>
             )}

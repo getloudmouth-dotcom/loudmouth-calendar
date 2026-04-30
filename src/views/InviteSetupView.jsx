@@ -54,7 +54,7 @@ export default function InviteSetupView({
         <input type="password" value={invitePasswordConfirm} onChange={e => setInvitePasswordConfirm(e.target.value)} placeholder="Same thing again" onKeyDown={e => e.key === "Enter" && saveInviteSetup()} style={{ ...inputStyle, marginBottom: 20 }} />
 
         {inviteSetupError && (
-          <div style={{ fontSize: 12, color: "#ff4444", marginBottom: 14, fontWeight: 600, fontFamily: SANS, lineHeight: 1 }}>{inviteSetupError}</div>
+          <div style={{ fontSize: 12, color: C.error, marginBottom: 14, fontWeight: 600, fontFamily: SANS, lineHeight: 1 }}>{inviteSetupError}</div>
         )}
 
         <button

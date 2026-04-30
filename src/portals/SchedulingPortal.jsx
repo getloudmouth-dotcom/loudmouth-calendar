@@ -1,7 +1,24 @@
 import { useApp } from "../AppContext";
 import ScheduleRow from "../components/ScheduleRow";
+import Skeleton from "../components/Skeleton";
 
 import { SANS, MONO, C, PAGE_HEADER, PAGE_TITLE } from "../theme";
+
+function ScheduleRowSkeleton() {
+  return (
+    <div style={{ background: C.surface, borderRadius: 14, border: `1px solid ${C.border}`, padding: "14px 18px", height: 80, boxSizing: "border-box", display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ flexShrink: 0, minWidth: 36, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+        <Skeleton width={28} height={22} />
+        <Skeleton width={26} height={8} />
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+        <Skeleton width="35%" height={12} />
+        <Skeleton width="55%" height={9} />
+      </div>
+      <Skeleton width={70} height={20} radius={20} />
+    </div>
+  );
+}
 
 function SectionHeader({ label }) {
   return (
@@ -12,7 +29,7 @@ function SectionHeader({ label }) {
   );
 }
 
-export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, toggleNotify, setActivePortal, allCalendars, openCalendar }) {
+export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, toggleNotify, setActivePortal, allCalendars, openCalendar, scheduledPostsLoading }) {
   const { user } = useApp();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -48,9 +65,20 @@ export default function SchedulingPortal({ scheduledPosts, removeScheduledPost, 
           )}
         </div>
 
-        {myPosts.length === 0 ? (
+        {scheduledPostsLoading && myPosts.length === 0 ? (
+          <div>
+            <SectionHeader label="Upcoming" />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <ScheduleRowSkeleton />
+              <ScheduleRowSkeleton />
+              <ScheduleRowSkeleton />
+            </div>
+          </div>
+        ) : myPosts.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "80px 0", gap: 12 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>🗓</div>
+            <div style={{ width: 56, height: 56, borderRadius: 16, background: C.surface, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: C.meta, textTransform: "uppercase", letterSpacing: "1px" }}>CAL</span>
+            </div>
             <div style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: SANS }}>No scheduled posts yet</div>
             <div style={{ fontSize: 13, color: C.meta, textAlign: "center", maxWidth: 360 }}>
               Open the Calendar Creator, then click "+ Schedule" on any calendar to add its posting dates here.

@@ -1,41 +1,69 @@
 import { useState } from "react";
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
-import CollabAvatars from "../components/CollabAvatars";
-import { SANS, MONO, C, btn, BTN_ROW, PAGE_HEADER, PAGE_TITLE } from "../theme";
+import { SANS, MONO, C, btn, BTN_ROW, BADGE, PAGE_HEADER, PAGE_TITLE, DISPLAY_TITLE, DISPLAY_SUBTITLE } from "../theme";
+import Skeleton from "../components/Skeleton";
+
+function CalendarGridSkeleton() {
+  return (
+    <div style={{ background: C.surface, borderRadius: 12, padding: 20, border: `1px solid ${C.border}`, display: "flex", flexDirection: "column", gap: 10 }}>
+      <Skeleton width="60%" height={14} />
+      <Skeleton width="45%" height={10} />
+      <Skeleton width="35%" height={9} />
+      <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+        <Skeleton width={56} height={22} radius={20} />
+        <Skeleton width={72} height={22} radius={20} />
+      </div>
+    </div>
+  );
+}
 
 export default function CalendarListPortal({
-  allCalendars, calCollaborators,
+  allCalendars, calCreators,
   schedulingCalId, openCalendar, newCalendar, deleteCalendar, addToSchedule,
-  setShareModal, setShareEmail, setShareError,
-  setActivePortal,
   scheduledPosts,
+  calendarsLoading,
+  clients = [],
 }) {
   const { user } = useApp();
   const [hoveredCard, setHoveredCard] = useState(null);
+  const clientsById = new Map(clients.map(c => [c.id, c]));
+  const displayClientName = cal => (
+    (cal.client_id && clientsById.get(cal.client_id)?.name) || cal.client_name || "Unassigned"
+  );
 
   return (
     <div style={{ background: C.canvas, minHeight: "100vh", fontFamily: SANS }}>
       {/* Header */}
       <div style={PAGE_HEADER}>
-        <div style={PAGE_TITLE}>Calendar Creator</div>
+        <div style={PAGE_TITLE}>Calendars</div>
         <div style={{ flex: 1 }} />
       </div>
 
       <div style={{ padding: "36px 48px" }}>
         <div style={{ marginBottom: 40 }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>Calendar Creator</div>
-          <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>{allCalendars.length} calendar{allCalendars.length !== 1 ? "s" : ""}</div>
+          <div style={DISPLAY_TITLE}>Calendars</div>
+          <div style={DISPLAY_SUBTITLE}>{allCalendars.length} calendar{allCalendars.length !== 1 ? "s" : ""}</div>
         </div>
-        {allCalendars.length === 0 && (
-          <div style={{ textAlign: "center", padding: "80px 0" }}>
-            <div style={{ fontSize: 36, marginBottom: 16 }}>📅</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 8, lineHeight: 1, fontFamily: SANS }}>No calendars yet</div>
-            <div style={{ fontSize: 13, color: C.meta, lineHeight: 1, fontFamily: SANS }}>Hit "+ New Calendar" to get started</div>
+        {!calendarsLoading && allCalendars.length === 0 && (
+          <div style={{ padding: "80px 0" }}>
+            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, marginBottom: 12 }}>No calendars yet</div>
+            <div style={{ fontSize: 14, color: C.text, fontFamily: SANS, fontWeight: 700, marginBottom: 8 }}>Create your first calendar</div>
+            <div style={{ fontSize: 13, color: C.meta, fontFamily: SANS }}>Click "+ New Calendar" in the grid below to get started.</div>
           </div>
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+          {calendarsLoading && allCalendars.length === 0 && (
+            <>
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+              <CalendarGridSkeleton />
+            </>
+          )}
           {allCalendars.map(cal => (
             <div
               key={cal.id}
@@ -55,38 +83,31 @@ export default function CalendarListPortal({
                     color: hoveredCard === cal.id ? C.meta : "transparent",
                     border: "none", background: "transparent",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "#ff4444"; }}
+                  onMouseEnter={e => { e.currentTarget.style.color = C.error; }}
                   onMouseLeave={e => { e.currentTarget.style.color = C.meta; }}
                   title="Delete calendar"
                 >×</button>
               )}
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: C.text, fontFamily: SANS, lineHeight: 1 }}>{cal.client_name}</div>
+                <div style={{ fontWeight: 700, fontSize: 15, flex: 1, color: C.text, fontFamily: SANS, lineHeight: 1 }}>{displayClientName(cal)}</div>
                 {cal.user_id !== user?.id && (
-                  <span style={{ background: "rgba(68,102,204,0.15)", color: "#7799ff", fontSize: 9, fontWeight: 700, borderRadius: 20, padding: "2px 7px", letterSpacing: "0.5px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1 }}>Shared</span>
+                  <span style={{ ...BADGE, background: "transparent", color: C.meta, border: `1px solid ${C.border}` }}>
+                    By {calCreators?.[cal.user_id]?.name || "teammate"}
+                  </span>
                 )}
               </div>
               <div style={{ fontSize: 12, color: C.meta, marginBottom: 10, fontFamily: MONO, lineHeight: 1 }}>{MONTHS[cal.month]} {cal.year} · {(cal.selected_days || []).length} day{(cal.selected_days || []).length !== 1 ? "s" : ""}</div>
               <div style={{ fontSize: 10, color: C.meta, marginBottom: 12, fontFamily: MONO, lineHeight: 1, opacity: 0.7 }}>
                 Saved {new Date(cal.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </div>
-              <CollabAvatars collaborators={calCollaborators[cal.id]} />
               <div style={{ ...BTN_ROW, marginTop: 4 }}>
                 <button
                   onClick={e => { e.stopPropagation(); openCalendar(cal); }}
-                  style={btn({ padding: "7px 10px", background: C.accent, color: "#000", border: "none", letterSpacing: "1.5px" })}
+                  style={btn({ background: C.accent, color: "#000", border: "none", letterSpacing: "1.5px" })}
                   onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
                   onMouseLeave={e => e.currentTarget.style.opacity = "1"}
                 >Open</button>
 
-                {cal.user_id === user?.id && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setShareModal({ cal }); setShareEmail(""); setShareError(""); }}
-                    style={btn({ padding: "7px 12px" })}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.color = C.text; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}
-                  >Share</button>
-                )}
 
                 {(() => {
                   const isScheduled = (scheduledPosts || []).some(r => r.calendar_id === cal.id && r.user_id === user?.id);
@@ -97,13 +118,13 @@ export default function CalendarListPortal({
                       disabled={isBusy}
                       title={isScheduled ? "Remove from reminder schedule" : "Add to reminder schedule"}
                       style={btn(isScheduled
-                        ? { padding: "7px 10px", background: "rgba(204,255,0,0.1)", borderColor: C.accent, color: C.accent }
-                        : { padding: "7px 10px" }
+                        ? { background: "rgba(204,255,0,0.1)", borderColor: C.accent, color: C.accent }
+                        : {}
                       )}
                       onMouseEnter={e => { if (!isBusy && !isScheduled) { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; } }}
                       onMouseLeave={e => { if (!isScheduled) { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; } }}
                     >
-                      {isBusy ? "..." : isScheduled ? "✓ Sched" : "+ Sched"}
+                      {isBusy ? "·  ·  ·" : isScheduled ? "Scheduled" : "Schedule"}
                     </button>
                   );
                 })()}
@@ -111,13 +132,13 @@ export default function CalendarListPortal({
               </div>
             </div>
           ))}
-          <div onClick={newCalendar}
-            style={{ border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta }}
+          <button onClick={newCalendar} aria-label="Create new calendar"
+            style={{ border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta, background: "transparent", width: "100%" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
             <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
             <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Calendar</span>
-          </div>
+          </button>
         </div>
       </div>
     </div>

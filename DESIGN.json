@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-04-29T00:00:00Z",
+  "title": "Design System: Loudmouth HQ",
+  "extensions": {
+    "colorMeta": {
+      "canvas":         { "role": "neutral",  "displayName": "Operations Black",  "canonical": "#131313", "tonalRamp": ["#0a0a0a", "#131313", "#1a1a1a", "#222222", "#2f2f2f", "#3d3d3d", "#595959", "#808080"] },
+      "surface":        { "role": "neutral",  "displayName": "Dark Panel",        "canonical": "#1e1e1e", "tonalRamp": ["#0a0a0a", "#131313", "#1e1e1e", "#2a2a2a", "#383838", "#505050", "#707070", "#909090"] },
+      "surface-raised": { "role": "neutral",  "displayName": "Raised Surface",    "canonical": "#2a2a2a", "tonalRamp": ["#0d0d0d", "#1a1a1a", "#2a2a2a", "#3a3a3a", "#4f4f4f", "#686868", "#878787", "#ababab"] },
+      "loudmouth-green":{ "role": "primary",  "displayName": "Loudmouth Green",   "canonical": "#CCFF00", "tonalRamp": ["#0f1700", "#1e2e00", "#2d4600", "#3f6200", "#558500", "#7ab800", "#a8e800", "#CCFF00"] },
+      "text-primary":   { "role": "neutral",  "displayName": "Full White",        "canonical": "#ffffff", "tonalRamp": ["#1a1a1a", "#333333", "#555555", "#777777", "#999999", "#bbbbbb", "#dddddd", "#ffffff"] },
+      "text-secondary": { "role": "neutral",  "displayName": "Quiet Type",        "canonical": "#a0a0a0", "tonalRamp": ["#1a1a1a", "#2e2e2e", "#464646", "#5e5e5e", "#787878", "#909090", "#a0a0a0", "#c8c8c8"] },
+      "border-subtle":  { "role": "neutral",  "displayName": "Ghost Border",      "canonical": "#FFFFFF24", "tonalRamp": ["#FFFFFF0a", "#FFFFFF14", "#FFFFFF1e", "#FFFFFF24", "#FFFFFF33", "#FFFFFF4d", "#FFFFFF80", "#FFFFFFCC"] },
+      "error":          { "role": "destructive", "displayName": "Alert Red",      "canonical": "#E8001C", "tonalRamp": ["#1a0002", "#320005", "#520009", "#7a000f", "#a80015", "#cc001a", "#E8001C", "#ff4040"] }
+    },
+    "typographyMeta": {
+      "display":  { "displayName": "Display", "purpose": "Portal hero titles and large section headings. Anton is inherently uppercase — do not double-apply text-transform." },
+      "headline": { "displayName": "Headline", "purpose": "Main content-area section titles (DISPLAY_TITLE token). Direct, slight negative tracking." },
+      "body":     { "displayName": "Body", "purpose": "General UI prose, descriptions, form helper text. Cap at 65–75ch." },
+      "label":    { "displayName": "Label / Mono", "purpose": "All interface chrome: buttons, form labels, metadata, nav items, section headers. Space Mono only." }
+    },
+    "shadows": [
+      { "name": "modal-drop", "value": "0 24px 60px rgba(0,0,0,0.5)", "purpose": "Modal layer only. Conveys hard Z-separation. Not for cards or panels." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default state transitions." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Button and interactive state transitions (matching theme.js `transition: all 0.15s`)." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main CTA. Loudmouth Green fill, black text, pill radius. One per flow.",
+      "html": "<button class=\"ds-btn-primary\">PUBLISH NOW</button>",
+      "css": ".ds-btn-primary { background: #CCFF00; color: #000000; border: none; border-radius: 24px; padding: 10px 20px; font-family: 'Space Mono', 'Courier New', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; line-height: 1; white-space: nowrap; cursor: pointer; transition: opacity 0.15s; } .ds-btn-primary:hover { opacity: 0.88; } .ds-btn-primary:focus-visible { outline: 2px solid #CCFF00; outline-offset: 3px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action. Transparent, Ghost Border stroke, muted text.",
+      "html": "<button class=\"ds-btn-ghost\">VIEW DRAFT</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #a0a0a0; border: 1px solid rgba(255,255,255,0.14); border-radius: 24px; padding: 10px 12px; font-family: 'Space Mono', 'Courier New', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; line-height: 1; white-space: nowrap; cursor: pointer; transition: all 0.15s; } .ds-btn-ghost:hover { color: #ffffff; border-color: rgba(255,255,255,0.35); } .ds-btn-ghost:focus-visible { outline: 2px solid #CCFF00; outline-offset: 3px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action. Transparent, Alert Red text, faint red border.",
+      "html": "<button class=\"ds-btn-danger\">DELETE CLIENT</button>",
+      "css": ".ds-btn-danger { background: none; color: #E8001C; border: 1px solid rgba(232,0,28,0.35); border-radius: 24px; padding: 10px 14px; font-family: 'Space Mono', 'Courier New', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; line-height: 1; white-space: nowrap; cursor: pointer; transition: all 0.15s; } .ds-btn-danger:hover { border-color: rgba(232,0,28,0.7); color: #ff2238; } .ds-btn-danger:focus-visible { outline: 2px solid #E8001C; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Standard form field. Canvas bg, Ghost Border, Space Grotesk.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\">CLIENT NAME</label><input class=\"ds-input\" type=\"text\" placeholder=\"e.g. Acme Corp\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 4px; } .ds-label { font-family: 'Space Mono', 'Courier New', monospace; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: #a0a0a0; line-height: 1; } .ds-input { width: 100%; padding: 10px 14px; border: 1.5px solid rgba(255,255,255,0.14); border-radius: 8px; font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #ffffff; background: #131313; line-height: 1; outline: none; box-sizing: border-box; } .ds-input:focus { border-color: #CCFF00; } .ds-input::placeholder { color: #595959; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Content container. Dark Panel bg, Ghost Border, 12px radius, 20px padding.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Content Plan</div><div class=\"ds-card-body\">April campaign — 12 posts scheduled</div></div>",
+      "css": ".ds-card { background: #1e1e1e; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 20px; } .ds-card-title { font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: 8px; } .ds-card-body { font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #a0a0a0; line-height: 1.5; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Status and category chip. Pill shape, Space Mono uppercase.",
+      "html": "<span class=\"ds-badge ds-badge-accent\">LIVE</span> <span class=\"ds-badge\">DRAFT</span>",
+      "css": ".ds-badge { display: inline-block; border-radius: 20px; padding: 2px 8px; font-family: 'Space Mono', 'Courier New', monospace; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; line-height: 1; white-space: nowrap; background: #2a2a2a; color: #a0a0a0; } .ds-badge-accent { background: #CCFF00; color: #000000; }"
+    },
+    {
+      "name": "Page Header",
+      "kind": "nav",
+      "refersTo": "page-header",
+      "description": "Portal top bar. Canvas bg, Ghost Border bottom, MONO page title.",
+      "html": "<div class=\"ds-page-header\"><span class=\"ds-page-title\">CALENDAR</span></div>",
+      "css": ".ds-page-header { padding: 16px 44px; background: #131313; border-bottom: 1px solid rgba(255,255,255,0.14); display: flex; align-items: center; gap: 16px; } .ds-page-title { font-family: 'Space Mono', 'Courier New', monospace; font-size: 11px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; line-height: 1; white-space: nowrap; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Agency Floor",
+    "overview": "Loudmouth HQ is a creative studio running at full capacity: organized, loud, aesthetically uncompromising. The visual system is built for agency owners and social media managers who spend their working hours inside this tool — people who are decisive, time-pressured, and would rather hold a strong position than hedge toward a safe one.\n\nThe palette is deep dark with one loud accent. The typography is a three-family system: Anton for display moments, Space Grotesk for reading, Space Mono for interface chrome and metadata. The design is flat by default; depth is conveyed through tonal surface layering rather than shadows.\n\nThis system rejects enterprise grey (Salesforce, Jira) and the minimalist Swiss tradition. Both fail the same test: they don't take a position. Loudmouth HQ takes a position.",
+    "keyCharacteristics": [
+      "Deep-dark canvas, near-black, no light mode",
+      "One accent color (Loudmouth Green #CCFF00) used with restraint — its rarity is the signal",
+      "Three-family type system where Space Mono owns all interface chrome",
+      "Pill-radius buttons at uniform height; every button group wrapped in BTN_ROW",
+      "Flat surfaces with tonal depth; one modal shadow, nothing else",
+      "Zero decoration: no gradient fills, no glass effects, no ornament"
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Loudmouth Green appears on ≤10% of any given screen. It is not a fill, a text decoration, or a background. It appears on primary buttons, active states, focus rings, and selected indicators — and nowhere else. Its scarcity is its authority.", "section": "colors" },
+      { "name": "The Tonal Layers Rule", "body": "Depth is expressed through surface values, not shadows. canvas → surface → surface-raised is the three-step elevation stack. Do not add a fourth layer.", "section": "colors" },
+      { "name": "The Mono Owns Chrome Rule", "body": "Any text that is interface structure rather than content — buttons, labels, metadata, nav items, section headers — uses Space Mono. Space Grotesk is for content and reading. The distinction is never negotiable.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. Do not add box-shadow to cards, panels, or interactive elements as decoration or hover feedback. If an element needs to feel elevated, use a darker background or a Ghost Border — not a shadow.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use the three-font system with strict role separation: Anton for display, Space Grotesk for reading, Space Mono for chrome.",
+      "Do express depth through surface tones (canvas → surface → surface-raised), not shadows.",
+      "Do keep Loudmouth Green on ≤10% of any given screen: CTAs, active indicators, focus rings only.",
+      "Do wrap all button groups in BTN_ROW. Buttons size to content, always.",
+      "Do apply the modal shadow (0 24px 60px rgba(0,0,0,0.5)) only on the modal layer.",
+      "Do write interface copy that is terse and declarative. Labels are commands, not suggestions.",
+      "Do use Ghost Border (rgba(255,255,255,0.14)) as the universal stroke — it works at every surface depth."
+    ],
+    "donts": [
+      "Don't use enterprise grey: muted surfaces, cramped type, apology-grey everything. If it looks like Salesforce or Jira, it's wrong.",
+      "Don't use minimalist Swiss restraint: invisible typography, joyless white space, timid design choices.",
+      "Don't apply box-shadow to cards, panels, or list items as decoration or hover feedback.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe.",
+      "Don't use background-clip: text with a gradient. Single solid color, always.",
+      "Don't use glassmorphism (blur effects, semi-transparent glass cards) decoratively.",
+      "Don't put Loudmouth Green on container backgrounds, body text, or decorative fills.",
+      "Don't use flex: 1 on buttons. Buttons size to content.",
+      "Don't use white or near-white surfaces. The canvas is dark and stays dark."
+    ]
+  }
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import NavMenuItem from "./NavMenuItem";
+import { C } from "../theme";
 
 export default function SaveMenu({ onSave, onExport, showExport }) {
   const [open, setOpen] = useState(false);
@@ -12,7 +13,7 @@ export default function SaveMenu({ onSave, onExport, showExport }) {
       {open && (
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={() => setOpen(false)} />
-          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "white", borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.18)", minWidth: 170, overflow: "hidden", zIndex: 200 }}>
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: "0 12px 40px rgba(0,0,0,0.5)", minWidth: 170, overflow: "hidden", zIndex: 200 }}>
             <NavMenuItem onClick={() => { setOpen(false); onSave(); }}>💾 Save Draft</NavMenuItem>
             {showExport && <NavMenuItem onClick={() => { setOpen(false); onExport(); }}>↓ Export PDF</NavMenuItem>}
           </div>

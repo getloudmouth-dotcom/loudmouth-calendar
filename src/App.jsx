@@ -17,7 +17,7 @@ class ErrorBoundary extends Component {
 // PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
 import { MONTHS, CONTENT_FIELDS, ROLE_TOOLS, ALL_TOOLS, newPost } from "./constants";
-import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, formatDate, chunkArray, loadGsiScript } from "./utils";
+import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, readCalendarIdFromUrl, setCalendarIdInUrl, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, chunkArray, loadGsiScript, deleteCloudinaryAssets } from "./utils";
 import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
 import AuthView from "./views/AuthView";
@@ -25,8 +25,10 @@ import ProfileSetupView from "./views/ProfileSetupView";
 import InviteSetupView from "./views/InviteSetupView";
 import PrivacyPolicyView from "./views/PrivacyPolicyView";
 import { AppContext } from "./AppContext";
+import AppDialog from "./components/AppDialog";
+import { C, SANS, MONO, dangerBtn, ghostBtn } from "./theme";
 import CalendarBuilder from "./portals/CalendarBuilder";
-import DashboardPortal from "./portals/DashboardPortal";
+import DashboardPortal, { Sidebar } from "./portals/DashboardPortal";
 
 // ── Billing Invoice Export View ───────────────────────────────────────────────
 // Rendered headlessly by Puppeteer when generating invoice PDFs.
@@ -158,6 +160,7 @@ export default function App() {
   const today = new Date();
   const [step, setStep] = useState(() => (readExportToken() ? 4 : 1));
   const [clientName, setClientName] = useState("");
+  const [clientId, setClientId] = useState(null);
   const [clients, setClients] = useState([]);
   const [_builders, _setBuilders] = useState(() => {
     try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -220,13 +223,18 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const [wasOffline, setWasOffline] = useState(false);
   const [scheduledPosts, setScheduledPosts] = useState([]);
-  const [showScheduleView, setShowScheduleView] = useState(false);
+  const [calendarsLoading, setCalendarsLoading] = useState(true);
+  const [contentPlansLoading, setContentPlansLoading] = useState(true);
+  const [scheduledPostsLoading, setScheduledPostsLoading] = useState(true);
+
   const [schedulingCalId, setSchedulingCalId] = useState(null);
-  const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin'
+  const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin' | 'clients'
+  const [workspaceClientId, setWorkspaceClientId] = useState(null);
+  const [workspaceCalendarId, setWorkspaceCalendarId] = useState(null);
   // ── RBAC ──
   const [userProfile, setUserProfile] = useState(null);
   const [userToolAccess, setUserToolAccess] = useState([]);
-  const [showAdminView, setShowAdminView] = useState(false);
+  const [, setShowAdminView] = useState(false);
   const [adminUsers, setAdminUsers] = useState([]);
   const [adminLoading, setAdminLoading] = useState(false);
   const [roleToolDefaults, setRoleToolDefaults] = useState(null); // null = not loaded yet
@@ -239,13 +247,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [editUserForm, setEditUserForm] = useState({});
   const [editUserBusy, setEditUserBusy] = useState(false);
   const [deleteUserBusy, setDeleteUserBusy] = useState(false);
-  // ── Collaborators ──
-  const [calCollaborators, setCalCollaborators] = useState({}); // calId → [{user_id, name, email, permission}]
-  const [shareModal, setShareModal] = useState(null); // null | { cal }
-  const [shareEmail, setShareEmail] = useState("");
-  const [sharePermission, setSharePermission] = useState("editor");
-  const [shareBusy, setShareBusy] = useState(false);
-  const [shareError, setShareError] = useState("");
+  const [calCreators, setCalCreators] = useState({}); // userId → {name, email}
   // ── Content Plan Creator ──
   const [activeCPStep, setActiveCPStep] = useState(null);
   const [cpClientName, setCpClientName] = useState("");
@@ -269,10 +271,27 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [pinterestToken, setPinterestToken] = useState(null);
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const [pinterestPanelWidth, setPinterestPanelWidth] = useState(300);
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, message: "", onConfirm: null });
   const cpAutoSaveTimerRef = useRef(null);
   // toast state removed — using sonner globally
   // ── Realtime ──
   const realtimeChannelRef = useRef(null);
+  const lastSelfCalendarUpdateRef = useRef(null);
+  // ── Calendar restoration from URL ──
+  const restoreFromUrlRef = useRef(
+    readExportToken() || readContentPlanToken() || readCPExportToken() || readBillingExportToken()
+      ? null
+      : readCalendarIdFromUrl()
+  );
+  const restoreAttemptedRef = useRef(false);
+  const loadingDraftRef = useRef(false);
+  // Refs that always point at the latest function instance, so timer callbacks
+  // never close over stale versions and effects don't need to depend on them.
+  const saveDraftRef = useRef(null);
+  const saveContentPlanRef = useRef(null);
+  const openCalendarRef = useRef(null);
+  const scheduleSyncFnRef = useRef(null);
+  const showInviteSetupRef = useRef(false);
 // Warm up the PDF export function on load to reduce cold start lag
 useEffect(() => {
   if (!readExportToken()) fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {});
@@ -312,7 +331,7 @@ useEffect(() => {
   useEffect(() => {
     if (isUndoingRef.current) return;
     const timer = setTimeout(() => {
-      const snap = JSON.stringify({ posts, selectedDays, clientName, month, year, postsPerPage });
+      const snap = JSON.stringify({ posts, selectedDays, clientName, clientId, month, year, postsPerPage });
       const history = historyRef.current;
       if (history[historyIdxRef.current] === snap) return;
       history.splice(historyIdxRef.current + 1);
@@ -323,32 +342,32 @@ useEffect(() => {
       setCanRedo(false);
     }, 600);
     return () => clearTimeout(timer);
-  }, [posts, selectedDays, clientName, month, year, postsPerPage]);
+  }, [posts, selectedDays, clientName, clientId, month, year, postsPerPage]);
 
   useEffect(() => {
-    if (!clientName.trim() || !user || isUndoingRef.current) return;
+    if (!clientName.trim() || !user || isUndoingRef.current || loadingDraftRef.current) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
-      saveDraft("Autosave", { silent: true });
+      saveDraftRef.current?.("Autosave", { silent: true });
     }, 12000);
     return () => clearTimeout(autoSaveTimerRef.current);
-  }, [posts, selectedDays]);
+  }, [posts, selectedDays, month, year, clientName, clientId, currentCalendarId, postsPerPage, calendarNotes, calendarNotesImage, profileName, user]);
 
   useEffect(() => {
     function onKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (clientName.trim() && user) saveDraft();
+        if (clientName.trim() && user) saveDraftRef.current?.();
       }
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [clientName, user, posts, selectedDays, month, year, postsPerPage, profileName]);
+  }, [clientName, user]);
 
   function restoreSnap(snap) {
     isUndoingRef.current = true;
     setPosts(snap.posts); setSelectedDays(snap.selectedDays);
-    setClientName(snap.clientName); setMonth(snap.month);
+    setClientName(snap.clientName); setClientId(snap.clientId ?? null); setMonth(snap.month);
     setYear(snap.year); setPostsPerPage(snap.postsPerPage);
     setTimeout(() => { isUndoingRef.current = false; }, 200);
   }
@@ -371,12 +390,12 @@ useEffect(() => {
 
   function resetCalendar() {
     // push current state first so reset is undoable
-    const snap = JSON.stringify({ posts, selectedDays, clientName, month, year, postsPerPage });
+    const snap = JSON.stringify({ posts, selectedDays, clientName, clientId, month, year, postsPerPage });
     historyRef.current.splice(historyIdxRef.current + 1);
     historyRef.current.push(snap);
     historyIdxRef.current = historyRef.current.length - 1;
     // now reset
-    setSelectedDays([]); setPosts({}); setClientName("");
+    setSelectedDays([]); setPosts({}); setClientName(""); setClientId(null);
     setMonth(today.getMonth()); setYear(today.getFullYear());
     setPostsPerPage(3); setStep(1);
   }
@@ -445,7 +464,7 @@ useEffect(() => {
         arr[postIdx] = post;
         return { ...p, [day]: arr };
       });
-    } catch (e) { alert("Drive drop failed: " + e.message); }
+    } catch (e) { showToast("Drive drop failed: " + e.message, "error"); }
     finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
 
@@ -484,7 +503,7 @@ useEffect(() => {
         return next;
       });
       if (newDays.length > 0) setSelectedDays(prev => [...new Set([...prev, ...newDays])]);
-    } catch (e) { alert("Drive batch import failed: " + e.message); }
+    } catch (e) { showToast("Drive batch import failed: " + e.message, "error"); }
     finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
   const daysInMonth = getDaysInMonth(year, month);
@@ -519,7 +538,7 @@ useEffect(() => {
     for (let d = 1; d <= daysInMonth; d++) cells.push(d);
     while (cells.length % 7 !== 0) cells.push(null);
     return cells;
-  }, [month, year, firstDay, daysInMonth]);
+  }, [firstDay, daysInMonth]);
 
   function toggleDay(day) {
     setSelectedDays(prev => {
@@ -612,7 +631,7 @@ useEffect(() => {
         arr[postIdx] = post;
         return { ...p, [day]: arr };
       });
-    } catch(e) { alert("Upload failed: " + e.message); }
+    } catch(e) { showToast("Upload failed: " + e.message, "error"); }
     finally { setDriveUploadProgress({ active: false, done: 0, total: 0 }); }
   }
 
@@ -640,7 +659,7 @@ useEffect(() => {
         return url;
       }));
     } catch(e) {
-      alert("Upload failed: " + e.message);
+      showToast("Upload failed: " + e.message, "error");
       setDriveUploadProgress({ active: false, done: 0, total: 0 });
       return;
     }
@@ -686,11 +705,22 @@ useEffect(() => {
   async function addNewClient() {
     const name = newClientInput.trim();
     if (!name) return;
-    await supabase.from("clients").insert({ name, created_by: (await supabase.auth.getUser()).data.user?.id });
+    const { data: created } = await supabase
+      .from("clients")
+      .insert({ name, created_by: (await supabase.auth.getUser()).data.user?.id })
+      .select("id, name")
+      .single();
     await loadClients();
-    setClientName(name);
+    setClientName(created?.name || name);
+    setClientId(created?.id || null);
     setNewClientInput("");
     setAddingClient(false);
+  }
+
+  async function addClientDirect(name) {
+    if (!name) return;
+    await supabase.from("clients").insert({ name, created_by: (await supabase.auth.getUser()).data.user?.id });
+    await loadClients();
   }
 
   async function exportPDF() {
@@ -698,13 +728,13 @@ useEffect(() => {
     if (!currentCalendarId) {
       const saved = await saveDraft("Auto-save before export", { silent: true });
       if (!saved) {
-        alert("Could not save your calendar before exporting. Please save manually and try again.");
+        showToast("Could not save your calendar before exporting. Please save manually and try again.", "error");
         return;
       }
       await new Promise(r => setTimeout(r, 150)); // let state flush
     }
     if (!currentCalendarId) {
-      alert("Save failed. Please save your calendar manually first.");
+      showToast("Save failed. Please save your calendar manually first.", "error");
       return;
     }
     setExporting(true);
@@ -747,7 +777,7 @@ useEffect(() => {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Export error: " + err.message);
+      showToast("Export error: " + err.message, "error");
     } finally {
       clearInterval(_exportTimer);
       setExporting(false);
@@ -842,14 +872,8 @@ useEffect(() => {
           setInviteName(name);
           setInviteEmail(session.user.email || "");
           setShowInviteSetup(true);
-        } else {
-          if (!name) setShowProfileSetup(true);
-          loadAllCalendars();
-          loadAllContentPlans();
-          loadClients();
-          loadScheduledPosts();
-          loadUserProfile(session.user.id);
-          loadRoleToolDefaults();
+        } else if (!name) {
+          setShowProfileSetup(true);
         }
       }
     });
@@ -862,19 +886,65 @@ useEffect(() => {
           setInviteName(name);
           setInviteEmail(session.user.email || "");
           setShowInviteSetup(true);
-        } else if (!showInviteSetup) {
-          if (!name) setShowProfileSetup(true);
-          loadAllCalendars();
-          loadAllContentPlans();
-          loadClients();
-          loadScheduledPosts();
-          loadUserProfile(session.user.id);
-          loadRoleToolDefaults();
+        } else if (!showInviteSetupRef.current && !name) {
+          setShowProfileSetup(true);
         }
       }
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Keep refs synced with their latest values for use inside timer callbacks
+  // and one-shot effects that shouldn't re-run when these change identity.
+  useEffect(() => { showInviteSetupRef.current = showInviteSetup; });
+  useEffect(() => { saveDraftRef.current = saveDraft; });
+  useEffect(() => { saveContentPlanRef.current = saveContentPlan; });
+  useEffect(() => { openCalendarRef.current = openCalendar; });
+  useEffect(() => { scheduleSyncFnRef.current = syncScheduleForCalendar; });
+
+  // Keyed on `user` so load fns see fresh state — calling them inline after setUser races with the async commit.
+  useEffect(() => {
+    if (!user) return;
+    if (showInviteSetup) return;
+    loadAllCalendars();
+    loadAllContentPlans();
+    loadClients();
+    loadScheduledPosts();
+    loadUserProfile(user.id);
+    loadRoleToolDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loaders are component-scoped fns with unstable identity; we want this to fire on user/showInviteSetup change only
+  }, [user, showInviteSetup]);
+
+  // ── Restore open calendar from URL after first data load ────────────────
+  useEffect(() => {
+    if (restoreAttemptedRef.current) return;
+    if (!user || calendarsLoading) return;
+    restoreAttemptedRef.current = true;
+    const id = restoreFromUrlRef.current;
+    if (!id) return;
+    const cal = allCalendars.find(c => c.id === id);
+    if (cal) openCalendarRef.current?.(cal);
+    else setCalendarIdInUrl(null);
+  }, [user, calendarsLoading, allCalendars]);
+
+  // ── Keep ?calendarId= in sync with whatever calendar is open ────────────
+  useEffect(() => {
+    if (!restoreAttemptedRef.current) return;
+    if (!showDashboard && currentCalendarId) setCalendarIdInUrl(currentCalendarId);
+    else setCalendarIdInUrl(null);
+  }, [showDashboard, currentCalendarId]);
+
+  // ── Realtime: keep clients list in sync across all sessions ──────────────
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("clients-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, () => {
+        loadClients();
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  }, [user]);
 
   async function signIn() {
     setAuthBusy(true); setAuthError("");
@@ -943,7 +1013,7 @@ useEffect(() => {
     const name = profileInput.trim();
     if (!name) return;
     const { error } = await supabase.auth.updateUser({ data: { display_name: name } });
-    if (error) return alert("Failed to save: " + error.message);
+    if (error) { showToast("Failed to save: " + error.message, "error"); return; }
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (currentUser) {
       await supabase.from("profiles").update({
@@ -962,8 +1032,13 @@ useEffect(() => {
   async function signOut() {
     await supabase.auth.signOut();
     setUser(null); setShowDashboard(true); setAllCalendars([]);
-    setCurrentCalendarId(null); setClientName(""); setSelectedDays([]); setPosts({});
+    setCurrentCalendarId(null); setClientName(""); setClientId(null); setSelectedDays([]); setPosts({});
     setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);
+    setCalendarsLoading(true); setContentPlansLoading(true); setScheduledPostsLoading(true);
+  }
+
+  function showConfirm(message, onConfirm) {
+    setConfirmDialog({ open: true, message, onConfirm });
   }
 
   function showToast(msg, type = "info") {
@@ -972,33 +1047,6 @@ useEffect(() => {
     else sonnerToast(msg);
   }
 
-  async function addCollaborator(cal) {
-    const email = shareEmail.trim();
-    if (!email) return;
-    setShareBusy(true); setShareError("");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch("/api/share-calendar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-        body: JSON.stringify({ calendarId: cal.id, collaboratorEmail: email, permission: sharePermission }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to share");
-      setShareEmail(""); setSharePermission("editor");
-      await loadAllCalendars();
-      showToast(`Shared with ${json.collaborator?.name || email}`, "success");
-    } catch (e) {
-      setShareError(e.message);
-    }
-    setShareBusy(false);
-  }
-
-  async function removeCollaborator(calId, userId) {
-    await supabase.from("calendar_collaborators")
-      .delete().eq("calendar_id", calId).eq("user_id", userId);
-    await loadAllCalendars();
-  }
 
   async function loadUserProfile(userId) {
     const [{ data: profile }, { data: access }] = await Promise.all([
@@ -1052,7 +1100,7 @@ useEffect(() => {
       if (desired.length > 0) await supabase.from("role_tool_defaults").insert(desired);
       setRoleToolDefaults(newMap);
     } catch (e) {
-      alert("Failed to save role permissions: " + e.message);
+      showToast("Failed to save role permissions: " + e.message, "error");
     }
     setRolePermsBusy(false);
   }
@@ -1100,7 +1148,7 @@ useEffect(() => {
       setEditingUser(null);
       await loadAdminUsers();
     } catch (e) {
-      alert("Failed to update user: " + e.message);
+      showToast("Failed to update user: " + e.message, "error");
     }
     setEditUserBusy(false);
   }
@@ -1119,38 +1167,55 @@ useEffect(() => {
       setEditingUser(null);
       await loadAdminUsers();
     } catch (e) {
-      alert("Failed to delete user: " + e.message);
+      showToast("Failed to delete user: " + e.message, "error");
     }
     setDeleteUserBusy(false);
   }
 
   // ── Calendars ──
   async function loadAllCalendars() {
-    const [{ data }, { data: collabs }] = await Promise.all([
-      supabase.from("calendars").select("*").order("updated_at", { ascending: false }),
-      supabase.from("calendar_collaborators").select("calendar_id, user_id, permission, profiles(id, name, email)"),
-    ]);
-    const calendars = data || [];
-    setAllCalendars(calendars);
-    if (!collabs?.length) return;
-    const map = {};
-    for (const c of collabs) {
-      if (!map[c.calendar_id]) map[c.calendar_id] = [];
-      const profile = c.profiles || {};
-      map[c.calendar_id].push({ user_id: c.user_id, name: profile.name || profile.email || "Unknown", email: profile.email || "", permission: c.permission });
+    try {
+      const { data } = await supabase.from("calendars").select("*").order("updated_at", { ascending: false });
+      const calendars = data || [];
+      setAllCalendars(calendars);
+
+      const creatorIds = [...new Set(calendars.map(c => c.user_id).filter(Boolean))];
+      if (creatorIds.length) {
+        const { data: creators } = await supabase
+          .from("profiles")
+          .select("id, name, email")
+          .in("id", creatorIds);
+        const cmap = {};
+        for (const p of creators || []) cmap[p.id] = { name: p.name || p.email || "Unknown", email: p.email || "" };
+        setCalCreators(cmap);
+      }
+    } finally {
+      setCalendarsLoading(false);
     }
-    setCalCollaborators(map);
   }
 
   async function loadClients() {
-    const { data } = await supabase.from("clients").select("id, name, email, phone").order("name", { ascending: true });
+    const { data } = await supabase.from("clients").select("id, name, email, phone, smm_active").order("name", { ascending: true });
     if (data?.length) setClients(data.filter(c => c.name));
+  }
+
+  async function toggleClientSmmActive(id, current) {
+    await supabase.from("clients").update({ smm_active: !current }).eq("id", id);
+    setClients(prev => prev.map(c => c.id === id ? { ...c, smm_active: !current } : c));
   }
 
 
   async function openCalendar(cal) {
     setCurrentCalendarId(cal.id);
-    setClientName(cal.client_name);
+    const liveClient = cal.client_id ? clients.find(c => c.id === cal.client_id) : null;
+    const resolvedName = liveClient?.name || cal.client_name || "";
+    setClientId(cal.client_id || null);
+    setClientName(resolvedName);
+    if (liveClient && liveClient.name && liveClient.name !== cal.client_name) {
+      // lazy heal: bring the denormalized snapshot back in line with the live client
+      supabase.from("calendars").update({ client_name: liveClient.name }).eq("id", cal.id)
+        .then(({ error }) => { if (error) console.warn("[lazy-heal] client_name update failed:", error.message); });
+    }
     setMonth(cal.month);
     setYear(cal.year);
     setPostsPerPage(cal.posts_per_page);
@@ -1159,11 +1224,17 @@ useEffect(() => {
     initialSelectedDaysRef.current = cal.selected_days || [];
     setCalendarNotes(cal.notes || "");
     setCalendarNotesImage(cal.notes_image || "");
-    // Load most recent draft
-    setPosts([]);
-    const { data } = await supabase.from("calendar_drafts")
-      .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
-    if (data?.[0]) setPosts(data[0].posts);
+    // Load most recent draft. Guard autosave so it can't write empty posts
+    // into the DB if this fetch is slow or fails.
+    loadingDraftRef.current = true;
+    setPosts({});
+    try {
+      const { data } = await supabase.from("calendar_drafts")
+        .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
+      if (data?.[0]) setPosts(data[0].posts);
+    } finally {
+      loadingDraftRef.current = false;
+    }
     setShowDashboard(false);
     setStep(1);
     loadDraftHistory(cal.id);
@@ -1174,6 +1245,11 @@ useEffect(() => {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "calendar_drafts", filter: `calendar_id=eq.${cal.id}` }, async (payload) => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         if (payload.new?.user_id && payload.new.user_id === currentUser?.id) return; // own save
+        // Pull the collaborator's posts into the canvas. Last-write-wins, same
+        // model as the calendars UPDATE handler below.
+        if (payload.new?.posts && typeof payload.new.posts === "object") {
+          setPosts(payload.new.posts);
+        }
         // Look up who saved
         let saverName = "Someone";
         if (payload.new?.user_id) {
@@ -1182,6 +1258,18 @@ useEffect(() => {
         }
         showToast(`Updated by ${saverName}`, "info");
         loadDraftHistory(cal.id);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "calendars", filter: `id=eq.${cal.id}` }, (payload) => {
+        if (payload.new?.updated_at && payload.new.updated_at === lastSelfCalendarUpdateRef.current) return; // own write
+        const row = payload.new;
+        if (typeof row.month === "number") setMonth(row.month);
+        if (typeof row.year === "number") setYear(row.year);
+        if (typeof row.posts_per_page === "number") setPostsPerPage(row.posts_per_page);
+        if (typeof row.builder_name === "string") setBuilderName(row.builder_name);
+        if (Array.isArray(row.selected_days)) setSelectedDays(row.selected_days);
+        if (typeof row.notes === "string") setCalendarNotes(row.notes);
+        if (typeof row.notes_image === "string") setCalendarNotesImage(row.notes_image);
+        loadAllCalendars();
       })
       .subscribe();
     realtimeChannelRef.current = channel;
@@ -1198,18 +1286,24 @@ useEffect(() => {
   async function saveDraft(label = "", options = {}) {
     const silent = options.silent === true;
     if (!clientName.trim()) {
-      if (!silent) alert("Please select a client first.");
+      if (!silent) showToast("Please select a client first.", "warning");
       return false;
     }
     if (!user) {
-      if (!silent) alert("Please log in first.");
+      if (!silent) showToast("Please log in first.", "warning");
       return false;
     }
     const lbl = label || savingLabel || "Manual save";
+    // Always derive the canonical client_name from the live clients row when we have an id,
+    // so the denormalized snapshot can never disagree with clients.name.
+    const liveClient = clientId ? clients.find(c => c.id === clientId) : null;
+    const canonicalName = liveClient?.name || clientName;
     let calData, calErr;
     if (currentCalendarId) {
       ({ data: calData, error: calErr } = await supabase.from("calendars")
         .update({
+          client_id: clientId || null, client_name: canonicalName,
+          month, year,
           posts_per_page: postsPerPage, builder_name: profileName,
           selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
           updated_at: new Date().toISOString(),
@@ -1217,68 +1311,159 @@ useEffect(() => {
         .eq("id", currentCalendarId)
         .select().single());
     } else {
-      ({ data: calData, error: calErr } = await supabase.from("calendars").upsert({
-        user_id: user.id, client_name: clientName, month, year,
-        posts_per_page: postsPerPage, builder_name: profileName,
-        selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id,client_name,month,year" }).select().single());
+      const existing = allCalendars.find(c =>
+        c.month === month && c.year === year && (
+          (clientId && c.client_id === clientId) ||
+          (!clientId && c.client_name?.toLowerCase() === canonicalName.toLowerCase())
+        )
+      );
+      if (existing) {
+        setCurrentCalendarId(existing.id);
+        ({ data: calData, error: calErr } = await supabase.from("calendars")
+          .update({
+            client_id: clientId || null, client_name: canonicalName,
+            month, year,
+            posts_per_page: postsPerPage, builder_name: profileName,
+            selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id)
+          .select().single());
+      } else {
+        ({ data: calData, error: calErr } = await supabase.from("calendars").insert({
+          user_id: user.id, client_id: clientId || null, client_name: canonicalName, month, year,
+          posts_per_page: postsPerPage, builder_name: profileName,
+          selected_days: selectedDays, notes: calendarNotes, notes_image: calendarNotesImage,
+          updated_at: new Date().toISOString(),
+        }).select().single());
+      }
     }
     if (calErr) {
-      if (!silent) alert("Save failed: " + calErr.message);
+      if (!silent) showToast("Save failed: " + calErr.message, "error");
       return false;
     }
     setCurrentCalendarId(calData.id);
+    if (calData?.updated_at) lastSelfCalendarUpdateRef.current = calData.updated_at;
     const { error: draftErr } = await supabase.from("calendar_drafts").insert({
       calendar_id: calData.id, posts, label: lbl, user_id: user.id,
     });
     if (draftErr) {
-      if (!silent) alert("Save failed: " + draftErr.message);
+      if (!silent) showToast("Save failed: " + draftErr.message, "error");
       return false;
     }
     await loadAllCalendars();
     await loadDraftHistory(calData.id);
     setSavingLabel("");
-    if (!silent) alert(`Saved: ${clientName} — ${MONTHS[month]} ${year}`);
+    if (!silent) showToast(`Saved: ${clientName} — ${MONTHS[month]} ${year}`, "success");
     return true;
   }
 
-  async function restoreDraft(draft) {
-    if (!window.confirm(`Restore draft from ${new Date(draft.saved_at).toLocaleString()}?`)) return;
-    setPosts(draft.posts);
-    setShowDraftHistory(false);
+  function restoreDraft(draft) {
+    showConfirm(`Restore draft from ${new Date(draft.saved_at).toLocaleString()}?`, () => {
+      setPosts(draft.posts);
+      setShowDraftHistory(false);
+    });
   }
 
-  async function deleteCalendar(cal) {
-    if (!window.confirm(`Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`)) return;
-    await supabase.from("calendars").delete().eq("id", cal.id);
-    await loadAllCalendars();
-    if (currentCalendarId === cal.id) {
-      setCurrentCalendarId(null); setShowDashboard(true);
+  function deleteCalendar(cal) {
+    showConfirm(`Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`, async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data: drafts } = await supabase.from("calendar_drafts").select("posts").eq("calendar_id", cal.id);
+      const urls = [cal.notes_image, ...(drafts ?? []).flatMap(d =>
+        Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])
+      )].filter(Boolean);
+      await deleteCloudinaryAssets([...new Set(urls)], session?.access_token);
+      await supabase.from("calendars").delete().eq("id", cal.id);
+      await loadAllCalendars();
+      if (currentCalendarId === cal.id) { setCurrentCalendarId(null); setShowDashboard(true); }
+      if (workspaceCalendarId === cal.id) setWorkspaceCalendarId(null);
+    });
+  }
+
+  async function deleteClient(client) {
+    showConfirm(`Delete "${client.name}" and ALL their calendar data? This cannot be undone.`, () =>
+      runClientDelete(client, false)
+    );
+  }
+
+  async function runClientDelete(client, force) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      showToast("Session expired — sign in again.", "error");
+      return;
     }
+
+    // Capture client's calendars BEFORE the API call — once the client row is
+    // deleted, calendars cascade to client_id=NULL and we lose the mapping.
+    const clientCals = allCalendars.filter(c => c.client_id === client.id);
+    const calIds = clientCals.map(c => c.id);
+
+    const url = `/api/billing/clients?id=${encodeURIComponent(client.id)}${force ? "&force=true" : ""}`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    if (!res.ok) {
+      let body = {};
+      try { body = await res.json(); } catch { /* response wasn't JSON; fall back to empty body */ }
+      if (res.status === 409 && body?.error === "client_has_invoices" && !force) {
+        const n = body.invoice_count ?? "open";
+        showConfirm(
+          `"${client.name}" still has ${n} invoice(s) in FreshBooks after sync. Force delete anyway? The client and its local invoice rows will be removed; FreshBooks invoices stay untouched.`,
+          () => runClientDelete(client, true)
+        );
+        return;
+      }
+      showToast(`Delete failed: ${body?.error || res.statusText}`, "error");
+      return;
+    }
+
+    // Client row gone + FreshBooks archived. Clean up orphaned calendars + assets.
+    if (calIds.length) {
+      await supabase.from("calendars").update({ prev_calendar_id: null }).in("prev_calendar_id", calIds);
+      const { data: allDrafts } = await supabase
+        .from("calendar_drafts")
+        .select("posts")
+        .in("calendar_id", calIds);
+      const urls = [
+        ...clientCals.map(c => c.notes_image).filter(Boolean),
+        ...(allDrafts ?? []).flatMap(d => Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])),
+      ];
+      await deleteCloudinaryAssets([...new Set(urls)], session.access_token);
+      await supabase.from("calendars").delete().in("id", calIds);
+    }
+
+    await Promise.all([loadClients(), loadAllCalendars()]);
+    if (workspaceClientId === client.id) { setWorkspaceClientId(null); setWorkspaceCalendarId(null); }
+    showToast(`Deleted "${client.name}" and all their data.`, "success");
   }
 
   // ── Schedule ──
   async function loadScheduledPosts() {
-    const { data: posts } = await supabase
-      .from("scheduled_posts")
-      .select("*")
-      .order("post_date", { ascending: true });
+    try {
+      const { data: posts } = await supabase
+        .from("scheduled_posts")
+        .select("*")
+        .order("post_date", { ascending: true });
 
-    const allPosts = posts || [];
+      const allPosts = posts || [];
 
-    // Fetch profiles for all visible user_ids (to show names in "who's opted in")
-    const userIds = [...new Set(allPosts.map(r => r.user_id))];
-    let profileMap = {};
-    if (userIds.length > 0) {
-      const { data: profileRows } = await supabase
-        .from("profiles")
-        .select("id, name, email")
-        .in("id", userIds);
-      for (const p of profileRows || []) profileMap[p.id] = p;
+      // Fetch profiles for all visible user_ids (to show names in "who's opted in")
+      const userIds = [...new Set(allPosts.map(r => r.user_id))];
+      let profileMap = {};
+      if (userIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, name, email")
+          .in("id", userIds);
+        for (const p of profileRows || []) profileMap[p.id] = p;
+      }
+
+      setScheduledPosts(allPosts.map(r => ({ ...r, profile: profileMap[r.user_id] || null })));
+    } finally {
+      setScheduledPostsLoading(false);
     }
-
-    setScheduledPosts(allPosts.map(r => ({ ...r, profile: profileMap[r.user_id] || null })));
   }
 
   async function loadDraftPostsFor(calId) {
@@ -1325,7 +1510,7 @@ useEffect(() => {
           notify: true,
         }));
         if (rows.length === 0) {
-          alert("This calendar has no selected days to schedule.");
+          showToast("This calendar has no selected days to schedule.", "warning");
           return;
         }
         const { error } = await supabase
@@ -1333,10 +1518,10 @@ useEffect(() => {
           .upsert(rows, { onConflict: "user_id,calendar_id,post_date", ignoreDuplicates: false });
         if (error) throw error;
         await loadScheduledPosts();
-        alert(`Scheduled ${rows.length} posting day${rows.length > 1 ? "s" : ""} for ${cal.client_name}.`);
+        showToast(`Scheduled ${rows.length} posting day${rows.length > 1 ? "s" : ""} for ${cal.client_name}.`, "success");
       }
     } catch (e) {
-      alert("Failed: " + e.message);
+      showToast("Failed: " + e.message, "error");
     } finally {
       setSchedulingCalId(null);
     }
@@ -1394,32 +1579,97 @@ useEffect(() => {
     realtimeChannelRef.current?.unsubscribe();
     realtimeChannelRef.current = null;
     setCurrentCalendarId(null);
-    setClientName(""); setSelectedDays([]); setPosts({});
+    setClientName(""); setClientId(null); setSelectedDays([]); setPosts({});
     setMonth(today.getMonth()); setYear(today.getFullYear());
     setPostsPerPage(3); setStep(1); setShowDashboard(false);
   }
 
   const stepLabels = ["Setup", "Pick Days", "Content", "Preview"];
 
-  // ── Content Plan helpers ──
-  async function loadAllContentPlans() {
-    if (!user) return;
-    const { data } = await supabase
-      .from("content_plans")
-      .select("*, clients(id, name, email, phone)")
-      .order("updated_at", { ascending: false });
-    setAllContentPlans(data || []);
+  // ── New month for client (month continuity) ──
+  async function newMonthForClient(client, fromCalendar) {
+    let nextMonth, nextYear;
+    if (fromCalendar) {
+      nextMonth = (fromCalendar.month + 1) % 12;
+      nextYear = fromCalendar.month === 11 ? fromCalendar.year + 1 : fromCalendar.year;
+    } else {
+      nextMonth = today.getMonth();
+      nextYear = today.getFullYear();
+    }
+
+    const { data: newCal, error } = await supabase
+      .from("calendars")
+      .insert({
+        user_id: user.id,
+        client_name: client.name,
+        client_id: client.id,
+        month: nextMonth,
+        year: nextYear,
+        prev_calendar_id: fromCalendar?.id || null,
+        selected_days: [],
+        posts_per_page: 3,
+      })
+      .select()
+      .single();
+
+    if (error) { showToast("Failed to create new month: " + error.message, "error"); return; }
+
+    // Copy pinned posts from previous month
+    if (fromCalendar) {
+      const { data: drafts } = await supabase
+        .from("calendar_drafts")
+        .select("posts")
+        .eq("calendar_id", fromCalendar.id)
+        .order("saved_at", { ascending: false })
+        .limit(1);
+      if (drafts?.[0]?.posts) {
+        const prevPosts = drafts[0].posts;
+        const pinnedPosts = {};
+        Object.entries(prevPosts).forEach(([day, dayPosts]) => {
+          const pinned = (dayPosts || []).filter(p => p.pinned);
+          if (pinned.length) pinnedPosts[day] = pinned;
+        });
+        if (Object.keys(pinnedPosts).length) {
+          await supabase.from("calendar_drafts").insert({
+            calendar_id: newCal.id,
+            user_id: user.id,
+            label: `Pinned from ${MONTHS[fromCalendar.month]} ${fromCalendar.year}`,
+            posts: pinnedPosts,
+            saved_at: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    await loadAllCalendars();
+    setWorkspaceCalendarId(newCal.id);
+    showToast(`Created ${MONTHS[nextMonth]} ${nextYear} for ${client.name}`, "success");
   }
 
-  async function deleteContentPlan(plan) {
-    if (!window.confirm(`Delete "${plan.client_name}" content plan? This cannot be undone.`)) return;
+  // ── Content Plan helpers ──
+  async function loadAllContentPlans() {
+    if (!user) { setContentPlansLoading(false); return; }
     try {
-      await supabase.from("content_plan_items").delete().eq("plan_id", plan.id);
-      await supabase.from("content_plans").delete().eq("id", plan.id);
-      setAllContentPlans(prev => prev.filter(p => p.id !== plan.id));
-    } catch (err) {
-      console.error("Delete failed:", err);
+      const { data } = await supabase
+        .from("content_plans")
+        .select("*, clients(id, name, email, phone)")
+        .order("updated_at", { ascending: false });
+      setAllContentPlans(data || []);
+    } finally {
+      setContentPlansLoading(false);
     }
+  }
+
+  function deleteContentPlan(plan) {
+    showConfirm(`Delete "${plan.client_name}" content plan? This cannot be undone.`, async () => {
+      try {
+        await supabase.from("content_plan_items").delete().eq("plan_id", plan.id);
+        await supabase.from("content_plans").delete().eq("id", plan.id);
+        setAllContentPlans(prev => prev.filter(p => p.id !== plan.id));
+      } catch (err) {
+        console.error("Delete failed:", err);
+      }
+    });
   }
 
   function generateCPItems(producedN, organicN, existing = []) {
@@ -1616,10 +1866,10 @@ useEffect(() => {
     if (!cpClientName.trim() || !user) return;
     if (cpAutoSaveTimerRef.current) clearTimeout(cpAutoSaveTimerRef.current);
     cpAutoSaveTimerRef.current = setTimeout(() => {
-      saveContentPlan(true);
+      saveContentPlanRef.current?.(true);
     }, 12000);
     return () => clearTimeout(cpAutoSaveTimerRef.current);
-  }, [cpItems, cpClientName, cpMonth, cpYear, cpShootDate]);
+  }, [cpItems, cpClientName, cpMonth, cpYear, cpShootDate, user]);
 
   // Auto-sync schedule when selected days change (only if user is already opted in)
   useEffect(() => {
@@ -1632,10 +1882,11 @@ useEffect(() => {
     if (!cal) return;
     const daysSnapshot = [...selectedDays];
     const timer = setTimeout(() => {
-      syncScheduleForCalendar({ ...cal, selected_days: daysSnapshot });
+      scheduleSyncFnRef.current?.({ ...cal, selected_days: daysSnapshot });
       initialSelectedDaysRef.current = daysSnapshot;
     }, 800);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally watches scheduledPosts.length only (not full array); syncScheduleForCalendar is invoked via ref
   }, [selectedDays, currentCalendarId, user?.id, scheduledPosts.length, allCalendars]);
 
   console.log("[App] render", { authLoading, user: !!user, showProfileSetup, showDashboard, exportMode, cpPublicToken: !!cpPublicToken, cpExportToken: !!cpExportToken });
@@ -1697,14 +1948,11 @@ useEffect(() => {
         profileName={profileName} profileInput={profileInput} setProfileInput={setProfileInput}
         saveProfile={saveProfile} editingProfile={editingProfile} setEditingProfile={setEditingProfile}
         exporting={exporting} exportProgress={exportProgress} exportElapsed={exportElapsed}
-        allCalendars={allCalendars} calCollaborators={calCollaborators} schedulingCalId={schedulingCalId}
+        allCalendars={allCalendars} calCreators={calCreators} schedulingCalId={schedulingCalId}
         openCalendar={openCalendar} newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={toggleSchedule}
-        setShareModal={setShareModal} setShareEmail={setShareEmail} setShareError={setShareError}
-        shareModal={shareModal} shareEmail={shareEmail} shareError={shareError}
-        shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
-        sharePermission={sharePermission} setSharePermission={setSharePermission}
         loadAdminUsers={loadAdminUsers} loadRoleToolDefaults={loadRoleToolDefaults} loadAllContentPlans={loadAllContentPlans}
         scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost} toggleNotify={toggleNotify}
+        calendarsLoading={calendarsLoading} contentPlansLoading={contentPlansLoading} scheduledPostsLoading={scheduledPostsLoading}
         adminUsers={adminUsers} adminLoading={adminLoading}
         roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}
         inviteModal={inviteModal} setInviteModal={setInviteModal}
@@ -1745,8 +1993,14 @@ useEffect(() => {
         pinterestOpen={pinterestOpen} setPinterestOpen={setPinterestOpen}
         pinterestPanelWidth={pinterestPanelWidth} setPinterestPanelWidth={setPinterestPanelWidth}
         signOut={signOut}
-
+        workspaceClientId={workspaceClientId} setWorkspaceClientId={setWorkspaceClientId}
+        workspaceCalendarId={workspaceCalendarId} setWorkspaceCalendarId={setWorkspaceCalendarId}
+        newMonthForClient={newMonthForClient}
+        addClientDirect={addClientDirect}
+        toggleClientSmmActive={toggleClientSmmActive}
+        deleteClient={deleteClient}
       />
+      <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
     </AppContext.Provider>
     </ErrorBoundary>
   );
@@ -1755,9 +2009,34 @@ useEffect(() => {
   return (
     <ErrorBoundary>
     <AppContext.Provider value={{ can, showToast, user, isOnline }}>
+      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+        {step <= 2 && (
+          <Sidebar
+            activePortal={activePortal}
+            setActivePortal={(key) => { setActivePortal(key); setShowDashboard(true); }}
+            profileName={profileName}
+            scheduledPosts={scheduledPosts}
+            can={can}
+            signOut={signOut}
+            setProfileInput={setProfileInput}
+            setEditingProfile={setEditingProfile}
+            loadAllContentPlans={loadAllContentPlans}
+            loadAdminUsers={loadAdminUsers}
+            loadRoleToolDefaults={loadRoleToolDefaults}
+            adminUsers={adminUsers || []}
+            roleToolDefaults={roleToolDefaults}
+            onOpenRolePerms={() => { setActivePortal("admin"); setShowDashboard(true); }}
+            clients={(clients || []).filter(c => c.smm_active !== false)}
+            workspaceClientId={workspaceClientId}
+            onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal("clients"); setShowDashboard(true); }}
+            addClientDirect={addClientDirect}
+          />
+        )}
+        <div style={{ flex: 1, overflowY: "auto" }}>
       <CalendarBuilder
         step={step} setStep={setStep} stepLabels={stepLabels}
         clientName={clientName} setClientName={setClientName}
+        clientId={clientId} setClientId={setClientId}
         month={month} setMonth={setMonth} year={year} setYear={setYear}
         selectedDays={selectedDays} setSelectedDays={setSelectedDays} posts={posts} setPosts={setPosts}
         postsPerPage={postsPerPage} setPostsPerPage={setPostsPerPage}
@@ -1766,7 +2045,7 @@ useEffect(() => {
         toggleDay={toggleDay} changeDay={changeDay} addPostToDay={addPostToDay} removePostFromDay={removePostFromDay}
         swapPostContent={swapPostContent} removeImageFromPost={removeImageFromPost}
         updatePost={updatePost}
-        clients={clients}
+        clients={(clients || []).filter(c => c.smm_active !== false)}
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
         addNewClient={addNewClient}
@@ -1792,16 +2071,25 @@ useEffect(() => {
         handleDriveFileDrop={handleDriveFileDrop} handleMultiDriveFileDrop={handleMultiDriveFileDrop}
         handleDriveBatchImport={handleDriveBatchImport}
         connectDrive={connectDrive}
-        shareModal={shareModal} setShareModal={setShareModal}
-        shareEmail={shareEmail} setShareEmail={setShareEmail}
-        shareError={shareError} setShareError={setShareError}
-        sharePermission={sharePermission} setSharePermission={setSharePermission}
-        shareBusy={shareBusy} addCollaborator={addCollaborator} removeCollaborator={removeCollaborator}
-        calCollaborators={calCollaborators}
-
       />
+        </div>
+      </div>
+      <ConfirmDialog confirmDialog={confirmDialog} setConfirmDialog={setConfirmDialog} />
     </AppContext.Provider>
     </ErrorBoundary>
   );
 
+}
+
+function ConfirmDialog({ confirmDialog, setConfirmDialog }) {
+  const close = () => setConfirmDialog(d => ({ ...d, open: false }));
+  return (
+    <AppDialog open={confirmDialog.open} onClose={close} title="Confirm">
+      <p style={{ fontSize: 14, color: C.meta, fontFamily: SANS, marginTop: 8, marginBottom: 24, lineHeight: "160%" }}>{confirmDialog.message}</p>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button onClick={close} style={ghostBtn}>Cancel</button>
+        <button onClick={() => { confirmDialog.onConfirm?.(); close(); }} style={dangerBtn}>Confirm</button>
+      </div>
+    </AppDialog>
+  );
 }

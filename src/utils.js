@@ -21,6 +21,21 @@ export function readBillingExportToken() {
   return new URLSearchParams(window.location.search).get("billingExportToken");
 }
 
+export function readCalendarIdFromUrl() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("calendarId");
+}
+
+export function setCalendarIdInUrl(id) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set("calendarId", id);
+  else url.searchParams.delete("calendarId");
+  const next = url.pathname + (url.search ? url.search : "") + url.hash;
+  if (next === window.location.pathname + window.location.search + window.location.hash) return;
+  window.history.replaceState(null, "", next);
+}
+
 export async function compressToBlob(file) {
   return new Promise(resolve => {
     const img = new Image();
@@ -83,3 +98,18 @@ export function loadGsiScript() {
 export function getSlideCropX(post, slideIdx) { return post.cropXs?.[slideIdx] ?? post.cropX ?? 50; }
 export function getSlideCropY(post, slideIdx) { return post.cropYs?.[slideIdx] ?? post.cropY ?? 50; }
 export function getSlideScale(post, slideIdx) { return post.scales?.[slideIdx] ?? post.scale ?? 1; }
+
+
+export async function deleteCloudinaryAssets(urls, accessToken) {
+  const cloudinaryUrls = (urls ?? []).filter(u => typeof u === "string" && u.includes("res.cloudinary.com"));
+  if (!cloudinaryUrls.length) return;
+  try {
+    await fetch("/api/delete-assets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}` },
+      body: JSON.stringify({ urls: cloudinaryUrls }),
+    });
+  } catch (e) {
+    console.warn("[deleteCloudinaryAssets] non-fatal:", e.message);
+  }
+}

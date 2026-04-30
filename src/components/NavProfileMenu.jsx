@@ -3,7 +3,7 @@ import NavMenuItem from "./NavMenuItem";
 
 import { SANS, MONO, C } from "../theme";
 
-export default function NavProfileMenu({ profileName, userEmail, currentCalendarId, onMyCalendars, onHistory, onEditProfile, onSignOut }) {
+export default function NavProfileMenu({ profileName, userEmail, currentCalendarId, onMyCalendars, onHistory, onEditProfile, onSignOut, isAdmin, onAdminPortal, hasBilling, onBillingPortal }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ position: "relative" }}>
@@ -20,7 +20,7 @@ export default function NavProfileMenu({ profileName, userEmail, currentCalendar
       {open && (
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 199 }} onClick={() => setOpen(false)} />
-          <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,0.5)", minWidth: 200, overflow: "hidden", zIndex: 200 }}>
+          <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, boxShadow: "0 12px 40px rgba(0,0,0,0.5)", minWidth: 200, overflow: "hidden", zIndex: 200 }}>
             <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: SANS, lineHeight: 1, marginBottom: 4 }}>{profileName}</div>
               {userEmail && <div style={{ fontSize: 10, color: C.meta, fontFamily: MONO, lineHeight: 1 }}>{userEmail}</div>}
@@ -28,8 +28,14 @@ export default function NavProfileMenu({ profileName, userEmail, currentCalendar
             {currentCalendarId && <NavMenuItem onClick={() => { setOpen(false); onMyCalendars(); }}>My Calendars</NavMenuItem>}
             {currentCalendarId && <NavMenuItem onClick={() => { setOpen(false); onHistory(); }}>Version History</NavMenuItem>}
             <NavMenuItem onClick={() => { setOpen(false); onEditProfile(); }}>Edit Profile</NavMenuItem>
+            {(isAdmin || hasBilling) && (
+              <div style={{ borderTop: `1px solid ${C.border}` }}>
+                {hasBilling && <NavMenuItem onClick={() => { setOpen(false); onBillingPortal(); }}>Billing</NavMenuItem>}
+                {isAdmin && <NavMenuItem onClick={() => { setOpen(false); onAdminPortal(); }}>Admin Portal</NavMenuItem>}
+              </div>
+            )}
             <div style={{ borderTop: `1px solid ${C.border}` }}>
-              <NavMenuItem onClick={() => { setOpen(false); onSignOut(); }} color="#ff4444">Sign out</NavMenuItem>
+              <NavMenuItem onClick={() => { setOpen(false); onSignOut(); }} color={C.error}>Sign out</NavMenuItem>
             </div>
           </div>
         </>
