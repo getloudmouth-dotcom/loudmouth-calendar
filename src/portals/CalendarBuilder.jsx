@@ -60,7 +60,7 @@ export default function CalendarBuilder({
       {stepLabels.map((label, i) => {
         const s = i + 1;
         return (
-          <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); if (s === 4) { fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {}); if (clientName.trim() && user) saveDraft("Auto-save on preview", { silent: true }); } }} style={{
+          <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); if (s === 4) { fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {}); if (clientName.trim()) saveDraft("Auto-save on preview", { silent: true }); } }} style={{
             background: step === s ? C.accent : "rgba(255,255,255,0.07)",
             color: step === s ? "#000" : C.meta,
             border: "none", padding: "6px 16px", borderRadius: 20,

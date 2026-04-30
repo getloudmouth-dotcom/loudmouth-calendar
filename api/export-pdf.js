@@ -155,7 +155,15 @@ export default async function handler(req, res) {
   if (calErr || !cal) {
     return res.status(404).json({ error: "Calendar not found" });
   }
-  if (cal.user_id !== user.id) return res.status(403).json({ error: "Forbidden" });
+  if (cal.user_id !== user.id) {
+    const { data: collab } = await supabase
+      .from("calendar_collaborators")
+      .select("id")
+      .eq("calendar_id", calendarId)
+      .eq("user_id", user.id)
+      .single();
+    if (!collab) return res.status(403).json({ error: "Forbidden" });
+  }
 
   // 2. Fetch the most recent draft snapshot
   const { data: draft, error: draftErr } = await supabase
