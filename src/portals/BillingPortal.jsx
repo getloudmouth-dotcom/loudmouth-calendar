@@ -87,6 +87,35 @@ function emptyLine() {
   return { _id: Math.random(), description: "", quantity: 1, unit_price: "" };
 }
 
+// ── FreshBooks connection pill ───────────────────────────────────────────────
+// Tiny indicator showing FB token health + a reconnect link. Admin-only.
+// Stale = refresh_token last rotated > 30 days ago. FB refresh tokens are
+// long-lived but can be invalidated server-side without warning.
+function FreshBooksStatusPill({ status, onReconnect }) {
+  const ok = !!status?.connected && !status?.stale;
+  const color = ok ? "#CCFF00" : "#E8001C";
+  const bg = ok ? "rgba(204,255,0,0.08)" : "rgba(232,0,28,0.08)";
+  const label = ok ? "FB connected" : status?.connected ? "FB stale" : "FB disconnected";
+  const title = status?.updated_at
+    ? `Refresh token last rotated ${new Date(status.updated_at).toLocaleString()}`
+    : "FreshBooks not connected";
+  return (
+    <button
+      onClick={onReconnect}
+      title={title + " — click to reconnect"}
+      style={{
+        background: bg, color, border: `1px solid ${color}`, borderRadius: 24,
+        padding: "5px 12px", fontSize: 10, fontWeight: 700, cursor: "pointer",
+        fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1px",
+        lineHeight: 1, display: "flex", alignItems: "center", gap: 6,
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: color }} />
+      {label}
+    </button>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function BillingPortal({ setActivePortal, deleteClient }) {
@@ -134,6 +163,9 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
 
   // ── SMS opt-in ────────────────────────────────────────────────────────────
   const [optinSending, setOptinSending] = useState(null); // client id currently sending
+
+  // ── FreshBooks connection status (admin only) ────────────────────────────
+  const [fbStatus, setFbStatus] = useState(null);
 
   // ── Send modal ────────────────────────────────────────────────────────────
   const [sendModal, setSendModal]     = useState(null); // invoice object
@@ -194,6 +226,27 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
     loadClients();
     loadInvoices();
   }, [loadClients, loadInvoices]);
+
+  const loadFbStatus = useCallback(async () => {
+    if (!can("admin_portal")) return;
+    try {
+      const data = await apiFetch("/api/billing/freshbooks-auth");
+      setFbStatus(data);
+    } catch {
+      setFbStatus({ status: { connected: false }, authorize_url: null });
+    }
+  }, [apiFetch, can]);
+
+  useEffect(() => { loadFbStatus(); }, [loadFbStatus]);
+
+  function reconnectFreshBooks() {
+    const url = fbStatus?.authorize_url;
+    if (!url) {
+      showToast("Couldn't load FreshBooks auth URL — check server logs.", "error");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 
   // ── Client CRUD ───────────────────────────────────────────────────────────
   function openNewClient() {
@@ -420,8 +473,11 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
           </button>
         ))}
         <div style={{ flex: 1 }} />
+        {can("admin_portal") && fbStatus && (
+          <FreshBooksStatusPill status={fbStatus.status} onReconnect={reconnectFreshBooks} />
+        )}
         {tab === "clients" && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: 12 }}>
             <button onClick={syncFromFreshbooks} disabled={syncing || syncCooldown} style={{ ...ghostBtn, opacity: (syncing || syncCooldown) ? 0.4 : 1, cursor: (syncing || syncCooldown) ? "not-allowed" : "pointer" }}>
               {syncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
             </button>
@@ -429,7 +485,7 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
           </div>
         )}
         {tab === "invoices" && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: 12 }}>
             <button onClick={syncInvoicesFromFreshbooks} disabled={invoiceSyncing || syncCooldown} style={{ ...ghostBtn, opacity: (invoiceSyncing || syncCooldown) ? 0.4 : 1, cursor: (invoiceSyncing || syncCooldown) ? "not-allowed" : "pointer" }}>
               {invoiceSyncing ? "Syncing…" : syncCooldown ? "↻ Cooling down…" : "↻ Sync from FreshBooks"}
             </button>

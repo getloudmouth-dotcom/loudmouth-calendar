@@ -249,6 +249,7 @@ export default async function handler(req, res) {
     // Force path bypasses the FB reconcile and cascades local invoice rows.
     // FB invoices remain untouched — the user is acknowledging they'll handle
     // those manually. Only admins reach this branch (gated above).
+    // invoice_line_items + invoice_events both have ON DELETE CASCADE.
     if (force) {
       const { error: cascadeErr } = await supabase
         .from("invoices")
@@ -319,31 +320,42 @@ export default async function handler(req, res) {
     }
 
     let archivedInFreshbooks = false;
+    let freshbooksArchiveError = null;
     const accountId = process.env.FRESHBOOKS_ACCOUNT_ID;
     if (accountId && existing.freshbooks_contact_id) {
-      const headers = await freshBooksHeaders();
-      const fbRes = await fetch(
-        `https://api.freshbooks.com/accounting/account/${accountId}/users/clients/${existing.freshbooks_contact_id}`,
-        {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ client: { vis_state: 2 } }),
-        }
-      );
+      try {
+        const headers = await freshBooksHeaders();
+        const fbRes = await fetch(
+          `https://api.freshbooks.com/accounting/account/${accountId}/users/clients/${existing.freshbooks_contact_id}`,
+          {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ client: { vis_state: 2 } }),
+          }
+        );
 
-      if (fbRes.ok) {
-        archivedInFreshbooks = true;
-      } else if (fbRes.status === 404) {
-        // FB already lost the record — proceed with local delete
-        console.warn(`FreshBooks client ${existing.freshbooks_contact_id} not found; archive skipped.`);
-      } else {
-        const body = await fbRes.text();
-        return res.status(502).json({
-          error: "freshbooks_archive_failed",
-          status: fbRes.status,
-          body,
-        });
+        if (fbRes.ok) {
+          archivedInFreshbooks = true;
+        } else if (fbRes.status === 404) {
+          // FB already lost the record — proceed with local delete
+          console.warn(`FreshBooks client ${existing.freshbooks_contact_id} not found; archive skipped.`);
+        } else {
+          const body = await fbRes.text();
+          freshbooksArchiveError = { status: fbRes.status, body };
+        }
+      } catch (err) {
+        // Token refresh / network failure — capture for the non-force branch.
+        freshbooksArchiveError = { status: 0, body: err.message };
       }
+    }
+
+    // Non-force delete: FB failure is fatal so the user can fix FB auth first.
+    // Force delete: user has accepted manual FB cleanup, proceed with local delete.
+    if (freshbooksArchiveError && !force) {
+      return res.status(502).json({
+        error: "freshbooks_archive_failed",
+        ...freshbooksArchiveError,
+      });
     }
 
     const { error: deleteErr } = await supabase.from("clients").delete().eq("id", id);

@@ -166,6 +166,7 @@ const billingRoutes = [
   '/api/billing/sms-optin',
   '/api/billing/sms-optin-confirm',
   '/api/billing/freshbooks-callback',
+  '/api/billing/freshbooks-auth',
 ];
 for (const route of billingRoutes) {
   const file = route.replace('/api/', './api/') + '.js';
