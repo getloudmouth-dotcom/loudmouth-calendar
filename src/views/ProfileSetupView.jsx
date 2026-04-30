@@ -1,34 +1,47 @@
-import { SANS, MONO, C, DISP, INPUT as inputStyle } from "../theme";
+import {
+  SANS, MONO, C, DISP,
+  INPUT as inputStyle,
+  LABEL as labelStyle,
+  primaryBtn,
+  AUTH_SHELL, AUTH_CARD,
+} from "../theme";
 
 export default function ProfileSetupView({ profileInput, setProfileInput, saveProfile, profilePhone, setProfilePhone, profileSmsConsent, setProfileSmsConsent }) {
+  const disabled = !profileInput.trim();
+
   return (
-    <main style={{ minHeight: "100vh", background: C.canvas, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SANS }}>
-      <div style={{ background: C.surface, borderRadius: 16, padding: 32, width: 380, border: `1px solid ${C.border}`, boxShadow: "0 24px 60px rgba(0,0,0,0.5)" }}>
-        <div style={{ marginBottom: 24 }}>
+    <main style={AUTH_SHELL}>
+      <div style={{ ...AUTH_CARD, maxWidth: 380 }}>
+        <div style={{ marginBottom: 8 }}>
           <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
           <div style={{ fontSize: 10, color: C.meta, letterSpacing: "1.5px", fontFamily: MONO, textTransform: "uppercase", lineHeight: 1, marginTop: 4 }}>by Loudmouth</div>
         </div>
 
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 6, lineHeight: 1, fontFamily: SANS }}>One quick thing.</div>
-        <p style={{ fontSize: 13, color: C.meta, marginBottom: 20, lineHeight: 1, fontFamily: SANS }}>Tell us your name and optionally your phone number for SMS notifications.</p>
+        <div style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 8, lineHeight: 1.1, fontFamily: SANS }}>One quick thing.</div>
+        <p style={{ fontSize: 13, color: C.meta, margin: "0 0 24px", lineHeight: 1.4, fontFamily: SANS }}>
+          Tell us your name and optionally your phone number for SMS notifications.
+        </p>
 
+        <label style={labelStyle}>Name</label>
         <input
           autoFocus
           value={profileInput}
           onChange={e => setProfileInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && saveProfile()}
+          onKeyDown={e => e.key === "Enter" && !disabled && saveProfile()}
           placeholder="e.g. Julio Castillo"
-          style={{ ...inputStyle, marginBottom: 12 }}
+          style={{ ...inputStyle, marginBottom: 16 }}
         />
+
+        <label style={labelStyle}>Phone (optional)</label>
         <input
           type="tel"
           value={profilePhone}
           onChange={e => setProfilePhone(e.target.value)}
           placeholder="+1 (956) 555-0100"
-          style={{ ...inputStyle, marginBottom: 16 }}
+          style={{ ...inputStyle, marginBottom: 20 }}
         />
 
-        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 20, cursor: "pointer" }}>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 24, cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={profileSmsConsent}
@@ -41,7 +54,11 @@ export default function ProfileSetupView({ profileInput, setProfileInput, savePr
           </span>
         </label>
 
-        <button onClick={saveProfile} disabled={!profileInput.trim()} style={{ width: "100%", padding: "11px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: profileInput.trim() ? "pointer" : "default", opacity: profileInput.trim() ? 1 : 0.4, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO, lineHeight: 1 }}>
+        <button
+          onClick={saveProfile}
+          disabled={disabled}
+          style={{ ...primaryBtn, width: "100%", padding: "12px 0", opacity: disabled ? 0.4 : 1, cursor: disabled ? "default" : "pointer" }}
+        >
           Let's go →
         </button>
       </div>

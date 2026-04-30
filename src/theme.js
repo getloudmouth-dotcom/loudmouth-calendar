@@ -20,6 +20,7 @@ export const C = {
   meta:     "#a0a0a0",
   border:   "rgba(255,255,255,0.14)",
   error:    "#E8001C",
+  success:  "#7fd99e",
 };
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
@@ -118,6 +119,48 @@ export const DISPLAY_TITLE = {
 export const DISPLAY_SUBTITLE = {
   marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta,
 };
+
+// ── Auth / setup screens ──────────────────────────────────────────────────────
+// Used by AuthView, InviteSetupView, ProfileSetupView. AUTH_SHELL is the full-
+// screen wrapper; AUTH_CARD is the centered card. Keep these in sync across the
+// three views so the auth flow feels like one set.
+
+export const AUTH_SHELL = {
+  minHeight: "100vh", background: C.canvas,
+  display: "flex", alignItems: "center", justifyContent: "center",
+  fontFamily: SANS, padding: "24px 16px",
+};
+
+export const AUTH_CARD = {
+  background: C.surface, borderRadius: 16, padding: 32,
+  width: "100%", maxWidth: 380,
+  border: `1px solid ${C.border}`,
+  boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+  boxSizing: "border-box",
+};
+
+// ── Segmented control ─────────────────────────────────────────────────────────
+// Two-or-more equal-width buttons sharing one rounded container (e.g., the
+// Log In / Sign Up toggle on AuthView). Segmented controls intentionally use
+// flex: 1 — the "no flex: 1" rule applies to action buttons in BTN_ROW, not to
+// segments which must be equal width by definition.
+
+export const SEGMENT_GROUP = {
+  display: "flex",
+  border: `1px solid ${C.border}`,
+  borderRadius: 8,
+  overflow: "hidden",
+};
+
+export const segmentBtn = (active) => ({
+  flex: 1, padding: "9px 0",
+  background: active ? C.accent : "transparent",
+  color: active ? "#000" : C.meta,
+  border: "none", cursor: "pointer",
+  fontFamily: MONO, fontSize: 10, fontWeight: 700,
+  textTransform: "uppercase", letterSpacing: "1px",
+  lineHeight: 1, transition: "all 0.15s",
+});
 
 // ── Page header bar ───────────────────────────────────────────────────────────
 
