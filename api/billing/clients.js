@@ -211,6 +211,7 @@ export default async function handler(req, res) {
     }
 
     const id = req.query.id;
+    const force = req.query.force === "true" || req.query.force === "1";
     if (!id) return res.status(400).json({ error: "id is required" });
 
     const { data: existing, error: fetchErr } = await supabase
@@ -221,18 +222,75 @@ export default async function handler(req, res) {
 
     if (fetchErr || !existing) return res.status(404).json({ error: "Client not found" });
 
-    const { count: invoiceCount, error: invoiceErr } = await supabase
-      .from("invoices")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", id);
+    // Force path bypasses the FB reconcile and cascades local invoice rows.
+    // FB invoices remain untouched — the user is acknowledging they'll handle
+    // those manually. Only admins reach this branch (gated above).
+    if (force) {
+      const { error: cascadeErr } = await supabase
+        .from("invoices")
+        .delete()
+        .eq("client_id", id);
+      if (cascadeErr) return res.status(500).json({ error: cascadeErr.message });
+    }
+
+    const { count: invoiceCount, error: invoiceErr } = force
+      ? { count: 0, error: null }
+      : await supabase
+          .from("invoices")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", id);
 
     if (invoiceErr) return res.status(500).json({ error: invoiceErr.message });
 
-    if ((invoiceCount ?? 0) > 0) {
+    let blockingCount = invoiceCount ?? 0;
+
+    // Reconcile against FreshBooks: a local invoice may be a phantom of an
+    // invoice that was deleted/archived in FB but never cleaned up locally.
+    if (blockingCount > 0) {
+      const accountId = process.env.FRESHBOOKS_ACCOUNT_ID;
+      const { data: localInvoices } = await supabase
+        .from("invoices")
+        .select("id, freshbooks_invoice_id")
+        .eq("client_id", id);
+
+      if (accountId && localInvoices?.length) {
+        for (const inv of localInvoices) {
+          if (!inv.freshbooks_invoice_id) continue;
+          try {
+            const headers = await freshBooksHeaders();
+            const fbRes = await fetch(
+              `https://api.freshbooks.com/accounting/account/${accountId}/invoices/invoices/${inv.freshbooks_invoice_id}`,
+              { headers }
+            );
+            let shouldDelete = false;
+            if (fbRes.status === 404) {
+              shouldDelete = true;
+            } else if (fbRes.ok) {
+              const body = await fbRes.json();
+              if (body?.response?.result?.invoice?.vis_state === 2) shouldDelete = true;
+            }
+            if (shouldDelete) {
+              await supabase.from("invoices").delete().eq("id", inv.id);
+            }
+          } catch (err) {
+            // Transient FB/network error — keep the local row; fail safe.
+            console.warn(`FB reconcile skipped for invoice ${inv.freshbooks_invoice_id}: ${err.message}`);
+          }
+        }
+
+        const { count: freshCount } = await supabase
+          .from("invoices")
+          .select("id", { count: "exact", head: true })
+          .eq("client_id", id);
+        blockingCount = freshCount ?? 0;
+      }
+    }
+
+    if (blockingCount > 0) {
       return res.status(409).json({
         error: "client_has_invoices",
-        invoice_count: invoiceCount,
-        message: `"${existing.name}" has ${invoiceCount} invoice(s). Delete those first.`,
+        invoice_count: blockingCount,
+        message: `"${existing.name}" has ${blockingCount} invoice(s). Delete those first.`,
       });
     }
 

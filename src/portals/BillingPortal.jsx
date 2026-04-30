@@ -248,9 +248,15 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
     setSyncResult(null);
     startSyncCooldown();
     try {
-      const result = await apiFetch("/api/billing/sync-clients");
-      setSyncResult(result);
-      await loadClients();
+      const clientResult = await apiFetch("/api/billing/sync-clients");
+      let invoiceResult = null;
+      try {
+        invoiceResult = await apiFetch("/api/billing/sync-invoices", { method: "POST" });
+      } catch (invErr) {
+        invoiceResult = { error: invErr.message };
+      }
+      setSyncResult({ ...clientResult, invoices: invoiceResult });
+      await Promise.all([loadClients(), loadInvoices()]);
     } catch (err) {
       setSyncResult({ error: err.message });
     } finally {
@@ -446,7 +452,7 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
             <div style={{ marginBottom: 16, padding: "10px 16px", background: invoiceSyncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${invoiceSyncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: invoiceSyncResult.error ? "#E8001C" : "#CCFF00", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               {invoiceSyncResult.error
                 ? `Sync failed: ${invoiceSyncResult.error}`
-                : `Sync complete — ${invoiceSyncResult.created} created, ${invoiceSyncResult.updated} updated, ${invoiceSyncResult.skipped} skipped`}
+                : `Sync complete — ${invoiceSyncResult.created} created, ${invoiceSyncResult.updated} updated, ${invoiceSyncResult.deleted ?? 0} deleted, ${invoiceSyncResult.skipped} skipped`}
               <button onClick={() => setInvoiceSyncResult(null)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 16, padding: 0, marginLeft: 12 }}>×</button>
             </div>
           )}
@@ -536,7 +542,13 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
             <div style={{ marginBottom: 16, padding: "10px 16px", background: syncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${syncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: syncResult.error ? "#E8001C" : "#CCFF00", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               {syncResult.error
                 ? `Sync failed: ${syncResult.error}`
-                : `Sync complete — ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.pushed} pushed to FreshBooks, ${syncResult.skipped} skipped`}
+                : `Clients — ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.pushed} pushed to FreshBooks, ${syncResult.skipped} skipped${
+                    syncResult.invoices?.error
+                      ? ` · Invoice sync failed: ${syncResult.invoices.error}`
+                      : syncResult.invoices
+                        ? ` · Invoices — ${syncResult.invoices.created} created, ${syncResult.invoices.updated} updated, ${syncResult.invoices.deleted ?? 0} deleted, ${syncResult.invoices.skipped} skipped`
+                        : ""
+                  }`}
               <button onClick={() => setSyncResult(null)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 16, padding: 0, marginLeft: 12 }}>×</button>
             </div>
           )}
