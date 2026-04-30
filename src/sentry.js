@@ -6,7 +6,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment: import.meta.env.MODE,
-    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
+    tracesSampleRate: import.meta.env.PROD ? 0.1 : 0,
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: import.meta.env.PROD ? 1.0 : 0,
     integrations: [
