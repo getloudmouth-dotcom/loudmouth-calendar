@@ -30,6 +30,11 @@ export default function InviteSetupView({
 
   const disabled = inviteSetupBusy || !inviteName.trim() || !invitePassword;
 
+  const onSubmit = (e) => {
+    e.preventDefault();
+    if (!disabled) saveInviteSetup();
+  };
+
   return (
     <main style={AUTH_SHELL}>
       <div style={{ ...AUTH_CARD, maxWidth: 400 }}>
@@ -50,29 +55,31 @@ export default function InviteSetupView({
           </div>
         )}
 
-        <label style={labelStyle}>Name</label>
-        <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Your name" style={{ ...inputStyle, marginBottom: 16 }} />
+        <form onSubmit={onSubmit}>
+          <label style={labelStyle}>Name</label>
+          <input autoComplete="name" value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Your name" style={{ ...inputStyle, marginBottom: 16 }} />
 
-        <label style={labelStyle}>Email</label>
-        <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="you@example.com" style={{ ...inputStyle, marginBottom: 16 }} />
+          <label style={labelStyle}>Email</label>
+          <input type="email" autoComplete="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="you@example.com" style={{ ...inputStyle, marginBottom: 16 }} />
 
-        <label style={labelStyle}>Password</label>
-        <input type="password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} placeholder="Min. 8 characters" style={{ ...inputStyle, marginBottom: 16 }} />
+          <label style={labelStyle}>Password</label>
+          <input type="password" autoComplete="new-password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} placeholder="Min. 8 characters" style={{ ...inputStyle, marginBottom: 16 }} />
 
-        <label style={labelStyle}>Confirm Password</label>
-        <input type="password" value={invitePasswordConfirm} onChange={e => setInvitePasswordConfirm(e.target.value)} placeholder="Same thing again" onKeyDown={e => e.key === "Enter" && !disabled && saveInviteSetup()} style={{ ...inputStyle, marginBottom: 24 }} />
+          <label style={labelStyle}>Confirm Password</label>
+          <input type="password" autoComplete="new-password" value={invitePasswordConfirm} onChange={e => setInvitePasswordConfirm(e.target.value)} placeholder="Same thing again" style={{ ...inputStyle, marginBottom: 24 }} />
 
-        {inviteSetupError && (
-          <div style={{ fontSize: 12, color: C.error, marginBottom: 16, fontWeight: 600, fontFamily: SANS, lineHeight: 1.3 }}>{inviteSetupError}</div>
-        )}
+          {inviteSetupError && (
+            <div style={{ fontSize: 12, color: C.error, marginBottom: 16, fontWeight: 600, fontFamily: SANS, lineHeight: 1.3 }}>{inviteSetupError}</div>
+          )}
 
-        <button
-          onClick={saveInviteSetup}
-          disabled={disabled}
-          style={{ ...primaryBtn, width: "100%", padding: "12px 0", opacity: disabled ? 0.4 : 1, cursor: disabled ? "default" : "pointer" }}
-        >
-          {inviteSetupBusy ? "Setting up..." : "Let's get loud →"}
-        </button>
+          <button
+            type="submit"
+            disabled={disabled}
+            style={{ ...primaryBtn, width: "100%", padding: "12px 0", opacity: disabled ? 0.4 : 1, cursor: disabled ? "default" : "pointer" }}
+          >
+            {inviteSetupBusy ? "Setting up..." : "Let's get loud →"}
+          </button>
+        </form>
       </div>
     </main>
   );
