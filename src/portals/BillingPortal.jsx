@@ -303,6 +303,9 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
     startSyncCooldown();
     try {
       const clientResult = await apiFetch("/api/billing/sync-clients");
+      if (clientResult?._debug_fb_clients) {
+        console.log("[FB sync] fetched:", clientResult.fetched, "visible:", clientResult.total, clientResult._debug_fb_clients);
+      }
       let invoiceResult = null;
       try {
         invoiceResult = await apiFetch("/api/billing/sync-invoices", { method: "POST" });
@@ -599,7 +602,7 @@ export default function BillingPortal({ setActivePortal, deleteClient }) {
             <div style={{ marginBottom: 16, padding: "10px 16px", background: syncResult.error ? "#1a0000" : "#0d1a00", border: `1px solid ${syncResult.error ? "#330000" : "#2a4e0a"}`, borderRadius: 8, color: syncResult.error ? "#E8001C" : "#CCFF00", fontSize: 13, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               {syncResult.error
                 ? `Sync failed: ${syncResult.error}`
-                : `Clients — ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.pushed} pushed to FreshBooks, ${syncResult.skipped} skipped${
+                : `Clients — ${syncResult.total ?? "?"} from FreshBooks · ${syncResult.created} created, ${syncResult.updated} updated, ${syncResult.pushed} pushed, ${syncResult.skipped} skipped${
                     syncResult.invoices?.error
                       ? ` · Invoice sync failed: ${syncResult.invoices.error}`
                       : syncResult.invoices

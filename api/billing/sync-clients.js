@@ -82,7 +82,7 @@ async function handler(req, res) {
     while (true) {
       const headers = await freshBooksHeaders();
       const fbRes = await fetch(
-        `https://api.freshbooks.com/accounting/account/${accountId}/users/clients?page=${page}&per_page=100&search[vis_state]=0`,
+        `https://api.freshbooks.com/accounting/account/${accountId}/users/clients?page=${page}&per_page=100`,
         { headers }
       );
       if (!fbRes.ok) {
@@ -99,6 +99,13 @@ async function handler(req, res) {
   } catch (err) {
     return res.status(502).json({ error: `FreshBooks error: ${err.message}` });
   }
+
+  // FreshBooks vis_state: 0 = active, 1 = deleted, 2 = archived. We previously
+  // filtered the request URL to vis_state=0, which excluded archived clients
+  // the user added manually in FreshBooks. Pull everything except deleted —
+  // archived clients should still sync into the app. The in-app smm_active
+  // toggle is a separate UI filter and is not affected by this.
+  const visibleFbClients = allFbClients.filter(c => c.vis_state !== 1);
 
   // ── Load all local clients ─────────────────────────────────────────────────
   const { data: localClients, error: localErr } = await supabase.from("clients").select("*");
@@ -119,7 +126,7 @@ async function handler(req, res) {
   let created = 0, updated = 0, pushed = 0, skipped = 0;
   const errors = [];
 
-  for (const fb of allFbClients) {
+  for (const fb of visibleFbClients) {
     const fbId = String(fb.id);
     // FreshBooks timestamps are UTC but have no timezone suffix — append " UTC"
     const fbUpdated = new Date(`${fb.updated} UTC`);
@@ -244,7 +251,16 @@ async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({ created, updated, pushed, skipped, total: allFbClients.length, errors });
+  return res.status(200).json({
+    created, updated, pushed, skipped, errors,
+    total: visibleFbClients.length,
+    fetched: allFbClients.length,
+    _debug_fb_clients: visibleFbClients.map(c => ({
+      id: c.id,
+      vis_state: c.vis_state,
+      name: pickClientName(c),
+    })),
+  });
 }
 
 export default withSentry(handler);

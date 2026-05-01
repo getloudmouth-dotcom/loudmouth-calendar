@@ -54,7 +54,7 @@ async function fetchAllFbClients(accountId) {
   while (true) {
     const headers = await freshBooksHeaders();
     const res = await fetch(
-      `https://api.freshbooks.com/accounting/account/${accountId}/users/clients?page=${page}&per_page=100&search[vis_state]=0`,
+      `https://api.freshbooks.com/accounting/account/${accountId}/users/clients?page=${page}&per_page=100`,
       { headers }
     );
     if (!res.ok) {
@@ -67,7 +67,10 @@ async function fetchAllFbClients(accountId) {
     if (page >= (result?.pages?.pages ?? 1)) break;
     page++;
   }
-  return all;
+  // Exclude only deleted clients (vis_state=1). Archived (2) is intentional —
+  // those are clients the user added manually in FreshBooks and still wants
+  // visible in the app's reconcile UI.
+  return all.filter(c => c.vis_state !== 1);
 }
 
 async function fetchOneFbClient(accountId, fbId) {
