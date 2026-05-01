@@ -2,6 +2,7 @@ import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE, dangerBtn } from "../them
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import GridView from "./GridView";
+import SchedulerTab from "./SchedulerTab";
 
 const TABS = [
   { key: "calendar",  label: "Calendar" },
@@ -19,6 +20,11 @@ export default function MonthWorkspace({
   activeTab,
   setActiveTab,
   deleteCalendar,
+  scheduledPosts,
+  queueDays,
+  removeScheduledPost,
+  toggleNotify,
+  loadDraftPostsFor,
 }) {
   const { user, can } = useApp();
   const canDelete = calendar.user_id === user?.id || can("admin_portal");
@@ -114,10 +120,16 @@ export default function MonthWorkspace({
         )}
 
         {activeTab === "scheduler" && (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>Coming soon</div>
-            <div style={{ fontFamily: SANS, fontSize: 13, color: C.meta }}>Scheduler scoped to {MONTHS[calendar.month]} {calendar.year} will appear here.</div>
-          </div>
+          <SchedulerTab
+            calendar={calendar}
+            scheduledPosts={scheduledPosts}
+            queueDays={queueDays}
+            removeScheduledPost={removeScheduledPost}
+            toggleNotify={toggleNotify}
+            loadDraftPostsFor={loadDraftPostsFor}
+            allCalendars={allCalendars}
+            openCalendar={onOpenCalendar}
+          />
         )}
 
         {activeTab === "content" && (

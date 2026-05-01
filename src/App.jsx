@@ -1603,6 +1603,24 @@ useEffect(() => {
     await loadScheduledPosts();
   }
 
+  async function queueDays(cal, days) {
+    if (!user || !cal || !days?.length) return;
+    const draftPosts = await loadDraftPostsFor(cal.id);
+    const rows = days.map(day => ({
+      ...buildScheduleRow(cal, day, draftPosts, user.id),
+      notify: true,
+    }));
+    const { error } = await supabase
+      .from("scheduled_posts")
+      .upsert(rows, { onConflict: "user_id,calendar_id,post_date", ignoreDuplicates: false });
+    if (error) {
+      showToast("Failed: " + error.message, "error");
+      return;
+    }
+    await loadScheduledPosts();
+    showToast(`Opted in to ${rows.length} day${rows.length > 1 ? "s" : ""}.`, "success");
+  }
+
   async function toggleNotify(rowId, notify) {
     await supabase.from("scheduled_posts").update({ notify }).eq("id", rowId);
     setScheduledPosts(prev => prev.map(r => r.id === rowId ? { ...r, notify } : r));
@@ -2005,6 +2023,7 @@ useEffect(() => {
         openCalendar={openCalendar} deleteCalendar={deleteCalendar} addToSchedule={toggleSchedule}
         loadAdminUsers={loadAdminUsers} loadRoleToolDefaults={loadRoleToolDefaults} loadAllContentPlans={loadAllContentPlans}
         scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost} toggleNotify={toggleNotify}
+        queueDays={queueDays} loadDraftPostsFor={loadDraftPostsFor}
         calendarsLoading={calendarsLoading} contentPlansLoading={contentPlansLoading} scheduledPostsLoading={scheduledPostsLoading}
         adminUsers={adminUsers} adminLoading={adminLoading}
         roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}

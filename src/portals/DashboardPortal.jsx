@@ -590,7 +590,7 @@ export default function DashboardPortal({
   exporting, exportProgress, exportElapsed,
   allCalendars, calCreators, schedulingCalId,
   openCalendar, deleteCalendar, addToSchedule,
-  scheduledPosts, removeScheduledPost, toggleNotify,
+  scheduledPosts, removeScheduledPost, toggleNotify, queueDays, loadDraftPostsFor,
   adminUsers, adminLoading,
   roleToolDefaults, rolePermsBusy, saveRoleToolDefaults,
   inviteModal, setInviteModal, inviteForm, setInviteForm,
@@ -787,6 +787,11 @@ export default function DashboardPortal({
                 activeTab={workspaceTab}
                 setActiveTab={setWorkspaceTab}
                 deleteCalendar={deleteCalendar}
+                scheduledPosts={scheduledPosts}
+                queueDays={queueDays}
+                removeScheduledPost={removeScheduledPost}
+                toggleNotify={toggleNotify}
+                loadDraftPostsFor={loadDraftPostsFor}
               />
             );
           }
