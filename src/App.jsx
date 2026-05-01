@@ -1239,7 +1239,12 @@ useEffect(() => {
     try {
       const { data } = await supabase.from("calendar_drafts")
         .select("*").eq("calendar_id", cal.id).order("saved_at", { ascending: false }).limit(1);
-      if (data?.[0]) setPosts(data[0].posts);
+      if (data?.[0]) {
+        setPosts(data[0].posts);
+        setPinnedCount(data[0].posts?._meta?.pinnedCount ?? 0);
+      } else {
+        setPinnedCount(0);
+      }
     } finally {
       loadingDraftRef.current = false;
     }
@@ -1257,6 +1262,7 @@ useEffect(() => {
         // model as the calendars UPDATE handler below.
         if (payload.new?.posts && typeof payload.new.posts === "object") {
           setPosts(payload.new.posts);
+          setPinnedCount(payload.new.posts?._meta?.pinnedCount ?? 0);
         }
         // Look up who saved
         let saverName = "Someone";
@@ -1357,8 +1363,9 @@ useEffect(() => {
     }
     setCurrentCalendarId(calData.id);
     if (calData?.updated_at) lastSelfCalendarUpdateRef.current = calData.updated_at;
+    const postsWithMeta = { ...posts, _meta: { ...(posts?._meta || {}), pinnedCount } };
     const { error: draftErr } = await supabase.from("calendar_drafts").insert({
-      calendar_id: calData.id, posts, label: lbl, user_id: user.id,
+      calendar_id: calData.id, posts: postsWithMeta, label: lbl, user_id: user.id,
     });
     if (draftErr) {
       if (!silent) showToast("Save failed: " + draftErr.message, "error");
@@ -1677,7 +1684,8 @@ useEffect(() => {
 
     if (error) { showToast("Failed to create new month: " + error.message, "error"); return null; }
 
-    // Copy pinned posts from previous month
+    // Carry the previous month's pinned-slot count forward so the new month
+    // opens with the same pin reservation already applied.
     if (fromCalendar) {
       const { data: drafts } = await supabase
         .from("calendar_drafts")
@@ -1685,22 +1693,15 @@ useEffect(() => {
         .eq("calendar_id", fromCalendar.id)
         .order("saved_at", { ascending: false })
         .limit(1);
-      if (drafts?.[0]?.posts) {
-        const prevPosts = drafts[0].posts;
-        const pinnedPosts = {};
-        Object.entries(prevPosts).forEach(([day, dayPosts]) => {
-          const pinned = (dayPosts || []).filter(p => p.pinned);
-          if (pinned.length) pinnedPosts[day] = pinned;
+      const carry = drafts?.[0]?.posts?._meta?.pinnedCount ?? 0;
+      if (carry > 0) {
+        await supabase.from("calendar_drafts").insert({
+          calendar_id: newCal.id,
+          user_id: user.id,
+          label: `Pins from ${MONTHS[fromCalendar.month]} ${fromCalendar.year}`,
+          posts: { _meta: { pinnedCount: carry } },
+          saved_at: new Date().toISOString(),
         });
-        if (Object.keys(pinnedPosts).length) {
-          await supabase.from("calendar_drafts").insert({
-            calendar_id: newCal.id,
-            user_id: user.id,
-            label: `Pinned from ${MONTHS[fromCalendar.month]} ${fromCalendar.year}`,
-            posts: pinnedPosts,
-            saved_at: new Date().toISOString(),
-          });
-        }
       }
     }
 

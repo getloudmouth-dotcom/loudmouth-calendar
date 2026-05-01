@@ -3,54 +3,64 @@ import { getSlideCropX, getSlideCropY, getSlideScale } from "../utils";
 import { C, MONO } from "../theme";
 import { MONTHS } from "../constants";
 
-// Continuous 3-column grid that stitches a working (editable) section on top
-// with read-only history sections (one per prior calendar) below — no borders
-// or gaps between sections so the months emulate a single seamless Instagram
-// feed when expanded. Per-month chevrons collapse a section to a single thin
-// strip so the user can hide older months without losing place.
+// Continuous 3-column grid that emulates a real Instagram profile feed:
+// pinned slots at the top-left, the current ("working") month flowing into
+// prior months without artificial row breaks, and a single trailing pad at
+// the very bottom. Each prior month gets a floating month chip overlaid on
+// its first visible cell (which can land mid-row so the seam is invisible).
+// Collapsed months still render as a full-width strip — that's an explicit
+// user action, so the row break is intentional.
 //
 // Props:
-//   workingPosts: post[] (editable, draggable, reversed for IG-style ordering)
-//   history: [{ calendarId, month, year, posts: post[] }] (newest first)
-//   collapsed: { [calendarId]: bool }
-//   onCollapseToggle: (calendarId) => void
-//   onSwap: (dayA, postIdxA, dayB, postIdxB) => void   // working area only
+//   workingPosts:    post[]                                            (editable, draggable; rendered IG-newest-first)
+//   history:         [{ calendarId, month, year, posts: post[] }]     (newest first)
+//   collapsed:       { [calendarId]: bool }
+//   onCollapseToggle:(calendarId) => void
+//   onSwap:          (dayA, postIdxA, dayB, postIdxB) => void          (working area only)
+//   pinnedCount:     number                                            (0–3)
+//   setPinnedCount:  (n|fn) => void                                    (omit for read-only)
 export default function MultiMonthFeedGrid({
   workingPosts = [],
   history = [],
   collapsed = {},
   onCollapseToggle = () => {},
   onSwap = () => {},
+  pinnedCount = 0,
+  setPinnedCount,
 }) {
   const [dragSrc, setDragSrc] = useState(null);
   const [hoverTarget, setHoverTarget] = useState(null);
 
-  // Working section: filter to posts with images, reverse so newest sits at the
-  // bottom-right (matches ReorderFeedGrid behavior), pad to a full row of 3.
+  const pinEditable = typeof setPinnedCount === "function";
+
+  // Build a single flat cell stream. Each item carries enough metadata for
+  // the renderer to decide what overlays/handlers it needs.
+  const stream = [];
+
+  // 1) Pinned placeholder slots (top-left, max 3).
+  for (let i = 0; i < pinnedCount; i++) {
+    stream.push({ kind: "pinned", idx: i });
+  }
+
+  // 2) Working month — filter to posts with images, reverse so newest sits at
+  //    the top-left of the working section.
   const workingFiltered = workingPosts.filter(p => p?.imageUrls?.[0]);
   const workingReversed = [...workingFiltered].reverse();
-  const workingPad = workingReversed.length % 3 === 0 ? 0 : 3 - (workingReversed.length % 3);
-  const workingCells = [...workingReversed, ...Array(workingPad).fill(null)];
+  workingReversed.forEach((post, idx) => {
+    stream.push({ kind: "working", post, cellIdx: idx });
+  });
 
-  // Build the flat cell stream. Each cell carries metadata so render can place
-  // a floating month marker at the start of each prior section, and collapsed
-  // months render as a single full-width strip occupying one grid row.
-  const stream = workingCells.map((post, idx) => ({
-    kind: "working",
-    post,
-    cellIdx: idx,
-  }));
-
+  // 3) History months (newest → oldest). No per-section padding; just flow.
+  //    Reversed within each month so the first visible cell of the section is
+  //    the month's newest post (matches IG ordering across the seam).
   history.forEach(snap => {
-    const isCollapsed = !!collapsed[snap.calendarId];
-    if (isCollapsed) {
+    if (collapsed[snap.calendarId]) {
       stream.push({ kind: "collapsedStrip", snap });
       return;
     }
     const filtered = (snap.posts || []).filter(p => p?.imageUrls?.[0]);
-    const padCount = filtered.length % 3 === 0 ? 0 : 3 - (filtered.length % 3);
-    const cells = [...filtered, ...Array(padCount).fill(null)];
-    cells.forEach((post, idx) => {
+    const reversed = [...filtered].reverse();
+    reversed.forEach((post, idx) => {
       stream.push({
         kind: "history",
         post,
@@ -59,6 +69,16 @@ export default function MultiMonthFeedGrid({
       });
     });
   });
+
+  // 4) Final trailing pad — only after the last actual cell. Collapsed strips
+  //    are full-width and don't need padding to round out a row.
+  const lastIsStrip = stream.length > 0 && stream[stream.length - 1].kind === "collapsedStrip";
+  if (!lastIsStrip) {
+    // Count grid cells excluding strips (strips occupy a full row anyway).
+    const cellCount = stream.filter(c => c.kind !== "collapsedStrip").length;
+    const pad = cellCount % 3 === 0 ? 0 : 3 - (cellCount % 3);
+    for (let i = 0; i < pad; i++) stream.push({ kind: "blank", idx: i });
+  }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0, width: "100%" }}>
@@ -94,9 +114,35 @@ export default function MultiMonthFeedGrid({
           );
         }
 
+        if (item.kind === "pinned") {
+          const isLastPin = item.idx === pinnedCount - 1;
+          return (
+            <div key={`pin-${item.idx}`} style={cellStyle(null, false, false, false, true)}>
+              <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #f5f5f5 60%, #efefef)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                <span style={{ fontSize: 14 }}>📌</span>
+                <span style={{ fontSize: 6, color: C.accent, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>Pinned</span>
+              </div>
+              {pinEditable && isLastPin && (
+                <button
+                  onClick={() => setPinnedCount(c => c - 1)}
+                  title="Unpin"
+                  style={{ position: "absolute", top: 3, right: 3, background: "rgba(232,0,28,0.85)", border: "none", color: "#fff", borderRadius: "50%", width: 14, height: 14, fontSize: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, lineHeight: 1 }}
+                >✕</button>
+              )}
+            </div>
+          );
+        }
+
+        if (item.kind === "blank") {
+          return <div key={`blank-${item.idx}`} style={cellStyle(null, false, false, false, false)} />;
+        }
+
         if (item.kind === "working") {
           const { post, cellIdx } = item;
           const isTarget = hoverTarget === cellIdx && dragSrc !== null && post !== null;
+          // Pin button on the next available top-row slot, only when there's
+          // room left for another pin and we're not already at column 4+.
+          const showPinBtn = pinEditable && pinnedCount < 3 && i === pinnedCount && i < 3;
           return (
             <div
               key={`w-${cellIdx}`}
@@ -113,9 +159,19 @@ export default function MultiMonthFeedGrid({
                 setDragSrc(null);
               }}
               onDragEnd={() => { setDragSrc(null); setHoverTarget(null); }}
-              style={cellStyle(post, isTarget, dragSrc?.cellIdx === cellIdx, true)}
+              style={cellStyle(post, isTarget, dragSrc?.cellIdx === cellIdx, true, false)}
             >
               {renderCellContent(post)}
+              {showPinBtn && (
+                <button
+                  onClick={() => setPinnedCount(c => c + 1)}
+                  title="Pin this slot"
+                  className="no-print"
+                  style={{ position: "absolute", top: 3, left: 3, background: "#fff", border: `1px solid rgba(204,255,0,0.55)`, color: C.accent, borderRadius: 4, fontSize: 8, fontWeight: 800, padding: "2px 5px", cursor: "pointer", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 3, lineHeight: 1.4, zIndex: 6 }}
+                >
+                  📌 Pin
+                </button>
+              )}
             </div>
           );
         }
@@ -125,7 +181,7 @@ export default function MultiMonthFeedGrid({
         return (
           <div
             key={`h-${snap.calendarId}-${i}`}
-            style={cellStyle(post, false, false, false)}
+            style={cellStyle(post, false, false, false, false)}
           >
             {renderCellContent(post)}
             {isFirstInSection && (
@@ -166,7 +222,7 @@ export default function MultiMonthFeedGrid({
   );
 }
 
-function cellStyle(post, isTarget, isDragging, draggable) {
+function cellStyle(post, isTarget, isDragging, draggable, isPinned) {
   return {
     aspectRatio: "4 / 5",
     overflow: "hidden",
@@ -175,7 +231,7 @@ function cellStyle(post, isTarget, isDragging, draggable) {
     outline: isTarget ? `2px solid ${C.accent}` : "none",
     opacity: isDragging ? 0.5 : 1,
     transition: "outline 0.1s, opacity 0.1s",
-    background: "#efefef",
+    background: isPinned ? "#f5f5f5" : "#efefef",
   };
 }
 

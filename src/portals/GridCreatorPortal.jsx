@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { C, SANS, MONO, PAGE_HEADER, PAGE_TITLE, BTN_ROW, primaryBtn, ghostBtn, dangerBtn } from "../theme";
-import ReorderFeedGrid from "../components/ReorderFeedGrid";
 import MultiMonthFeedGrid from "../components/MultiMonthFeedGrid";
 import DrivePanel from "../components/DrivePanel";
 import NewMonthDialog from "../components/NewMonthDialog";
@@ -78,7 +77,9 @@ export default function GridCreatorPortal() {
       .order("saved_at", { ascending: false })
       .limit(1)
       .then(({ data }) => {
-        setGridItems(postsToGridItems(data?.[0]?.posts));
+        const postsObj = data?.[0]?.posts;
+        setGridItems(postsToGridItems(postsObj));
+        setPinnedCount(postsObj?._meta?.pinnedCount ?? 0);
         setLoading(false);
       });
   }, [selectedCalendarId]);
@@ -144,7 +145,7 @@ export default function GridCreatorPortal() {
     }
     setSaving(true);
     try {
-      const postsObj = gridItemsToPostsObj(gridItems);
+      const postsObj = gridItemsToPostsObj(gridItems, { pinnedCount });
       const { error } = await supabase.from("calendar_drafts").insert({
         calendar_id: selectedCalendarId,
         user_id: user.id,
@@ -251,8 +252,8 @@ export default function GridCreatorPortal() {
 
   const postCount = gridItems.length;
   const hasHistory = selectedClientId && historySnapshots.length > 0;
-  const useAggregatedGrid = hasHistory; // multi-month layout when a client with history is picked
   const calendarBound = !!selectedCalendarId;
+  const isEmptyFeed = gridItems.length === 0 && !hasHistory;
 
   const newMonthDefaults = clientCalendars[0]
     ? {
@@ -432,7 +433,7 @@ export default function GridCreatorPortal() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, color: "#8e8e8e", fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px" }}>
                 Loading grid...
               </div>
-            ) : gridItems.length === 0 && !useAggregatedGrid ? (
+            ) : isEmptyFeed ? (
               driveUploadProgress.active ? (
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -473,9 +474,9 @@ export default function GridCreatorPortal() {
                   onChange={e => { handleBatchImport(e.target.files); e.target.value = ""; }} />
               </label>
               )
-            ) : useAggregatedGrid ? (
+            ) : (
               <>
-                {gridItems.length === 0 && (
+                {gridItems.length === 0 && hasHistory && (
                   <label
                     style={{
                       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -506,21 +507,10 @@ export default function GridCreatorPortal() {
                   collapsed={collapsedHistory}
                   onCollapseToggle={toggleHistoryCollapse}
                   onSwap={handleSwap}
-                />
-              </>
-            ) : (
-              <div style={{ height: Math.max(360, Math.ceil((gridItems.length + pinnedCount) / 3) * 180) }}>
-                <ReorderFeedGrid
-                  allPosts={allPosts}
-                  onSwap={handleSwap}
-                  onBatchImport={handleBatchImport}
-                  onDriveBatchImport={handleDriveBatchImport}
-                  driveUploadProgress={driveUploadProgress}
                   pinnedCount={pinnedCount}
                   setPinnedCount={setPinnedCount}
-                  lightMode
                 />
-              </div>
+              </>
             )}
           </div>
 

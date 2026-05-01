@@ -101,10 +101,11 @@ export function getSlideScale(post, slideIdx) { return post.scales?.[slideIdx] ?
 
 // calendar_drafts.posts is keyed by day with arrays of post records.
 // Flatten into a stable, day-ordered array of grid items used by both
-// GridView and GridCreatorPortal.
+// GridView and GridCreatorPortal. Non-numeric keys (e.g. `_meta`) are skipped.
 export function postsToGridItems(postsObj) {
   if (!postsObj || typeof postsObj !== "object") return [];
   return Object.entries(postsObj)
+    .filter(([day]) => Number.isFinite(Number(day)))
     .flatMap(([day, dayPosts]) =>
       (dayPosts || []).map((p, postIdx) => ({ ...p, _day: Number(day), _postIdx: postIdx }))
     )
@@ -112,11 +113,12 @@ export function postsToGridItems(postsObj) {
     .map(p => ({ id: p.id || `${p._day}-${p._postIdx}`, imageUrl: p.imageUrls?.[0] || null, _src: p }));
 }
 
-export function gridItemsToPostsObj(items) {
+export function gridItemsToPostsObj(items, meta) {
   const out = {};
   items.forEach((item, i) => {
     out[i + 1] = [{ ...item._src, imageUrls: item.imageUrl ? [item.imageUrl] : [], id: item.id }];
   });
+  if (meta && typeof meta === "object") out._meta = meta;
   return out;
 }
 

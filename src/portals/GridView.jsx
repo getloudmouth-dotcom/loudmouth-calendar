@@ -12,6 +12,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
   const { showToast, user } = useApp();
 
   const [gridItems, setGridItems] = useState([]);
+  const [pinnedCount, setPinnedCount] = useState(0);
   const [handle, setHandle] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,7 +36,9 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
       .order("saved_at", { ascending: false })
       .limit(1)
       .then(({ data }) => {
-        setGridItems(postsToGridItems(data?.[0]?.posts));
+        const postsObj = data?.[0]?.posts;
+        setGridItems(postsToGridItems(postsObj));
+        setPinnedCount(postsObj?._meta?.pinnedCount ?? 0);
         setLoading(false);
       });
   }, [calendarId]);
@@ -97,7 +100,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
     if (!calendarId || !user) return;
     setSaving(true);
     try {
-      const postsObj = gridItemsToPostsObj(gridItems);
+      const postsObj = gridItemsToPostsObj(gridItems, { pinnedCount });
       await supabase.from("calendar_drafts").insert({
         calendar_id: calendarId,
         user_id: user.id,
@@ -201,7 +204,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
               onChange={e => { handleBatchImport(e.target.files); e.target.value = ""; }} />
           </label>
           {gridItems.length > 0 && (
-            <button style={dangerBtn} onClick={() => setGridItems([])}>Clear</button>
+            <button style={dangerBtn} onClick={() => { setGridItems([]); setPinnedCount(0); }}>Clear</button>
           )}
         </div>
       </div>
@@ -277,6 +280,8 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
                 collapsed={collapsedHistory}
                 onCollapseToggle={toggleHistoryCollapse}
                 onSwap={handleSwap}
+                pinnedCount={pinnedCount}
+                setPinnedCount={setPinnedCount}
               />
             )}
           </div>
