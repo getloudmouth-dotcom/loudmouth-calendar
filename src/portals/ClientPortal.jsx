@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SANS, MONO, DISP, C, DISPLAY_TITLE, DISPLAY_SUBTITLE } from "../theme";
 import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
+import NewMonthDialog from "../components/NewMonthDialog";
 
 export default function ClientPortal({
   client,
@@ -14,10 +15,19 @@ export default function ClientPortal({
   const { user, can } = useApp();
   const [hoveredPill, setHoveredPill] = useState(null);
   const [hoveredRow, setHoveredRow] = useState(null);
+  const [newMonthOpen, setNewMonthOpen] = useState(false);
 
   const clientCals = allCalendars
     .filter(c => c.client_id === client.id || c.client_name?.toLowerCase() === client.name?.toLowerCase())
     .sort((a, b) => (a.year * 12 + a.month) - (b.year * 12 + b.month));
+
+  const latestCal = clientCals[clientCals.length - 1] || null;
+  const newMonthDefaults = latestCal
+    ? {
+        month: (latestCal.month + 1) % 12,
+        year: latestCal.month === 11 ? latestCal.year + 1 : latestCal.year,
+      }
+    : { month: new Date().getMonth(), year: new Date().getFullYear() };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.canvas, fontFamily: SANS }}>
@@ -122,7 +132,7 @@ export default function ClientPortal({
 
           {/* New Month pill */}
           <button
-            onClick={() => onNewMonth(client, clientCals[clientCals.length - 1] || null)}
+            onClick={() => setNewMonthOpen(true)}
             style={{
               padding: "10px 20px",
               borderRadius: 24,
@@ -201,6 +211,14 @@ export default function ClientPortal({
           </div>
         )}
       </div>
+
+      <NewMonthDialog
+        open={newMonthOpen}
+        onClose={() => setNewMonthOpen(false)}
+        onConfirm={({ month, year }) => onNewMonth(client, latestCal, { month, year })}
+        defaultMonth={newMonthDefaults.month}
+        defaultYear={newMonthDefaults.year}
+      />
     </div>
   );
 }

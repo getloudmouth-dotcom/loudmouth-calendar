@@ -20,7 +20,7 @@ function CalendarGridSkeleton() {
 
 export default function CalendarListPortal({
   allCalendars, calCreators,
-  schedulingCalId, openCalendar, newCalendar, deleteCalendar, addToSchedule,
+  schedulingCalId, openCalendar, deleteCalendar, addToSchedule,
   scheduledPosts,
   calendarsLoading,
   clients = [],
@@ -132,13 +132,6 @@ export default function CalendarListPortal({
               </div>
             </div>
           ))}
-          <button onClick={newCalendar} aria-label="Create new calendar"
-            style={{ border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 68, transition: "all 0.15s", color: C.meta, background: "transparent", width: "100%" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
-            <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
-            <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Calendar</span>
-          </button>
         </div>
       </div>
     </div>

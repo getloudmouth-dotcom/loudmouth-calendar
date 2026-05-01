@@ -1,24 +1,33 @@
-import { useState, useRef, useEffect } from "react";
-import { C, SANS, MONO, PAGE_HEADER, PAGE_TITLE, BTN_ROW, primaryBtn, dangerBtn } from "../theme";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { C, SANS, MONO, PAGE_HEADER, PAGE_TITLE, BTN_ROW, primaryBtn, ghostBtn, dangerBtn } from "../theme";
 import ReorderFeedGrid from "../components/ReorderFeedGrid";
 import MultiMonthFeedGrid from "../components/MultiMonthFeedGrid";
 import DrivePanel from "../components/DrivePanel";
-import { compressToBlob, uploadToCloudinary, loadGsiScript, postsToGridItems } from "../utils";
+import NewMonthDialog from "../components/NewMonthDialog";
+import { compressToBlob, uploadToCloudinary, loadGsiScript, postsToGridItems, gridItemsToPostsObj } from "../utils";
+import { MONTHS } from "../constants";
 import { useApp } from "../AppContext";
 import { supabase } from "../supabase";
 
 const GOOGLE_CLIENT_ID = "988412963391-j36f4j6or67871i599o17ui2nai59pi9.apps.googleusercontent.com";
 
 export default function GridCreatorPortal() {
-  const { showToast, clients = [], allCalendars = [] } = useApp();
+  const { showToast, user, clients = [], allCalendars = [], createCalendarForClient } = useApp();
 
   // Grid state
   const [gridItems, setGridItems] = useState([]);
   const [pinnedCount, setPinnedCount] = useState(0);
   const [handle, setHandle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Client + history (multi-month aggregated grid)
+  // Client + calendar binding (single source of truth — same calendar_drafts.posts row
+  // that CalendarBuilder reads, so changes here propagate to the calendar view).
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedCalendarId, setSelectedCalendarId] = useState("");
+  const [newMonthOpen, setNewMonthOpen] = useState(false);
+
+  // History snapshots = sibling calendars for the same client, excluding the active one.
   const [historySnapshots, setHistorySnapshots] = useState([]);
   const [collapsedHistory, setCollapsedHistory] = useState({});
 
@@ -36,14 +45,49 @@ export default function GridCreatorPortal() {
     .filter(c => c?.name)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Load history for the selected client: latest draft per calendar, newest
-  // months first. The 3-month cap should keep this <= 3, but we slice
-  // defensively in case stale data exists.
-  useEffect(() => {
-    if (!selectedClientId) { setHistorySnapshots([]); return; }
-    const sibling = allCalendars
+  // Calendars for the selected client, newest first. Memoized so effect deps
+  // referencing it don't fire on every render.
+  const clientCalendars = useMemo(() => (
+    [...allCalendars]
       .filter(c => c.client_id === selectedClientId)
       .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))
+  ), [allCalendars, selectedClientId]);
+
+  // When the client changes, clear any prior calendar binding so we don't show
+  // stale grid contents from a different client.
+  useEffect(() => {
+    setSelectedCalendarId("");
+    setGridItems([]);
+    setHistorySnapshots([]);
+  }, [selectedClientId]);
+
+  // If we just created the first calendar for a client (or one was added
+  // externally) and nothing is selected yet, auto-select the newest.
+  useEffect(() => {
+    if (!selectedClientId || selectedCalendarId) return;
+    if (clientCalendars[0]) setSelectedCalendarId(clientCalendars[0].id);
+  }, [selectedClientId, clientCalendars, selectedCalendarId]);
+
+  // Load gridItems from the active calendar's most recent draft (mirrors GridView).
+  useEffect(() => {
+    if (!selectedCalendarId) return;
+    setLoading(true);
+    supabase.from("calendar_drafts")
+      .select("posts")
+      .eq("calendar_id", selectedCalendarId)
+      .order("saved_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        setGridItems(postsToGridItems(data?.[0]?.posts));
+        setLoading(false);
+      });
+  }, [selectedCalendarId]);
+
+  // History = up to the last 3 sibling calendars, excluding the active one.
+  useEffect(() => {
+    if (!selectedClientId || !selectedCalendarId) { setHistorySnapshots([]); return; }
+    const sibling = clientCalendars
+      .filter(c => c.id !== selectedCalendarId)
       .slice(0, 3);
     if (!sibling.length) { setHistorySnapshots([]); return; }
 
@@ -68,7 +112,7 @@ export default function GridCreatorPortal() {
       };
     })).then(snaps => { if (!cancelled) setHistorySnapshots(snaps); });
     return () => { cancelled = true; };
-  }, [selectedClientId, allCalendars]);
+  }, [selectedClientId, selectedCalendarId, clientCalendars]);
 
   // ── Data adapter ──────────────────────────────────────────────────────────────
   // Projects flat gridItems into the shape the grid components expect.
@@ -89,6 +133,40 @@ export default function GridCreatorPortal() {
 
   function toggleHistoryCollapse(calendarId) {
     setCollapsedHistory(prev => ({ ...prev, [calendarId]: !prev[calendarId] }));
+  }
+
+  // Save the current order back to calendar_drafts.posts so that CalendarBuilder
+  // and the GridView tab see the same data. Mirrors GridView.saveGrid.
+  async function saveGrid() {
+    if (!selectedCalendarId || !user) {
+      showToast("Pick a client and month before saving.", "error");
+      return;
+    }
+    setSaving(true);
+    try {
+      const postsObj = gridItemsToPostsObj(gridItems);
+      const { error } = await supabase.from("calendar_drafts").insert({
+        calendar_id: selectedCalendarId,
+        user_id: user.id,
+        label: "Grid reorder",
+        posts: postsObj,
+        saved_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      showToast("Grid order saved", "success");
+    } catch (e) {
+      showToast("Save failed: " + e.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleNewMonthConfirm({ month, year }) {
+    const client = clients.find(c => c.id === selectedClientId);
+    if (!client || !createCalendarForClient) return;
+    const fromCalendar = clientCalendars[0] || null;
+    const cal = await createCalendarForClient(client, fromCalendar, { month, year });
+    if (cal) setSelectedCalendarId(cal.id);
   }
 
   // ── Drive ─────────────────────────────────────────────────────────────────────
@@ -128,6 +206,7 @@ export default function GridCreatorPortal() {
 
   async function handleDriveBatchImport(fileInfos) {
     if (!driveToken || !fileInfos.length) return;
+    if (!selectedCalendarId) { showToast("Pick a client and month before adding images.", "error"); return; }
     try {
       setDriveUploadProgress({ active: true, done: 0, total: fileInfos.length, day: null, postIdx: null });
       const urls = await fetchDriveUrls(fileInfos, () =>
@@ -135,9 +214,9 @@ export default function GridCreatorPortal() {
       );
       setGridItems(items => [
         ...items,
-        ...urls.map(imageUrl => ({ id: Date.now() + Math.random(), imageUrl })),
+        ...urls.map(imageUrl => ({ id: Date.now() + Math.random(), imageUrl, _src: { imageUrls: [imageUrl], contentType: "Photo" } })),
       ]);
-      showToast(`${urls.length} image${urls.length !== 1 ? "s" : ""} added to grid`, "success");
+      showToast(`${urls.length} image${urls.length !== 1 ? "s" : ""} added — hit Save Order to persist`, "success");
     } catch (e) {
       showToast("Drive import failed: " + e.message, "error");
     } finally {
@@ -149,6 +228,7 @@ export default function GridCreatorPortal() {
   async function handleBatchImport(files) {
     const fileList = [...files];
     if (!fileList.length) return;
+    if (!selectedCalendarId) { showToast("Pick a client and month before adding images.", "error"); return; }
     try {
       setDriveUploadProgress({ active: true, done: 0, total: fileList.length, day: null, postIdx: null });
       const urls = await Promise.all(fileList.map(async file => {
@@ -159,9 +239,9 @@ export default function GridCreatorPortal() {
       }));
       setGridItems(items => [
         ...items,
-        ...urls.map(imageUrl => ({ id: Date.now() + Math.random(), imageUrl })),
+        ...urls.map(imageUrl => ({ id: Date.now() + Math.random(), imageUrl, _src: { imageUrls: [imageUrl], contentType: "Photo" } })),
       ]);
-      showToast(`${urls.length} image${urls.length !== 1 ? "s" : ""} added to grid`, "success");
+      showToast(`${urls.length} image${urls.length !== 1 ? "s" : ""} added — hit Save Order to persist`, "success");
     } catch (e) {
       showToast("Upload failed: " + e.message, "error");
     } finally {
@@ -172,6 +252,24 @@ export default function GridCreatorPortal() {
   const postCount = gridItems.length;
   const hasHistory = selectedClientId && historySnapshots.length > 0;
   const useAggregatedGrid = hasHistory; // multi-month layout when a client with history is picked
+  const calendarBound = !!selectedCalendarId;
+
+  const newMonthDefaults = clientCalendars[0]
+    ? {
+        month: (clientCalendars[0].month + 1) % 12,
+        year: clientCalendars[0].month === 11 ? clientCalendars[0].year + 1 : clientCalendars[0].year,
+      }
+    : { month: new Date().getMonth(), year: new Date().getFullYear() };
+
+  const activeCal = clientCalendars.find(c => c.id === selectedCalendarId) || null;
+
+  const pickerStyle = {
+    padding: "8px 10px",
+    background: C.canvas, color: C.text,
+    border: `1.5px solid ${C.border}`, borderRadius: 8,
+    fontSize: 12, fontFamily: SANS, outline: "none",
+    maxWidth: 200,
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.canvas, fontFamily: SANS, position: "relative" }}>
@@ -204,26 +302,52 @@ export default function GridCreatorPortal() {
           <select
             value={selectedClientId}
             onChange={e => setSelectedClientId(e.target.value)}
-            style={{
-              padding: "8px 10px",
-              background: C.canvas, color: C.text,
-              border: `1.5px solid ${C.border}`, borderRadius: 8,
-              fontSize: 12, fontFamily: SANS, outline: "none",
-              maxWidth: 200,
-            }}
+            style={pickerStyle}
           >
-            <option value="">— No client —</option>
+            <option value="">— Pick client —</option>
             {clientOptions.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          <label style={{ ...primaryBtn, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+
+          <select
+            value={selectedCalendarId}
+            onChange={e => setSelectedCalendarId(e.target.value)}
+            disabled={!selectedClientId}
+            style={{ ...pickerStyle, opacity: selectedClientId ? 1 : 0.5 }}
+          >
+            <option value="">{selectedClientId ? "— Pick month —" : "— Pick client first —"}</option>
+            {clientCalendars.map(c => (
+              <option key={c.id} value={c.id}>{MONTHS[c.month]} {c.year}</option>
+            ))}
+          </select>
+
+          {selectedClientId && (
+            <button style={ghostBtn} onClick={() => setNewMonthOpen(true)}>
+              + New Month
+            </button>
+          )}
+
+          {gridItems.length > 0 && calendarBound && (
+            <button style={primaryBtn} onClick={saveGrid} disabled={saving}>
+              {saving ? "Saving..." : "Save Order"}
+            </button>
+          )}
+          <label
+            style={{
+              ...primaryBtn,
+              cursor: calendarBound ? "pointer" : "not-allowed",
+              opacity: calendarBound ? 1 : 0.5,
+              display: "flex", alignItems: "center", gap: 6,
+            }}
+          >
             + Add Images
             <input
               ref={addFileInputRef}
               type="file"
               accept="image/*"
               multiple
+              disabled={!calendarBound}
               style={{ display: "none" }}
               onChange={e => { handleBatchImport(e.target.files); e.target.value = ""; }}
             />
@@ -279,13 +403,36 @@ export default function GridCreatorPortal() {
                   <span style={{ color: "#8e8e8e" }}>— followers</span>
                   <span style={{ color: "#8e8e8e" }}>— following</span>
                 </div>
+                {activeCal && (
+                  <div style={{ marginTop: 6, fontFamily: MONO, fontSize: 9, color: "#8e8e8e", textTransform: "uppercase", letterSpacing: "1.2px" }}>
+                    Editing {MONTHS[activeCal.month]} {activeCal.year}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* GRID */}
           <div style={{ marginTop: 0 }}>
-            {gridItems.length === 0 && !useAggregatedGrid ? (
+            {!calendarBound ? (
+              <div style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 14, height: 280,
+                border: `1.5px dashed ${C.border}`, borderRadius: 8,
+                color: "#8e8e8e", fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                letterSpacing: "1.5px", textTransform: "uppercase", textAlign: "center",
+                padding: "0 24px",
+              }}>
+                <span style={{ fontSize: 32, opacity: 0.3 }}>🗓️</span>
+                {selectedClientId
+                  ? "Pick a month — or hit + New Month — to start a feed"
+                  : "Pick a client to start"}
+              </div>
+            ) : loading ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, color: "#8e8e8e", fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px" }}>
+                Loading grid...
+              </div>
+            ) : gridItems.length === 0 && !useAggregatedGrid ? (
               driveUploadProgress.active ? (
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -429,6 +576,14 @@ export default function GridCreatorPortal() {
           onExitPickMode={() => {}}
         />
       )}
+
+      <NewMonthDialog
+        open={newMonthOpen}
+        onClose={() => setNewMonthOpen(false)}
+        onConfirm={handleNewMonthConfirm}
+        defaultMonth={newMonthDefaults.month}
+        defaultYear={newMonthDefaults.year}
+      />
 
       <style>{`
         @keyframes cardSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

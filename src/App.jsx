@@ -159,7 +159,7 @@ function BillingInvoiceExportView({ token }) {
 
 export default function App() {
   const today = new Date();
-  const [step, setStep] = useState(() => (readExportToken() ? 4 : 1));
+  const [step, setStep] = useState(() => (readExportToken() ? 3 : 1));
   const [clientName, setClientName] = useState("");
   const [clientId, setClientId] = useState(null);
   const [clients, setClients] = useState([]);
@@ -818,7 +818,7 @@ useEffect(() => {
         setPosts(
           raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}
         );
-        setStep(4);
+        setStep(3);
         // Poll until all cal-page images are decoded, then signal Puppeteer
         const signalReady = () => {
           const after = () => setTimeout(() => { window.__EXPORT_READY__ = true; }, 400);
@@ -1613,21 +1613,16 @@ useEffect(() => {
     setScheduledPosts(prev => prev.filter(r => r.id !== id));
   }
 
-  async function newCalendar() {
-    realtimeChannelRef.current?.unsubscribe();
-    realtimeChannelRef.current = null;
-    setCurrentCalendarId(null);
-    setClientName(""); setClientId(null); setSelectedDays([]); setPosts({});
-    setMonth(today.getMonth()); setYear(today.getFullYear());
-    setPostsPerPage(3); setStep(1); setShowDashboard(false);
-  }
+  const stepLabels = ["Pick Days", "Content", "Preview"];
 
-  const stepLabels = ["Setup", "Pick Days", "Content", "Preview"];
-
-  // ── New month for client (month continuity) ──
-  async function newMonthForClient(client, fromCalendar) {
+  // ── Create-only path. Returns the resolved calendar (new or existing match)
+  // or null if cancelled / failed. Does not navigate.
+  async function createCalendarForClient(client, fromCalendar, override) {
     let nextMonth, nextYear;
-    if (fromCalendar) {
+    if (override) {
+      nextMonth = override.month;
+      nextYear = override.year;
+    } else if (fromCalendar) {
       nextMonth = (fromCalendar.month + 1) % 12;
       nextYear = fromCalendar.month === 11 ? fromCalendar.year + 1 : fromCalendar.year;
     } else {
@@ -1635,8 +1630,17 @@ useEffect(() => {
       nextYear = today.getFullYear();
     }
 
+    // If the user picks an existing month, return it instead of creating a duplicate.
+    const existing = allCalendars.find(c =>
+      c.client_id === client.id && c.month === nextMonth && c.year === nextYear
+    );
+    if (existing) {
+      showToast(`${MONTHS[nextMonth]} ${nextYear} already exists for ${client.name} — opening it`, "info");
+      return existing;
+    }
+
     const proceed = await ensureCalendarLimit(client.id, `${MONTHS[nextMonth]} ${nextYear}`);
-    if (!proceed) return;
+    if (!proceed) return null;
 
     const { data: newCal, error } = await supabase
       .from("calendars")
@@ -1653,7 +1657,7 @@ useEffect(() => {
       .select()
       .single();
 
-    if (error) { showToast("Failed to create new month: " + error.message, "error"); return; }
+    if (error) { showToast("Failed to create new month: " + error.message, "error"); return null; }
 
     // Copy pinned posts from previous month
     if (fromCalendar) {
@@ -1683,8 +1687,16 @@ useEffect(() => {
     }
 
     await loadAllCalendars();
-    setWorkspaceCalendarId(newCal.id);
     showToast(`Created ${MONTHS[nextMonth]} ${nextYear} for ${client.name}`, "success");
+    return newCal;
+  }
+
+  // ── New month for client (month continuity) ──
+  // Opens the newly-created calendar in MonthWorkspace. Optional `override`
+  // = { month, year } skips auto-advance and uses the user's pick.
+  async function newMonthForClient(client, fromCalendar, override) {
+    const cal = await createCalendarForClient(client, fromCalendar, override);
+    if (cal) setWorkspaceCalendarId(cal.id);
   }
 
   // ── Content Plan helpers ──
@@ -1983,14 +1995,14 @@ useEffect(() => {
 
   if (showDashboard && !exportMode) return (
     <ErrorBoundary>
-    <AppContext.Provider value={{ can, showToast, user, isOnline, clients, allCalendars }}>
+    <AppContext.Provider value={{ can, showToast, user, isOnline, clients, allCalendars, createCalendarForClient }}>
       <DashboardPortal
         activePortal={activePortal} setActivePortal={setActivePortal}
         profileName={profileName} profileInput={profileInput} setProfileInput={setProfileInput}
         saveProfile={saveProfile} editingProfile={editingProfile} setEditingProfile={setEditingProfile}
         exporting={exporting} exportProgress={exportProgress} exportElapsed={exportElapsed}
         allCalendars={allCalendars} calCreators={calCreators} schedulingCalId={schedulingCalId}
-        openCalendar={openCalendar} newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={toggleSchedule}
+        openCalendar={openCalendar} deleteCalendar={deleteCalendar} addToSchedule={toggleSchedule}
         loadAdminUsers={loadAdminUsers} loadRoleToolDefaults={loadRoleToolDefaults} loadAllContentPlans={loadAllContentPlans}
         scheduledPosts={scheduledPosts} removeScheduledPost={removeScheduledPost} toggleNotify={toggleNotify}
         calendarsLoading={calendarsLoading} contentPlansLoading={contentPlansLoading} scheduledPostsLoading={scheduledPostsLoading}
@@ -2049,9 +2061,9 @@ useEffect(() => {
 
   return (
     <ErrorBoundary>
-    <AppContext.Provider value={{ can, showToast, user, isOnline, clients, allCalendars }}>
+    <AppContext.Provider value={{ can, showToast, user, isOnline, clients, allCalendars, createCalendarForClient }}>
       <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-        {step <= 2 && (
+        {step === 1 && (
           <Sidebar
             activePortal={activePortal}
             setActivePortal={(key) => { setActivePortal(key); setShowDashboard(true); }}

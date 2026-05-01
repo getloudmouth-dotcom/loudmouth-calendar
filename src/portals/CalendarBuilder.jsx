@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AppDialog from "../components/AppDialog";
+import NewMonthDialog from "../components/NewMonthDialog";
 import { useApp } from "../AppContext";
 import { MONTHS, CONTENT_TYPES, newPost } from "../constants";
 import { getDayName, formatDate } from "../utils";
@@ -48,6 +49,7 @@ export default function CalendarBuilder({
   const [hoveredPostCard, setHoveredPostCard] = useState(null);
   const [resetConfirm, setResetConfirm] = useState(false);
   const [monthChangeConfirm, setMonthChangeConfirm] = useState(null);
+  const [monthEditOpen, setMonthEditOpen] = useState(false);
 
   const handleMonthYearChange = (nextMonth, nextYear) => {
     if (nextMonth === month && nextYear === year) return;
@@ -98,7 +100,7 @@ export default function CalendarBuilder({
       {stepLabels.map((label, i) => {
         const s = i + 1;
         return (
-          <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 3) setLinkPickMode({ active: false, onPick: null }); if (s === 4) { fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {}); if (clientName.trim()) saveDraft("Auto-save on preview", { silent: true }); } }} style={{
+          <button key={s} data-step-nav onClick={() => { setStep(s); if (s !== 2) setLinkPickMode({ active: false, onPick: null }); if (s === 3) { fetch("/api/export-pdf", { method: "HEAD" }).catch(() => {}); if (clientName.trim()) saveDraft("Auto-save on preview", { silent: true }); } }} style={{
             background: step === s ? C.accent : "rgba(255,255,255,0.07)",
             color: step === s ? "#000" : C.meta,
             border: "none", padding: "6px 16px", borderRadius: 20,
@@ -112,7 +114,7 @@ export default function CalendarBuilder({
     <button onClick={undo} disabled={!canUndo} title="Undo" aria-label="Undo" style={{ background: "rgba(255,255,255,0.08)", color: canUndo ? C.text : C.meta, border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canUndo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↩</button>
       <button onClick={redo} disabled={!canRedo} title="Redo" aria-label="Redo" style={{ background: "rgba(255,255,255,0.08)", color: canRedo ? C.text : C.meta, border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: canRedo ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>↪</button>
       <button onClick={() => setResetConfirm(true)} title="Reset calendar" aria-label="Reset calendar" style={{ background: "rgba(255,255,255,0.08)", color: C.meta, border: "none", borderRadius: 7, width: 32, height: 32, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>⟲</button>
-      {clientName && <SaveMenu onSave={() => saveDraft()} onExport={exportPDF} showExport={step === 4} />}
+      {clientName && <SaveMenu onSave={() => saveDraft()} onExport={exportPDF} showExport={step === 3} />}
       <NavProfileMenu
         profileName={profileName}
         currentCalendarId={currentCalendarId}
@@ -206,83 +208,31 @@ export default function CalendarBuilder({
   )}
 
   {/* STEPS 1–3 */}
-  {step !== 4 && (
+  {step !== 3 && (
 
     <div className="no-print" style={{ maxWidth: "none", margin: "0", padding: "36px 60px", display: "flex", gap: 48, alignItems: "flex-start" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
 
-        {/* STEP 1 */}
+        {/* STEP 1 — Pick Days */}
         {step === 1 && (
-          <div>
-            <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6, color: C.text }}>Setup</h2>
-            <p style={{ color: C.meta, fontSize: 14, marginBottom: 28 }}>Basic info before we build your calendar.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, maxWidth: 640 }}>
-              <div style={{ gridColumn: "1 / -1" }}>
-              <label style={labelStyle}>Client Name</label>
-                {!addingClient ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <select
-                      value={clientId || ""}
-                      onChange={e => {
-                        const v = e.target.value;
-                        if (v === "__add__") { setAddingClient(true); return; }
-                        if (!v) { setClientId(null); setClientName(""); return; }
-                        const picked = clients.find(c => c.id === v);
-                        setClientId(v);
-                        setClientName(picked?.name || "");
-                      }}
-                      style={inputStyle}
-                    >
-                      <option value="">— Select a client —</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      <option value="__add__">+ Add new client...</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input autoFocus value={newClientInput} onChange={e => setNewClientInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addNewClient()} placeholder="Type new client name..." style={inputStyle} />
-                    <button onClick={addNewClient} style={{ ...primaryBtn, marginTop: 0, padding: "9px 18px", whiteSpace: "nowrap", fontSize: 13 }}>Add</button>
-                    <button onClick={() => { setAddingClient(false); setNewClientInput(""); }} style={{ ...secondaryBtn, padding: "9px 14px", whiteSpace: "nowrap" }}>Cancel</button>
-                  </div>
-                )}
-              </div>
-              <div>
-                <label style={labelStyle}>Month</label>
-                <select value={month} onChange={e => handleMonthYearChange(Number(e.target.value), year)} style={inputStyle}>
-                  {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Year</label>
-                <input type="number" value={year} min={2024} max={2030} onChange={e => handleMonthYearChange(month, Number(e.target.value))} style={inputStyle} />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>Posts Per Page</label>
-                <div style={{ display: "flex", gap: 10 }}>
-                  {[2, 3, 4].map(n => (
-                    <button key={n} onClick={() => setPostsPerPage(n)} style={{
-                      flex: 1, padding: "10px 0", border: `2px solid ${postsPerPage === n ? C.accent : C.border}`,
-                      borderRadius: 7, fontWeight: 700, fontSize: 14, cursor: "pointer",
-                      background: postsPerPage === n ? C.canvas : C.surface,
-                      color: postsPerPage === n ? C.accent : C.meta, transition: "all 0.15s",
-                    }}>{n}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <button onClick={() => setStep(2)} disabled={!clientId} style={{ ...primaryBtn, marginTop: 24, opacity: clientId ? 1 : 0.4 }}>
-              Next: Pick Posting Days &#8594;
-            </button>
-          </div>
-        )}
-
-        {/* STEP 2 */}
-        {step === 2 && (
           <div>
             <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6, color: C.text }}>Pick Posting Days</h2>
             <p style={{ color: C.meta, fontSize: 14, marginBottom: 24 }}>Click the days you'll be posting for {MONTHS[month]} {year}.</p>
             <div style={{ background: C.surface, borderRadius: 14, padding: 24, maxWidth: 400, boxShadow: "0 2px 16px rgba(0,0,0,0.2)" }}>
-              <div style={{ textAlign: "center", fontWeight: 800, fontSize: 15, marginBottom: 16, color: C.text, letterSpacing: "0.04em" }}>{MONTHS[month].toUpperCase()} {year}</div>
+              <button
+                onClick={() => setMonthEditOpen(true)}
+                title="Change month"
+                style={{
+                  display: "block", margin: "0 auto 16px", padding: "4px 12px",
+                  background: "transparent", border: `1px solid ${C.border}`, borderRadius: 20,
+                  color: C.text, fontWeight: 800, fontSize: 15, letterSpacing: "0.04em",
+                  cursor: "pointer", transition: "all 0.15s", lineHeight: 1.2,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.text; }}
+              >
+                {MONTHS[month].toUpperCase()} {year} <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4 }}>▾</span>
+              </button>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 6 }}>
                 {["S","M","T","W","T","F","S"].map((d, colIdx) => {
                   const daysInCol = calendarCells.reduce((acc, day, cellIdx) => {
@@ -330,15 +280,29 @@ export default function CalendarBuilder({
               <strong style={{ color: C.text }}>{selectedDays.length}</strong> day{selectedDays.length !== 1 ? "s" : ""} selected
               {selectedDays.length > 0 && <span style={{ color: C.meta }}> — {sortedDays.map(d => formatDate(month, d)).join("  ·  ")}</span>}
             </p>
+
+            <div style={{ marginTop: 24, maxWidth: 400 }}>
+              <label style={labelStyle}>Posts Per Week</label>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[2, 3, 4].map(n => (
+                  <button key={n} onClick={() => setPostsPerPage(n)} style={{
+                    flex: 1, padding: "10px 0", border: `2px solid ${postsPerPage === n ? C.accent : C.border}`,
+                    borderRadius: 7, fontWeight: 700, fontSize: 14, cursor: "pointer",
+                    background: postsPerPage === n ? C.canvas : C.surface,
+                    color: postsPerPage === n ? C.accent : C.meta, transition: "all 0.15s",
+                  }}>{n}</button>
+                ))}
+              </div>
+            </div>
+
             <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-              <button onClick={() => setStep(1)} style={secondaryBtn}>← Back</button>
-              <button onClick={() => setStep(3)} disabled={selectedDays.length === 0} style={{ ...primaryBtn, opacity: selectedDays.length === 0 ? 0.4 : 1 }}>Next: Add Content →</button>
+              <button onClick={() => setStep(2)} disabled={selectedDays.length === 0} style={{ ...primaryBtn, opacity: selectedDays.length === 0 ? 0.4 : 1 }}>Next: Add Content →</button>
             </div>
           </div>
         )}
 
-        {/* STEP 3 */}
-        {step === 3 && (
+        {/* STEP 2 — Content */}
+        {step === 2 && (
           <div>
             <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 6, color: C.text }}>Add Content</h2>
             <p style={{ color: C.meta, fontSize: 14, marginBottom: 24 }}>Fill in each posting day. Hit + to add multiple posts. Click the date to change it.</p>
@@ -495,8 +459,8 @@ updatePost(day, postIdx, "urls", [post.url]);
               })}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-              <button onClick={() => { setStep(2); setLinkPickMode({ active: false, onPick: null }); }} style={secondaryBtn}>← Back</button>
-              <button onClick={() => { setStep(4); setLinkPickMode({ active: false, onPick: null }); }} style={primaryBtn}>Preview Calendar →</button>
+              <button onClick={() => { setStep(1); setLinkPickMode({ active: false, onPick: null }); }} style={secondaryBtn}>← Back</button>
+              <button onClick={() => { setStep(3); setLinkPickMode({ active: false, onPick: null }); }} style={primaryBtn}>Preview Calendar →</button>
             </div>
           </div>
         )}
@@ -540,7 +504,7 @@ updatePost(day, postIdx, "urls", [post.url]);
             </div>
           </div>
           </div>
-        {step === 3 && (
+        {step === 2 && (
           <div style={{ background: "#fff", border: "1px solid #dbdbdb", borderRadius: 12, padding: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
             <ReorderFeedGrid
               allPosts={allPosts.filter(p => p.contentType !== "Story")}
@@ -559,21 +523,21 @@ updatePost(day, postIdx, "urls", [post.url]);
     </div>
   )}
 
-  {/* STEP 4 */}
-  {step === 4 && (
+  {/* STEP 3 — Preview */}
+  {step === 3 && (
     <div className="no-print" style={{ maxWidth: "none", margin: "0", padding: "24px 40px 16px", background: C.canvas }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 30, fontWeight: 800, marginBottom: 4, color: C.text }}>Preview</h2>
           <p style={{ color: C.meta, fontSize: 14 }}>{pages.length} page{pages.length !== 1 ? "s" : ""} · {allPosts.length} posts</p>
         </div>
-        <button onClick={() => setStep(3)} style={secondaryBtn}>← Edit Content</button>
+        <button onClick={() => setStep(2)} style={secondaryBtn}>← Edit Content</button>
       </div>
 
     </div>
   )}
 
-{step === 4 && (
+{step === 3 && (
     <div className="cal-pages-outer" style={{ padding: "0px 100px 100px", maxWidth: "none", margin: "0", background: C.canvas }}>
       {pages.map((pagePosts, pageIdx) => (
         <CalendarPage key={pageIdx} posts={pagePosts} allPosts={allPosts} clientName={clientName} month={month} year={year}
@@ -600,7 +564,7 @@ updatePost(day, postIdx, "urls", [post.url]);
     </div>
   )}
 
-{step >= 3 && (
+{step >= 2 && (
     <button
       data-drive-toggle
       onClick={driveToken ? () => setDriveOpen(o => !o) : connectDrive}
@@ -699,6 +663,16 @@ input:focus, select:focus, textarea:focus { border-color: ${C.accent} !important
       </>
     )}
   </AppDialog>
+
+  <NewMonthDialog
+    open={monthEditOpen}
+    onClose={() => setMonthEditOpen(false)}
+    onConfirm={({ month: nm, year: ny }) => handleMonthYearChange(nm, ny)}
+    defaultMonth={month}
+    defaultYear={year}
+    title="Change Month"
+    confirmLabel="Save"
+  />
 </div>
   );
 }

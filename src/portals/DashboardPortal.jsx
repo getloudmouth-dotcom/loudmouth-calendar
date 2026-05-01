@@ -355,7 +355,7 @@ function ScheduledPostRowSkeleton() {
 }
 
 // ── Hub ───────────────────────────────────────────────────────────────────────
-function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, newCalendar, openCalendar, deleteCalendar, can, loadAllContentPlans, calendarsLoading, contentPlansLoading, scheduledPostsLoading, clients = [] }) {
+function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, openCalendar, deleteCalendar, can, loadAllContentPlans, calendarsLoading, contentPlansLoading, scheduledPostsLoading, clients = [] }) {
   const clientsById = new Map(clients.map(c => [c.id, c]));
   const displayClientName = cal => (
     (cal.client_id && clientsById.get(cal.client_id)?.name) || cal.client_name || "Unassigned"
@@ -462,15 +462,6 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
               )}
             </div>
           ))}
-          {/* Dashed "New Calendar" card */}
-          <button onClick={newCalendar}
-            aria-label="Create new calendar"
-            style={{ width: 200, height: 110, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", transition: "all 0.15s", color: C.meta, background: "transparent" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
-            <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
-            <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Calendar</span>
-          </button>
         </div>
       </div>
 
@@ -598,7 +589,7 @@ export default function DashboardPortal({
   profileName, profileInput, setProfileInput, saveProfile, editingProfile, setEditingProfile,
   exporting, exportProgress, exportElapsed,
   allCalendars, calCreators, schedulingCalId,
-  openCalendar, newCalendar, deleteCalendar, addToSchedule,
+  openCalendar, deleteCalendar, addToSchedule,
   scheduledPosts, removeScheduledPost, toggleNotify,
   adminUsers, adminLoading,
   roleToolDefaults, rolePermsBusy, saveRoleToolDefaults,
@@ -679,7 +670,6 @@ export default function DashboardPortal({
             calCreators={calCreators}
             allContentPlans={allContentPlans}
             scheduledPosts={scheduledPosts}
-            newCalendar={newCalendar}
             openCalendar={openCalendar}
             deleteCalendar={deleteCalendar}
             can={can}
@@ -695,7 +685,7 @@ export default function DashboardPortal({
           <CalendarListPortal
             allCalendars={allCalendars} calCreators={calCreators}
             schedulingCalId={schedulingCalId} openCalendar={openCalendar}
-            newCalendar={newCalendar} deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
+            deleteCalendar={deleteCalendar} addToSchedule={addToSchedule}
             setActivePortal={setActivePortal}
             scheduledPosts={scheduledPosts}
             calendarsLoading={calendarsLoading}
