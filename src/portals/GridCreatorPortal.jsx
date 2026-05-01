@@ -1,19 +1,26 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { C, SANS, MONO, PAGE_HEADER, PAGE_TITLE, BTN_ROW, primaryBtn, dangerBtn } from "../theme";
 import ReorderFeedGrid from "../components/ReorderFeedGrid";
+import MultiMonthFeedGrid from "../components/MultiMonthFeedGrid";
 import DrivePanel from "../components/DrivePanel";
-import { compressToBlob, uploadToCloudinary, loadGsiScript } from "../utils";
+import { compressToBlob, uploadToCloudinary, loadGsiScript, postsToGridItems } from "../utils";
 import { useApp } from "../AppContext";
+import { supabase } from "../supabase";
 
 const GOOGLE_CLIENT_ID = "988412963391-j36f4j6or67871i599o17ui2nai59pi9.apps.googleusercontent.com";
 
 export default function GridCreatorPortal() {
-  const { showToast } = useApp();
+  const { showToast, clients = [], allCalendars = [] } = useApp();
 
   // Grid state
   const [gridItems, setGridItems] = useState([]);
   const [pinnedCount, setPinnedCount] = useState(0);
   const [handle, setHandle] = useState("");
+
+  // Client + history (multi-month aggregated grid)
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [historySnapshots, setHistorySnapshots] = useState([]);
+  const [collapsedHistory, setCollapsedHistory] = useState({});
 
   // Drive state (fully local, no App.jsx coupling)
   const [driveToken, setDriveToken] = useState(null);
@@ -24,8 +31,47 @@ export default function GridCreatorPortal() {
 
   const addFileInputRef = useRef(null);
 
+  // Sorted client list for the picker
+  const clientOptions = [...clients]
+    .filter(c => c?.name)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Load history for the selected client: latest draft per calendar, newest
+  // months first. The 3-month cap should keep this <= 3, but we slice
+  // defensively in case stale data exists.
+  useEffect(() => {
+    if (!selectedClientId) { setHistorySnapshots([]); return; }
+    const sibling = allCalendars
+      .filter(c => c.client_id === selectedClientId)
+      .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))
+      .slice(0, 3);
+    if (!sibling.length) { setHistorySnapshots([]); return; }
+
+    let cancelled = false;
+    Promise.all(sibling.map(async cal => {
+      const { data } = await supabase.from("calendar_drafts")
+        .select("posts")
+        .eq("calendar_id", cal.id)
+        .order("saved_at", { ascending: false })
+        .limit(1);
+      const items = postsToGridItems(data?.[0]?.posts);
+      return {
+        calendarId: cal.id,
+        month: cal.month,
+        year: cal.year,
+        posts: items.map((item, i) => ({
+          day: i,
+          postIdx: 0,
+          imageUrls: item.imageUrl ? [item.imageUrl] : [],
+          ...item._src,
+        })),
+      };
+    })).then(snaps => { if (!cancelled) setHistorySnapshots(snaps); });
+    return () => { cancelled = true; };
+  }, [selectedClientId, allCalendars]);
+
   // ── Data adapter ──────────────────────────────────────────────────────────────
-  // Projects flat gridItems into the shape ReorderFeedGrid expects.
+  // Projects flat gridItems into the shape the grid components expect.
   const allPosts = gridItems.map((item, i) => ({
     day: i,
     postIdx: 0,
@@ -39,6 +85,10 @@ export default function GridCreatorPortal() {
       [next[dayA], next[dayB]] = [next[dayB], next[dayA]];
       return next;
     });
+  }
+
+  function toggleHistoryCollapse(calendarId) {
+    setCollapsedHistory(prev => ({ ...prev, [calendarId]: !prev[calendarId] }));
   }
 
   // ── Drive ─────────────────────────────────────────────────────────────────────
@@ -120,6 +170,8 @@ export default function GridCreatorPortal() {
   }
 
   const postCount = gridItems.length;
+  const hasHistory = selectedClientId && historySnapshots.length > 0;
+  const useAggregatedGrid = hasHistory; // multi-month layout when a client with history is picked
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.canvas, fontFamily: SANS, position: "relative" }}>
@@ -148,7 +200,23 @@ export default function GridCreatorPortal() {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ ...BTN_ROW, padding: "8px 0" }}>
+        <div style={{ ...BTN_ROW, padding: "8px 0", alignItems: "center" }}>
+          <select
+            value={selectedClientId}
+            onChange={e => setSelectedClientId(e.target.value)}
+            style={{
+              padding: "8px 10px",
+              background: C.canvas, color: C.text,
+              border: `1.5px solid ${C.border}`, borderRadius: 8,
+              fontSize: 12, fontFamily: SANS, outline: "none",
+              maxWidth: 200,
+            }}
+          >
+            <option value="">— No client —</option>
+            {clientOptions.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
           <label style={{ ...primaryBtn, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
             + Add Images
             <input
@@ -217,7 +285,7 @@ export default function GridCreatorPortal() {
 
           {/* GRID */}
           <div style={{ marginTop: 0 }}>
-            {gridItems.length === 0 ? (
+            {gridItems.length === 0 && !useAggregatedGrid ? (
               driveUploadProgress.active ? (
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
@@ -258,6 +326,41 @@ export default function GridCreatorPortal() {
                   onChange={e => { handleBatchImport(e.target.files); e.target.value = ""; }} />
               </label>
               )
+            ) : useAggregatedGrid ? (
+              <>
+                {gridItems.length === 0 && (
+                  <label
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                      gap: 10, height: 140, cursor: "pointer",
+                      borderBottom: "1px solid #ececec",
+                      color: dragActive ? C.accent : "#8e8e8e", fontFamily: MONO, fontSize: 10, fontWeight: 700,
+                      letterSpacing: "1.5px", textTransform: "uppercase", background: "#fafafa",
+                    }}
+                    onDragOver={e => { e.preventDefault(); setDragActive(true); }}
+                    onDragLeave={() => setDragActive(false)}
+                    onDrop={e => {
+                      e.preventDefault(); setDragActive(false);
+                      const raw = e.dataTransfer.getData("driveFileIds");
+                      if (raw) { handleDriveBatchImport(JSON.parse(raw)); return; }
+                      const files = e.dataTransfer.files;
+                      if (files?.length) handleBatchImport(files);
+                    }}
+                  >
+                    <span style={{ fontSize: 24, opacity: 0.4 }}>📸</span>
+                    Drop images for the new month
+                    <input type="file" accept="image/*" multiple style={{ display: "none" }}
+                      onChange={e => { handleBatchImport(e.target.files); e.target.value = ""; }} />
+                  </label>
+                )}
+                <MultiMonthFeedGrid
+                  workingPosts={allPosts}
+                  history={historySnapshots}
+                  collapsed={collapsedHistory}
+                  onCollapseToggle={toggleHistoryCollapse}
+                  onSwap={handleSwap}
+                />
+              </>
             ) : (
               <div style={{ height: Math.max(360, Math.ceil((gridItems.length + pinnedCount) / 3) * 180) }}>
                 <ReorderFeedGrid

@@ -1,31 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { C, SANS, MONO, BTN_ROW, primaryBtn, dangerBtn } from "../theme";
-import { MONTHS } from "../constants";
-import ReorderFeedGrid from "../components/ReorderFeedGrid";
+import MultiMonthFeedGrid from "../components/MultiMonthFeedGrid";
 import DrivePanel from "../components/DrivePanel";
-import { compressToBlob, uploadToCloudinary, loadGsiScript } from "../utils";
+import { compressToBlob, uploadToCloudinary, loadGsiScript, postsToGridItems, gridItemsToPostsObj } from "../utils";
 import { useApp } from "../AppContext";
 import { supabase } from "../supabase";
 
 const GOOGLE_CLIENT_ID = "988412963391-j36f4j6or67871i599o17ui2nai59pi9.apps.googleusercontent.com";
-
-function postsToGridItems(postsObj) {
-  if (!postsObj || typeof postsObj !== "object") return [];
-  return Object.entries(postsObj)
-    .flatMap(([day, dayPosts]) =>
-      (dayPosts || []).map((p, postIdx) => ({ ...p, _day: Number(day), _postIdx: postIdx }))
-    )
-    .sort((a, b) => a._day - b._day || a._postIdx - b._postIdx)
-    .map(p => ({ id: p.id || `${p._day}-${p._postIdx}`, imageUrl: p.imageUrls?.[0] || null, _src: p }));
-}
-
-function gridItemsToPostsObj(items) {
-  const out = {};
-  items.forEach((item, i) => {
-    out[i + 1] = [{ ...item._src, imageUrls: item.imageUrl ? [item.imageUrl] : [], id: item.id }];
-  });
-  return out;
-}
 
 export default function GridView({ calendarId, clientId, allCalendars }) {
   const { showToast, user } = useApp();
@@ -34,8 +15,8 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
   const [handle, setHandle] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [historySnapshots, setHistorySnapshots] = useState([]);
+  const [collapsedHistory, setCollapsedHistory] = useState({});
 
   const [driveToken, setDriveToken] = useState(null);
   const [driveOpen, setDriveOpen] = useState(false);
@@ -78,11 +59,26 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
         .eq("calendar_id", cal.id)
         .order("saved_at", { ascending: false })
         .limit(1);
-      return { cal, items: postsToGridItems(data?.[0]?.posts) };
+      const items = postsToGridItems(data?.[0]?.posts);
+      return {
+        calendarId: cal.id,
+        month: cal.month,
+        year: cal.year,
+        posts: items.map((item, i) => ({
+          day: i,
+          postIdx: 0,
+          imageUrls: item.imageUrl ? [item.imageUrl] : [],
+          ...item._src,
+        })),
+      };
     })).then(setHistorySnapshots);
   }, [clientId, calendarId, allCalendars]);
 
-  // Data adapter for ReorderFeedGrid
+  function toggleHistoryCollapse(calId) {
+    setCollapsedHistory(prev => ({ ...prev, [calId]: !prev[calId] }));
+  }
+
+  // Data adapter for MultiMonthFeedGrid
   const allPosts = gridItems.map((item, i) => ({
     day: i, postIdx: 0,
     imageUrls: item.imageUrl ? [item.imageUrl] : [],
@@ -207,14 +203,6 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
           {gridItems.length > 0 && (
             <button style={dangerBtn} onClick={() => setGridItems([])}>Clear</button>
           )}
-          {historySnapshots.length > 0 && (
-            <button
-              style={{ ...primaryBtn, background: showHistory ? C.accent : "transparent", color: showHistory ? "#000" : C.meta, border: `1px solid ${C.border}` }}
-              onClick={() => setShowHistory(h => !h)}
-            >
-              {showHistory ? "Hide History" : "Show History"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -243,13 +231,13 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
             </div>
           </div>
 
-          {/* Current grid */}
-          <div style={{ marginTop: 0 }}>
+          {/* Seamless multi-month feed grid (working area + read-only history) */}
+          <div>
             {loading ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, color: "#8e8e8e", fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1.5px" }}>
                 Loading grid...
               </div>
-            ) : gridItems.length === 0 ? (
+            ) : gridItems.length === 0 && historySnapshots.length === 0 ? (
               driveUploadProgress.active ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, height: 280, border: `1.5px dashed ${C.accent}`, borderRadius: 8, background: "#f5f5f5" }}>
                   <div style={{ width: 36, height: 36, border: "3.5px solid #dbdbdb", borderTop: `3.5px solid ${C.accent}`, borderRadius: "50%", animation: "gridSpin 0.75s linear infinite" }} />
@@ -283,48 +271,15 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
                 </label>
               )
             ) : (
-              <div style={{ height: Math.max(360, Math.ceil(gridItems.length / 3) * 180) }}>
-                <ReorderFeedGrid
-                  allPosts={allPosts}
-                  onSwap={handleSwap}
-                  onBatchImport={handleBatchImport}
-                  onDriveBatchImport={handleDriveBatchImport}
-                  driveUploadProgress={driveUploadProgress}
-                  pinnedCount={0}
-                  setPinnedCount={() => {}}
-                  lightMode
-                />
-              </div>
+              <MultiMonthFeedGrid
+                workingPosts={allPosts}
+                history={historySnapshots}
+                collapsed={collapsedHistory}
+                onCollapseToggle={toggleHistoryCollapse}
+                onSwap={handleSwap}
+              />
             )}
           </div>
-
-          {/* History */}
-          {showHistory && historySnapshots.map(({ cal, items }) => (
-            <div key={cal.id} style={{ marginTop: 48 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta, whiteSpace: "nowrap" }}>
-                  {MONTHS[cal.month]} {cal.year}
-                </div>
-                <div style={{ flex: 1, height: 1, background: C.border }} />
-                <span style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: 1 }}>Read-only</span>
-              </div>
-              {items.length === 0 ? (
-                <div style={{ fontFamily: MONO, fontSize: 10, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", padding: "24px 0" }}>No posts saved</div>
-              ) : (
-                <div style={{ height: Math.max(180, Math.ceil(items.length / 3) * 180), pointerEvents: "none", opacity: 0.7 }}>
-                  <ReorderFeedGrid
-                    allPosts={items.map((item, i) => ({ day: i, postIdx: 0, imageUrls: item.imageUrl ? [item.imageUrl] : [], contentType: "Photo" }))}
-                    onSwap={() => {}}
-                    onBatchImport={() => {}}
-                    onDriveBatchImport={() => {}}
-                    driveUploadProgress={{ active: false, done: 0, total: 0 }}
-                    pinnedCount={0}
-                    setPinnedCount={() => {}}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
         </div>
       </div>
 

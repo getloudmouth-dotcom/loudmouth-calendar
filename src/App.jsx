@@ -272,7 +272,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [pinterestToken, setPinterestToken] = useState(null);
   const [pinterestOpen, setPinterestOpen] = useState(false);
   const [pinterestPanelWidth, setPinterestPanelWidth] = useState(300);
-  const [confirmDialog, setConfirmDialog] = useState({ open: false, message: "", onConfirm: null });
+  const [confirmDialog, setConfirmDialog] = useState({ open: false, message: "", onConfirm: null, onCancel: null });
   const cpAutoSaveTimerRef = useRef(null);
   // toast state removed — using sonner globally
   // ── Realtime ──
@@ -1045,8 +1045,8 @@ useEffect(() => {
     setCalendarsLoading(true); setContentPlansLoading(true); setScheduledPostsLoading(true);
   }
 
-  function showConfirm(message, onConfirm) {
-    setConfirmDialog({ open: true, message, onConfirm });
+  function showConfirm(message, onConfirm, onCancel) {
+    setConfirmDialog({ open: true, message, onConfirm, onCancel });
   }
 
   function showToast(msg, type = "info") {
@@ -1338,6 +1338,11 @@ useEffect(() => {
           .eq("id", existing.id)
           .select().single());
       } else {
+        const proceed = await ensureCalendarLimit(clientId, `${MONTHS[month]} ${year}`);
+        if (!proceed) {
+          if (!silent) setSavingLabel("");
+          return false;
+        }
         ({ data: calData, error: calErr } = await supabase.from("calendars").insert({
           user_id: user.id, client_id: clientId || null, client_name: canonicalName, month, year,
           posts_per_page: postsPerPage, builder_name: profileName,
@@ -1373,18 +1378,43 @@ useEffect(() => {
     });
   }
 
+  async function runCalendarPurge(cal) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const { data: drafts } = await supabase.from("calendar_drafts").select("posts").eq("calendar_id", cal.id);
+    const urls = [cal.notes_image, ...(drafts ?? []).flatMap(d =>
+      Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])
+    )].filter(Boolean);
+    await deleteCloudinaryAssets([...new Set(urls)], session?.access_token);
+    await supabase.from("calendars").delete().eq("id", cal.id);
+    await loadAllCalendars();
+    if (currentCalendarId === cal.id) { setCurrentCalendarId(null); setShowDashboard(true); }
+    if (workspaceCalendarId === cal.id) setWorkspaceCalendarId(null);
+  }
+
   function deleteCalendar(cal) {
-    showConfirm(`Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`, async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data: drafts } = await supabase.from("calendar_drafts").select("posts").eq("calendar_id", cal.id);
-      const urls = [cal.notes_image, ...(drafts ?? []).flatMap(d =>
-        Object.values(d.posts ?? {}).flat().flatMap(p => p.imageUrls ?? [])
-      )].filter(Boolean);
-      await deleteCloudinaryAssets([...new Set(urls)], session?.access_token);
-      await supabase.from("calendars").delete().eq("id", cal.id);
-      await loadAllCalendars();
-      if (currentCalendarId === cal.id) { setCurrentCalendarId(null); setShowDashboard(true); }
-      if (workspaceCalendarId === cal.id) setWorkspaceCalendarId(null);
+    showConfirm(
+      `Delete all saved data for "${cal.client_name} — ${MONTHS[cal.month]} ${cal.year}"?`,
+      () => runCalendarPurge(cal),
+    );
+  }
+
+  // Enforce the 3-month-per-client cap. If the client is at the cap, prompt
+  // the user to confirm deletion of the oldest calendar (with its Cloudinary
+  // assets). Resolves true if creation may proceed, false if the user cancels.
+  async function ensureCalendarLimit(clientId, intendedMonthLabel) {
+    if (!clientId) return true;
+    const clientCals = allCalendars
+      .filter(c => c.client_id === clientId)
+      .sort((a, b) => (a.year * 12 + a.month) - (b.year * 12 + b.month));
+    if (clientCals.length < 3) return true;
+    const oldest = clientCals[0];
+    const clientName = oldest.client_name || "this client";
+    return new Promise(resolve => {
+      showConfirm(
+        `${clientName} is at the 3-month limit. Creating ${intendedMonthLabel} will delete "${MONTHS[oldest.month]} ${oldest.year}" and all of its images. Continue?`,
+        async () => { await runCalendarPurge(oldest); resolve(true); },
+        () => resolve(false),
+      );
     });
   }
 
@@ -1604,6 +1634,9 @@ useEffect(() => {
       nextMonth = today.getMonth();
       nextYear = today.getFullYear();
     }
+
+    const proceed = await ensureCalendarLimit(client.id, `${MONTHS[nextMonth]} ${nextYear}`);
+    if (!proceed) return;
 
     const { data: newCal, error } = await supabase
       .from("calendars")
@@ -1950,7 +1983,7 @@ useEffect(() => {
 
   if (showDashboard && !exportMode) return (
     <ErrorBoundary>
-    <AppContext.Provider value={{ can, showToast, user, isOnline }}>
+    <AppContext.Provider value={{ can, showToast, user, isOnline, clients, allCalendars }}>
       <DashboardPortal
         activePortal={activePortal} setActivePortal={setActivePortal}
         profileName={profileName} profileInput={profileInput} setProfileInput={setProfileInput}
@@ -2016,7 +2049,7 @@ useEffect(() => {
 
   return (
     <ErrorBoundary>
-    <AppContext.Provider value={{ can, showToast, user, isOnline }}>
+    <AppContext.Provider value={{ can, showToast, user, isOnline, clients, allCalendars }}>
       <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
         {step <= 2 && (
           <Sidebar
@@ -2090,13 +2123,14 @@ useEffect(() => {
 }
 
 function ConfirmDialog({ confirmDialog, setConfirmDialog }) {
-  const close = () => setConfirmDialog(d => ({ ...d, open: false }));
+  const cancel = () => { confirmDialog.onCancel?.(); setConfirmDialog(d => ({ ...d, open: false })); };
+  const confirm = () => { confirmDialog.onConfirm?.(); setConfirmDialog(d => ({ ...d, open: false })); };
   return (
-    <AppDialog open={confirmDialog.open} onClose={close} title="Confirm">
+    <AppDialog open={confirmDialog.open} onClose={cancel} title="Confirm">
       <p style={{ fontSize: 14, color: C.meta, fontFamily: SANS, marginTop: 8, marginBottom: 24, lineHeight: "160%" }}>{confirmDialog.message}</p>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button onClick={close} style={ghostBtn}>Cancel</button>
-        <button onClick={() => { confirmDialog.onConfirm?.(); close(); }} style={dangerBtn}>Confirm</button>
+        <button onClick={cancel} style={ghostBtn}>Cancel</button>
+        <button onClick={confirm} style={dangerBtn}>Confirm</button>
       </div>
     </AppDialog>
   );

@@ -76,7 +76,7 @@ export default function MonthWorkspace({
           );
         })}
         <div style={{ flex: 1 }} />
-        {canDelete && (
+        {canDelete && activeTab !== "grid" && (
           <button
             onClick={() => deleteCalendar(calendar)}
             style={{ ...dangerBtn, marginRight: 4 }}

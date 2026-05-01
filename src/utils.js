@@ -99,6 +99,27 @@ export function getSlideCropX(post, slideIdx) { return post.cropXs?.[slideIdx] ?
 export function getSlideCropY(post, slideIdx) { return post.cropYs?.[slideIdx] ?? post.cropY ?? 50; }
 export function getSlideScale(post, slideIdx) { return post.scales?.[slideIdx] ?? post.scale ?? 1; }
 
+// calendar_drafts.posts is keyed by day with arrays of post records.
+// Flatten into a stable, day-ordered array of grid items used by both
+// GridView and GridCreatorPortal.
+export function postsToGridItems(postsObj) {
+  if (!postsObj || typeof postsObj !== "object") return [];
+  return Object.entries(postsObj)
+    .flatMap(([day, dayPosts]) =>
+      (dayPosts || []).map((p, postIdx) => ({ ...p, _day: Number(day), _postIdx: postIdx }))
+    )
+    .sort((a, b) => a._day - b._day || a._postIdx - b._postIdx)
+    .map(p => ({ id: p.id || `${p._day}-${p._postIdx}`, imageUrl: p.imageUrls?.[0] || null, _src: p }));
+}
+
+export function gridItemsToPostsObj(items) {
+  const out = {};
+  items.forEach((item, i) => {
+    out[i + 1] = [{ ...item._src, imageUrls: item.imageUrl ? [item.imageUrl] : [], id: item.id }];
+  });
+  return out;
+}
+
 
 export async function deleteCloudinaryAssets(urls, accessToken) {
   const cloudinaryUrls = (urls ?? []).filter(u => typeof u === "string" && u.includes("res.cloudinary.com"));
