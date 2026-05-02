@@ -294,6 +294,16 @@ async function sendEmail(invoice, pdfBase64, appUrl) {
   }
 }
 
+// Normalize phone to E.164 (+1XXXXXXXXXX) if it looks like a US number.
+// Older client rows pre-date the normalization in api/billing/clients.js.
+function normalizePhone(raw) {
+  if (!raw) return raw;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return raw;
+}
+
 // ── SMS (Twilio) ──────────────────────────────────────────────────────────────
 async function sendSms(invoice) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -307,6 +317,10 @@ async function sendSms(invoice) {
   const client = invoice.clients;
   if (!client?.phone) {
     throw new Error("Client has no phone number on file");
+  }
+  const toNumber = normalizePhone(client.phone);
+  if (!/^\+\d{10,15}$/.test(toNumber)) {
+    throw new Error(`Phone "${client.phone}" is not in E.164 format (expected +1XXXXXXXXXX)`);
   }
 
   const formattedTotal = new Intl.NumberFormat("en-US", {
@@ -327,7 +341,7 @@ async function sendSms(invoice) {
 
   const twilioClient = twilio(accountSid, authToken);
   await twilioClient.messages.create({
-    to: client.phone,
+    to: toNumber,
     from: fromNumber,
     body,
   });
@@ -397,6 +411,7 @@ async function handler(req, res) {
     try {
       await sendEmail(invoice, pdfBase64, appUrl);
     } catch (emailErr) {
+      console.error("[send-invoice] email failed:", emailErr);
       errors.push(`Email failed: ${emailErr.message}`);
     }
   }
@@ -406,6 +421,7 @@ async function handler(req, res) {
     try {
       await sendSms(invoice);
     } catch (smsErr) {
+      console.error("[send-invoice] sms failed:", smsErr);
       errors.push(`SMS failed: ${smsErr.message}`);
     }
   }
