@@ -255,6 +255,7 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [currentCPId, setCurrentCPId] = useState(null);
   const [allContentPlans, setAllContentPlans] = useState([]);
   const [cpClientId, setCpClientId] = useState(null);
+  const [cpEntryFromMonth, setCpEntryFromMonth] = useState(false);
   const [cpShareModal, setCpShareModal] = useState(null); // null | { planId, token, url, client }
   const [cpShareEmail, setCpShareEmail] = useState("");
   const [cpShareMethod, setCpShareMethod] = useState("email");
@@ -1777,7 +1778,7 @@ useEffect(() => {
     for (let i = 1; i <= producedN; i++) {
       const prev = existing.find(x => x.item_type === "produced" && x.item_number === i);
       items.push({
-        _localId: `prod-${i}-${Date.now()}`,
+        _localId: prev?._localId ?? `prod-${i}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         id: prev?.id ?? null,
         item_type: "produced",
         item_number: i,
@@ -1792,7 +1793,7 @@ useEffect(() => {
     for (let i = 1; i <= organicN; i++) {
       const prev = existing.find(x => x.item_type === "organic" && x.item_number === i);
       items.push({
-        _localId: `org-${i}-${Date.now()}`,
+        _localId: prev?._localId ?? `org-${i}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         id: prev?.id ?? null,
         item_type: "organic",
         item_number: i,
@@ -1876,7 +1877,8 @@ useEffect(() => {
     }
   }
 
-  async function openContentPlan(plan) {
+  async function openContentPlan(plan, opts = {}) {
+    setCpEntryFromMonth(!!opts.fromMonth);
     const { data: items } = await supabase
       .from("content_plan_items")
       .select("*")
@@ -1892,14 +1894,19 @@ useEffect(() => {
     setCpReferenceImages(plan.reference_images || []);
     const produced = (items || []).filter(x => x.item_type === "produced");
     const organic = (items || []).filter(x => x.item_type === "organic");
-    setCpProducedCount(produced.length || 2);
-    setCpOrganicCount(organic.length || 3);
-    const hydratedItems = (items || []).map(it => ({ ...it, _localId: `${it.item_type}-${it.item_number}-${Date.now()}` }));
+    const producedN = produced.length || 2;
+    const organicN = organic.length || 3;
+    setCpProducedCount(producedN);
+    setCpOrganicCount(organicN);
+    const hydratedItems = (items && items.length > 0)
+      ? items.map(it => ({ ...it, _localId: `${it.item_type}-${it.item_number}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }))
+      : generateCPItems(producedN, organicN);
     setCpItems(hydratedItems);
     setActiveCPStep(2);
   }
 
   function newContentPlan() {
+    setCpEntryFromMonth(false);
     setCurrentCPId(null);
     setCpClientId(null);
     setCpClientName("");
@@ -1915,6 +1922,15 @@ useEffect(() => {
   }
 
   function startContentPlanForMonth({ clientId, clientName, month, year }) {
+    const existing = allContentPlans
+      .filter(p => p.client_id === clientId && p.month === month && p.year === year)
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+    if (existing) {
+      openContentPlan(existing, { fromMonth: true });
+      setActivePortal(PORTALS.CONTENT_PLAN);
+      return;
+    }
+    setCpEntryFromMonth(true);
     setCurrentCPId(null);
     setCpClientId(clientId || null);
     setCpClientName(clientName || "");
@@ -1923,10 +1939,10 @@ useEffect(() => {
     setCpShootDate("PENDING");
     setCpProducedCount(2);
     setCpOrganicCount(3);
-    setCpItems([]);
+    setCpItems(generateCPItems(2, 3));
     setCpReferenceImages([]);
     setPinterestOpen(false);
-    setActiveCPStep(1);
+    setActiveCPStep(2);
     setActivePortal(PORTALS.CONTENT_PLAN);
   }
 
@@ -2089,6 +2105,7 @@ useEffect(() => {
         cpItems={cpItems} setCpItems={setCpItems} cpSaving={cpSaving}
         allContentPlans={allContentPlans} clients={clients} setClients={setClients}
         cpClientId={cpClientId} setCpClientId={setCpClientId}
+        cpEntryFromMonth={cpEntryFromMonth} setCpEntryFromMonth={setCpEntryFromMonth}
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
         newContentPlan={newContentPlan} openContentPlan={openContentPlan}

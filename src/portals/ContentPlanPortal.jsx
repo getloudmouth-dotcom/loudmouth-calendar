@@ -4,8 +4,9 @@ import { useApp } from "../AppContext";
 import { useState, useEffect } from "react";
 import PinterestPanel from "../components/PinterestPanel";
 
-import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn, PAGE_HEADER, PAGE_TITLE, BTN_ROW, DISPLAY_TITLE, DISPLAY_SUBTITLE } from "../theme";
+import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn, dangerBtn, PAGE_HEADER, PAGE_TITLE, BTN_ROW, DISPLAY_TITLE, DISPLAY_SUBTITLE } from "../theme";
 import Skeleton from "../components/Skeleton";
+import AppDialog from "../components/AppDialog";
 
 function ContentPlanCardSkeleton() {
   return (
@@ -31,6 +32,7 @@ export default function ContentPlanPortal({
   activeCPStep, setActiveCPStep,
   cpClientName, setCpClientName,
   cpClientId, setCpClientId,
+  cpEntryFromMonth, setCpEntryFromMonth,
   cpMonth, setCpMonth,
   cpYear, setCpYear,
   cpShootDate, setCpShootDate,
@@ -62,6 +64,26 @@ export default function ContentPlanPortal({
   const [creators, setCreators] = useState([]);
   const [overridePhone, setOverridePhone] = useState(null);
   const [overrideEmail, setOverrideEmail] = useState(null);
+  const [trimConfirm, setTrimConfirm] = useState(null);
+
+  function handleCountChange(kind, raw) {
+    const next = Math.max(0, Math.min(20, Number(raw) || 0));
+    const trimmed = cpItems.filter(it =>
+      it.item_type === kind && it.item_number > next &&
+      (it.reference_link || it.whats_needed || it.creator_name || it.title)
+    );
+    const apply = () => {
+      if (kind === "produced") setCpProducedCount(next); else setCpOrganicCount(next);
+      const p = kind === "produced" ? next : cpProducedCount;
+      const o = kind === "organic"  ? next : cpOrganicCount;
+      setCpItems(generateCPItems(p, o, cpItems));
+    };
+    if (trimmed.length > 0) {
+      setTrimConfirm({ kind, count: trimmed.length, apply });
+    } else {
+      apply();
+    }
+  }
 
   useEffect(() => {
     const fetchCreators = async () => {
@@ -78,13 +100,28 @@ export default function ContentPlanPortal({
   const onPlansList = !currentCPId && activeCPStep === null;
   const onSetup = !currentCPId && activeCPStep === 1;
   const onPreview = activeCPStep === 3;
-  const backLabel = onPlansList ? "← Home" : onPreview ? "← Back" : "← Plans";
+  const onStep2 = !onPlansList && !onSetup && !onPreview;
+  const returnToMonth = () => {
+    setCpEntryFromMonth(false);
+    setCurrentCPId(null);
+    setActiveCPStep(null);
+    setActivePortal(PORTALS.CLIENTS);
+  };
+  const backLabel = onPlansList
+    ? "← Home"
+    : onPreview
+    ? "← Back"
+    : onStep2 && cpEntryFromMonth
+    ? "← Month"
+    : "← Plans";
   const backAction = onPlansList
     ? () => { setActivePortal(PORTALS.HOME); }
     : onSetup
     ? () => { setActiveCPStep(null); }
     : onPreview
     ? () => { setActiveCPStep(2); }
+    : cpEntryFromMonth
+    ? returnToMonth
     : () => { setCurrentCPId(null); setActiveCPStep(null); };
 
   return (
@@ -265,16 +302,48 @@ export default function ContentPlanPortal({
           const organicItems = cpItems.filter(it => it.item_type === "organic");
           return (
             <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, marginBottom: 24, flexWrap: "wrap" }}>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: C.text, lineHeight: 1 }}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
-                  <div style={{ fontSize: 12, color: C.meta, marginTop: 6, fontFamily: MONO, lineHeight: 1 }}>Shoot: {cpShootDate}</div>
+                  <div style={DISPLAY_TITLE}>{cpClientName} — {MONTHS[cpMonth]} {cpYear}</div>
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <button onClick={() => saveContentPlan(false)} disabled={cpSaving} style={ghostBtn}>
-                    {cpSaving ? "Saving..." : "Save"}
-                  </button>
-                  <button onClick={() => setActiveCPStep(3)} style={primaryBtn}>Preview & Export →</button>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <label style={LABEL}>Shoot Date</label>
+                    <input
+                      type="date"
+                      value={cpShootDate === "PENDING" ? "" : cpShootDate}
+                      onChange={e => setCpShootDate(e.target.value || "PENDING")}
+                      style={{ ...INPUT, width: 150 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={LABEL}>Produced</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={20}
+                      value={cpProducedCount}
+                      onChange={e => handleCountChange("produced", e.target.value)}
+                      style={{ ...INPUT, width: 80 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={LABEL}>Organic</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={20}
+                      value={cpOrganicCount}
+                      onChange={e => handleCountChange("organic", e.target.value)}
+                      style={{ ...INPUT, width: 80 }}
+                    />
+                  </div>
+                  <div style={BTN_ROW}>
+                    <button onClick={() => saveContentPlan(false)} disabled={cpSaving} style={ghostBtn}>
+                      {cpSaving ? "Saving..." : "Save"}
+                    </button>
+                    <button onClick={() => setActiveCPStep(3)} style={primaryBtn}>Preview & Export →</button>
+                  </div>
                 </div>
               </div>
 
@@ -353,7 +422,7 @@ export default function ContentPlanPortal({
               </div>
 
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setCurrentCPId(null); setActiveCPStep(null); }} style={ghostBtn}>← Plans</button>
+                <button onClick={backAction} style={ghostBtn}>{backLabel}</button>
                 <div style={{ flex: 1 }} />
                 <button onClick={() => { saveContentPlan(true); setActiveCPStep(3); }} style={primaryBtn}>Preview & Export →</button>
               </div>
@@ -546,6 +615,28 @@ export default function ContentPlanPortal({
           </div>
         )}
       </div>
+
+      {/* Destructive trim confirmation */}
+      <AppDialog
+        open={trimConfirm !== null}
+        onClose={() => setTrimConfirm(null)}
+        title="Remove filled rows?"
+      >
+        {trimConfirm && (
+          <div>
+            <div style={{ fontSize: 13, color: C.meta, marginBottom: 20, lineHeight: 1.5 }}>
+              Reducing {trimConfirm.kind} count will remove {trimConfirm.count} row{trimConfirm.count !== 1 ? "s" : ""} that already {trimConfirm.count !== 1 ? "have" : "has"} content. This can't be undone.
+            </div>
+            <div style={BTN_ROW}>
+              <button onClick={() => setTrimConfirm(null)} style={ghostBtn}>Cancel</button>
+              <button
+                onClick={() => { trimConfirm.apply(); setTrimConfirm(null); }}
+                style={dangerBtn}
+              >Remove rows</button>
+            </div>
+          </div>
+        )}
+      </AppDialog>
 
       {/* Share / Send Modal */}
       {cpShareModal && (() => {
