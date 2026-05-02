@@ -1,163 +1,63 @@
 import 'dotenv/config';
 import { Sentry } from './api/_sentry.js';
 import express from 'express';
-import sharp from 'sharp';
 
 const app = express();
 app.use(express.json({ limit: '4mb' }));
 
-app.get('/api/drive-thumb', async (req, res) => {
-  const { fileId } = req.query;
-  const auth = req.headers.authorization;
+function mount(method, route, file) {
+  app[method](route, async (req, res) => {
+    try {
+      const { default: handler } = await import(file);
+      return handler(req, res);
+    } catch (e) {
+      console.error(e);
+      Sentry.captureException(e);
+      res.status(500).json({ error: e.message || `${route} load failed` });
+    }
+  });
+}
 
-  if (!fileId || !auth) {
-    return res.status(400).json({ error: 'Missing fileId or token' });
-  }
+// Single-method routes
+mount('get',  '/api/drive-thumb',                  './api/drive-thumb.js');
+mount('post', '/api/export-pdf',                   './api/export-pdf.js');
+mount('get',  '/api/export-data',                  './api/export-data.js');
+mount('get',  '/api/export-content-plan-data',     './api/export-content-plan-data.js');
+mount('post', '/api/export-content-plan-pdf',      './api/export-content-plan-pdf.js');
+mount('post', '/api/export-content-plan-docx',     './api/export-content-plan-docx.js');
+mount('post', '/api/invite-user',                  './api/invite-user.js');
+mount('post', '/api/share-calendar',               './api/share-calendar.js');
+mount('post', '/api/share-content-plan',           './api/share-content-plan.js');
+mount('get',  '/api/get-content-plan-public',      './api/get-content-plan-public.js');
+mount('post', '/api/update-content-plan-item',     './api/update-content-plan-item.js');
+mount('post', '/api/delete-assets',                './api/delete-assets.js');
+mount('post', '/api/delete-user',                  './api/delete-user.js');
+mount('get',  '/api/pinterest-boards',             './api/pinterest-boards.js');
+mount('get',  '/api/pinterest-board-url',          './api/pinterest-board-url.js');
+mount('get',  '/api/billing/invoice-export-data',  './api/billing/invoice-export-data.js');
 
-  try {
-    const driveRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      { headers: { Authorization: auth } }
-    );
-    if (!driveRes.ok) return res.status(driveRes.status).json({ error: 'Drive fetch failed' });
-
-    const buffer = Buffer.from(await driveRes.arrayBuffer());
-    const thumb = await sharp(buffer)
-      .resize(400, 400, { fit: 'cover', position: 'centre' })
-      .jpeg({ quality: 78 })
-      .toBuffer();
-
-    res.setHeader('Content-Type', 'image/jpeg');
-    res.setHeader('Cache-Control', 'private, max-age=86400');
-    res.send(thumb);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
+// HEAD warmup pings from CalendarBuilder/App (fetch with method:"HEAD" to spin up the function)
 app.head('/api/export-pdf', (req, res) => res.status(200).end());
-app.post('/api/export-pdf', async (req, res) => {
+
+// Vercel dynamic route [id] — Express needs :id and a param->query bridge.
+// Express 5 makes req.query a getter, so we redefine the property instead of assigning.
+app.all('/api/billing/invoices/:id', async (req, res) => {
   try {
-    const { default: handler } = await import('./api/export-pdf.js');
+    const { default: handler } = await import('./api/billing/invoices/[id].js');
+    Object.defineProperty(req, 'query', {
+      value: { ...req.query, id: req.params.id },
+      configurable: true,
+    });
     return handler(req, res);
   } catch (e) {
     console.error(e);
     Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'export-pdf load failed' });
-  }
-});
-app.get('/api/export-data', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/export-data.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'export-data load failed' });
+    res.status(500).json({ error: e.message || '/api/billing/invoices/:id load failed' });
   }
 });
 
-app.get('/api/export-content-plan-data', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/export-content-plan-data.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'export-content-plan-data load failed' });
-  }
-});
-
-app.post('/api/export-content-plan-pdf', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/export-content-plan-pdf.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'export-content-plan-pdf load failed' });
-  }
-});
-
-app.post('/api/export-content-plan-docx', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/export-content-plan-docx.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'export-content-plan-docx load failed' });
-  }
-});
-
-app.post('/api/invite-user', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/invite-user.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'invite-user load failed' });
-  }
-});
-
-app.post('/api/share-calendar', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/share-calendar.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'share-calendar load failed' });
-  }
-});
-
-app.post('/api/share-content-plan', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/share-content-plan.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'share-content-plan load failed' });
-  }
-});
-
-app.get('/api/get-content-plan-public', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/get-content-plan-public.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'get-content-plan-public load failed' });
-  }
-});
-
-app.post('/api/update-content-plan-item', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/update-content-plan-item.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'update-content-plan-item load failed' });
-  }
-});
-
-app.post('/api/delete-assets', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/delete-assets.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'delete-assets load failed' });
-  }
-});
-
-// All-method routes — mirror Vercel's file-based routing (handlers gate on req.method).
-// Includes billing (mixed methods), cron paths (Vercel sends GET), and Twilio webhooks (POST).
+// All-method routes — handlers gate on req.method. Covers billing (mixed methods),
+// cron paths (Vercel sends GET), tracking pixels, and external webhooks.
 const allMethodRoutes = [
   '/api/billing/clients',
   '/api/billing/invoices',
@@ -170,23 +70,15 @@ const allMethodRoutes = [
   '/api/billing/sms-optin-confirm',
   '/api/billing/freshbooks-callback',
   '/api/billing/freshbooks-auth',
+  '/api/billing/track-open',
+  '/api/billing/webhooks/freshbooks',
   '/api/send-reminders',
   '/api/cloudinary-audit',
   '/api/twilio/voice',
   '/api/twilio/sms',
 ];
 for (const route of allMethodRoutes) {
-  const file = route.replace('/api/', './api/') + '.js';
-  app.all(route, async (req, res) => {
-    try {
-      const { default: handler } = await import(file);
-      return handler(req, res);
-    } catch (e) {
-      console.error(e);
-      Sentry.captureException(e);
-      res.status(500).json({ error: e.message || `${route} load failed` });
-    }
-  });
+  mount('all', route, route.replace('/api/', './api/') + '.js');
 }
 
 app.listen(3001, () => console.log('API server running on port 3001'));

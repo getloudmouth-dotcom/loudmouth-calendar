@@ -4,21 +4,36 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { createClient } from "@supabase/supabase-js";
 import { withSentry } from './_sentry.js';
 
-const kv = new Redis({
-  url: process.env.KV_REST_API_URL,
-  token: process.env.KV_REST_API_TOKEN,
-});
+let _kv = null;
+function getKv() {
+  if (_kv) return _kv;
+  _kv = new Redis({
+    url: process.env.KV_REST_API_URL,
+    token: process.env.KV_REST_API_TOKEN,
+  });
+  return _kv;
+}
 
-const ratelimit = new Ratelimit({
-  redis: kv,
-  limiter: Ratelimit.slidingWindow(60, "1 m"),
-  prefix: "rl:thumb",
-});
+let _ratelimit = null;
+function getRatelimit() {
+  if (_ratelimit) return _ratelimit;
+  _ratelimit = new Ratelimit({
+    redis: getKv(),
+    limiter: Ratelimit.slidingWindow(60, "1 m"),
+    prefix: "rl:thumb",
+  });
+  return _ratelimit;
+}
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  );
+let _supabase = null;
+function getSupabase() {
+  if (_supabase) return _supabase;
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) throw new Error("Missing SUPABASE_URL/VITE_SUPABASE_URL or SUPABASE_SERVICE_KEY");
+  _supabase = createClient(url, key);
+  return _supabase;
+}
 
 async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
@@ -29,6 +44,10 @@ async function handler(req, res) {
   if (!fileId || !auth) {
     return res.status(400).json({ error: "Missing fileId or token" });
   }
+
+  const supabase = getSupabase();
+  const kv = getKv();
+  const ratelimit = getRatelimit();
 
   const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() ?? req.socket.remoteAddress ?? "unknown";
   const { success, reset } = await ratelimit.limit(ip);
