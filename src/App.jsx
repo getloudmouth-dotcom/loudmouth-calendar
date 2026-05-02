@@ -1995,7 +1995,7 @@ useEffect(() => {
   if (cpExportToken) return <ContentPlanExportView token={cpExportToken} />;
   if (billingExportToken) return <BillingInvoiceExportView token={billingExportToken} />;
 
-  if (authLoading && !exportMode) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "'Helvetica Neue', Arial, sans-serif", background: "#1a1a2e", color: "#D7FA06", fontSize: 16, fontWeight: 700, letterSpacing: "0.08em" }}>LOADING...</div>;
+  if (authLoading && !exportMode) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: MONO, background: C.canvas, color: C.accent, fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase" }}>Loading…</div>;
 
   if (!user && !exportMode) return (
     <ErrorBoundary>
