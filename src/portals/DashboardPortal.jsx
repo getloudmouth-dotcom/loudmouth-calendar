@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MONTHS } from "../constants";
+import { MONTHS, PORTALS } from "../constants";
 import { useApp } from "../AppContext";
 import { Toaster } from "../components/ui/sonner";
 import NavProfileMenu from "../components/NavProfileMenu";
@@ -12,7 +12,7 @@ import AdminPortal from "./AdminPortal";
 import ContentPlanPortal from "./ContentPlanPortal";
 import BillingPortal from "./BillingPortal";
 import GridCreatorPortal from "./GridCreatorPortal";
-import { SANS, MONO, C, DISP, BADGE } from "../theme";
+import { SANS, MONO, C, DISP, BADGE, BTN_ROW, primaryBtn, ghostBtn } from "../theme";
 import Skeleton from "../components/Skeleton";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -83,9 +83,9 @@ const icons = {
 };
 
 const TOOL_ITEMS = [
-  { key: "scheduling",   permission: "content_scheduling",   label: "Scheduling",   icon: icons.scheduling },
-  { key: "content-plan", permission: "content_plan_creator", label: "Content Plans",icon: icons.contentPlan },
-  { key: "grid",         permission: "grid_creator",         label: "Grid Creator", icon: icons.grid },
+  { key: PORTALS.SCHEDULING,   permission: "content_scheduling",   label: "Scheduling",   icon: icons.scheduling },
+  { key: PORTALS.CONTENT_PLAN, permission: "content_plan_creator", label: "Content Plans",icon: icons.contentPlan },
+  { key: PORTALS.GRID,         permission: "grid_creator",         label: "Grid Creator", icon: icons.grid },
 ];
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -122,20 +122,20 @@ export function Sidebar({ activePortal, setActivePortal, profileName, scheduledP
             profileName={profileName}
             userEmail={user?.email}
             currentCalendarId={null}
-            onMyCalendars={() => setActivePortal(null)}
+            onMyCalendars={() => setActivePortal(PORTALS.HOME)}
             onHistory={() => {}}
             onEditProfile={() => { setProfileInput(profileName); setEditingProfile(true); }}
             onSignOut={signOut}
             isAdmin={can("admin_portal")}
-            onAdminPortal={() => navigateTool("admin", "admin_portal")}
+            onAdminPortal={() => navigateTool(PORTALS.ADMIN, "admin_portal")}
             hasBilling={can("billing")}
-            onBillingPortal={() => setActivePortal("billing")}
+            onBillingPortal={() => setActivePortal(PORTALS.BILLING)}
           />
         </div>
         <button
-          onClick={() => setActivePortal(null)}
+          onClick={() => setActivePortal(PORTALS.HOME)}
           title="Home"
-          style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 7, width: 32, alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: "#949494", transition: "background 0.15s" }}
+          style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 7, width: 32, alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: C.meta, transition: "background 0.15s" }}
           onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
           onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
         >
@@ -173,7 +173,7 @@ export function Sidebar({ activePortal, setActivePortal, profileName, scheduledP
       {/* Client list */}
       <nav style={{ flex: 1, overflowY: "auto", paddingBottom: 6 }}>
         {clients.map(client => {
-          const isActive = activePortal === "clients" && workspaceClientId === client.id;
+          const isActive = activePortal === PORTALS.CLIENTS && workspaceClientId === client.id;
           return (
             <button
               key={client.id}
@@ -242,7 +242,7 @@ export function Sidebar({ activePortal, setActivePortal, profileName, scheduledP
 
       {/* Logo + settings */}
       <div style={{ padding: "16px 20px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
-        <button onClick={() => setActivePortal(null)} aria-label="Go to home dashboard" style={{ flex: 1, cursor: "pointer", minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "left" }}>
+        <button onClick={() => setActivePortal(PORTALS.HOME)} aria-label="Go to home dashboard" style={{ flex: 1, cursor: "pointer", minWidth: 0, background: "none", border: "none", padding: 0, textAlign: "left" }}>
           <div style={{ fontFamily: DISP, fontSize: 20, letterSpacing: 1, color: C.accent, lineHeight: 1 }}>LOUDMOUTH HQ</div>
           <div style={{ fontFamily: MONO, fontSize: 9, color: C.meta, textTransform: "uppercase", letterSpacing: "1.5px", marginTop: -2 }}>
             {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
@@ -252,7 +252,7 @@ export function Sidebar({ activePortal, setActivePortal, profileName, scheduledP
           onClick={() => setSettingsOpen(o => !o)}
           title="Settings"
           aria-label="Settings"
-          style={{ background: settingsOpen ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 7, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: settingsOpen ? C.text : "#949494", transition: "background 0.15s" }}
+          style={{ background: settingsOpen ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)", border: "none", borderRadius: 7, width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: settingsOpen ? C.text : C.meta, transition: "background 0.15s" }}
           onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
           onMouseLeave={e => e.currentTarget.style.background = settingsOpen ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)"}
         >
@@ -387,7 +387,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
     .sort((a, b) => a.post_date.localeCompare(b.post_date))
     .slice(0, 5);
 
-  const statusColor = { approved: "#CCFF00", pending: C.meta, denied: C.error };
+  const statusColor = { approved: C.accent, pending: C.meta, denied: C.error };
 
   return (
     <div style={{ padding: "40px 48px 80px" }}>
@@ -482,7 +482,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
                 ? (plan.items.every(i => i.approval_status === "approved") ? "approved" : "pending")
                 : "pending";
               return (
-                <button key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+                <button key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal(PORTALS.CONTENT_PLAN); }}
                   aria-label={`Open content plan for ${plan.client_name || "untitled"}`}
                   style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
@@ -498,7 +498,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
                       {planStatus}
                     </span>
                     {plan.shoot_date && (
-                      <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", borderRadius: 20, padding: "2px 8px", color: plan.shoot_date === "PENDING" ? "#ff6b6b" : "#7fd99e", background: plan.shoot_date === "PENDING" ? "rgba(255,68,68,0.12)" : "rgba(34,170,102,0.12)" }}>
+                      <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", borderRadius: 20, padding: "2px 8px", color: plan.shoot_date === "PENDING" ? C.warn : C.success, background: plan.shoot_date === "PENDING" ? "rgba(255,68,68,0.12)" : "rgba(34,170,102,0.12)" }}>
                         {plan.shoot_date === "PENDING" ? "SHOOT PENDING" : `SHOOT: ${plan.shoot_date}`}
                       </span>
                     )}
@@ -511,7 +511,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
               );
             })}
             {/* Dashed "New Plan" card */}
-            <button onClick={() => { loadAllContentPlans(); setActivePortal("content-plan"); }}
+            <button onClick={() => { loadAllContentPlans(); setActivePortal(PORTALS.CONTENT_PLAN); }}
               aria-label="Go to content plans"
               style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 90, transition: "all 0.15s", color: C.meta, background: "transparent" }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
@@ -529,7 +529,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
           <SectionHeader
             label="Upcoming Scheduled Posts"
             action={
-              <button onClick={() => setActivePortal("scheduling")}
+              <button onClick={() => setActivePortal(PORTALS.SCHEDULING)}
                 style={{ background: "transparent", border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 14px", fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, cursor: "pointer", transition: "all 0.15s" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.meta; }}>
@@ -548,7 +548,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {upcomingPosts.map(post => (
-                <button key={post.id} onClick={() => setActivePortal("scheduling")}
+                <button key={post.id} onClick={() => setActivePortal(PORTALS.SCHEDULING)}
                   aria-label={`View ${post.client_name} scheduled post`}
                   style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "14px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "border-color 0.15s", width: "100%", textAlign: "left" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
@@ -631,7 +631,7 @@ export default function DashboardPortal({
 
   function openRolePerms() {
     setAdminInitialTab("roles");
-    setActivePortal("admin");
+    setActivePortal(PORTALS.ADMIN);
   }
 
   return (
@@ -655,14 +655,14 @@ export default function DashboardPortal({
         onOpenRolePerms={openRolePerms}
         clients={(clients || []).filter(c => c.smm_active !== false)}
         workspaceClientId={workspaceClientId}
-        onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal("clients"); }}
+        onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal(PORTALS.CLIENTS); }}
         addClientDirect={addClientDirect}
       />
 
       {/* ── Main content ── */}
       <main style={{ flex: 1, overflowY: "auto", background: C.canvas }}>
 
-        {activePortal === null && (
+        {activePortal === PORTALS.HOME && (
           <Hub
             setActivePortal={setActivePortal}
             profileName={profileName}
@@ -681,7 +681,7 @@ export default function DashboardPortal({
           />
         )}
 
-        {activePortal === "calendar" && (
+        {activePortal === PORTALS.CALENDAR && (
           <CalendarListPortal
             allCalendars={allCalendars} calCreators={calCreators}
             schedulingCalId={schedulingCalId} openCalendar={openCalendar}
@@ -693,7 +693,7 @@ export default function DashboardPortal({
           />
         )}
 
-        {activePortal === "scheduling" && (
+        {activePortal === PORTALS.SCHEDULING && (
           <SchedulingPortal
             scheduledPosts={scheduledPosts}
             removeScheduledPost={removeScheduledPost}
@@ -705,7 +705,7 @@ export default function DashboardPortal({
           />
         )}
 
-        {activePortal === "admin" && can("admin_portal") && (
+        {activePortal === PORTALS.ADMIN && can("admin_portal") && (
           <AdminPortal
             adminUsers={adminUsers} adminLoading={adminLoading}
             roleToolDefaults={roleToolDefaults} rolePermsBusy={rolePermsBusy} saveRoleToolDefaults={saveRoleToolDefaults}
@@ -725,7 +725,7 @@ export default function DashboardPortal({
           />
         )}
 
-        {activePortal === "content-plan" && can("content_plan_creator") && (
+        {activePortal === PORTALS.CONTENT_PLAN && can("content_plan_creator") && (
           <ContentPlanPortal
             currentCPId={currentCPId} setCurrentCPId={setCurrentCPId}
             activeCPStep={activeCPStep} setActiveCPStep={setActiveCPStep}
@@ -764,15 +764,15 @@ export default function DashboardPortal({
           />
         )}
 
-        {activePortal === "billing" && can("billing") && (
+        {activePortal === PORTALS.BILLING && can("billing") && (
           <BillingPortal setActivePortal={setActivePortal} deleteClient={deleteClient} />
         )}
 
-        {activePortal === "grid" && can("grid_creator") && (
+        {activePortal === PORTALS.GRID && can("grid_creator") && (
           <GridCreatorPortal setActivePortal={setActivePortal} />
         )}
 
-        {activePortal === "clients" && can("calendar_creator") && (() => {
+        {activePortal === PORTALS.CLIENTS && can("calendar_creator") && (() => {
           const workspaceClient = clients?.find(c => c.id === workspaceClientId) || null;
           const workspaceCalendar = allCalendars?.find(c => c.id === workspaceCalendarId) || null;
 
@@ -856,9 +856,9 @@ export default function DashboardPortal({
             <div style={{ fontSize: 12, color: C.meta, marginBottom: 18, fontFamily: SANS }}>This name appears in calendar footers and your account.</div>
             <input autoFocus aria-label="Your display name" value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..."
               style={{ width: "100%", padding: "10px 14px", border: `1px solid ${C.border}`, borderRadius: 4, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, background: C.canvas, color: C.text, fontFamily: SANS }} />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: C.accent, color: "#000", border: "none", borderRadius: 24, fontWeight: 700, fontSize: 11, cursor: "pointer", letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: MONO }}>Save</button>
-              <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: "transparent", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontSize: 11, cursor: "pointer", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "1.5px", fontWeight: 600 }}>Cancel</button>
+            <div style={BTN_ROW}>
+              <button onClick={saveProfile} style={primaryBtn}>Save</button>
+              <button onClick={() => setEditingProfile(false)} style={ghostBtn}>Cancel</button>
             </div>
           </div>
         </div>

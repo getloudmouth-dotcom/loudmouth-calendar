@@ -66,7 +66,7 @@ export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUser
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2, flexWrap: "nowrap", overflow: "hidden" }}>
             <span style={{ fontWeight: 600, fontSize: 15, color: C.text, fontFamily: SANS, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1 }}>{row.client_name}</span>
             {row.email_sent_at && (
-              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: "#7fd99e", borderRadius: 20, padding: "3px 8px", flexShrink: 0, lineHeight: 1 }}>Sent</span>
+              <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: C.success, borderRadius: 20, padding: "3px 8px", flexShrink: 0, lineHeight: 1 }}>Sent</span>
             )}
             {!iAmNotified && (
               <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(255,255,255,0.05)", color: C.meta, borderRadius: 20, padding: "1px 5px", flexShrink: 0, lineHeight: 1 }}>Muted</span>
@@ -123,8 +123,8 @@ export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUser
             title="Send a test reminder email right now"
             style={{
               background: testStatus === "sent" ? "rgba(127,217,158,0.12)" : testStatus === "error" ? "rgba(255,68,68,0.1)" : "transparent",
-              border: `1px solid ${testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? C.error : C.border}`,
-              color: testStatus === "sent" ? "#7fd99e" : testStatus === "error" ? C.error : C.meta,
+              border: `1px solid ${testStatus === "sent" ? C.success : testStatus === "error" ? C.error : C.border}`,
+              color: testStatus === "sent" ? C.success : testStatus === "error" ? C.error : C.meta,
               borderRadius: 20,
               padding: "4px 10px",
               fontFamily: MONO,
@@ -164,7 +164,7 @@ export default function ScheduleRow({ row, onRemove, onToggleNotify, currentUser
                   {displayName(u)}{u.userId === currentUserId ? " (you)" : ""}
                 </span>
                 {u.notify !== false
-                  ? <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: "#7fd99e", borderRadius: 20, padding: "1px 6px", lineHeight: 1 }}>On</span>
+                  ? <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(127,217,158,0.15)", color: C.success, borderRadius: 20, padding: "1px 6px", lineHeight: 1 }}>On</span>
                   : <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", background: "rgba(255,255,255,0.05)", color: C.meta, borderRadius: 20, padding: "1px 6px", lineHeight: 1 }}>Off</span>
                 }
               </div>

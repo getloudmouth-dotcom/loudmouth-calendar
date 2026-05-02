@@ -145,17 +145,6 @@ app.post('/api/update-content-plan-item', async (req, res) => {
   }
 });
 
-app.post('/api/send-reminders', async (req, res) => {
-  try {
-    const { default: handler } = await import('./api/send-reminders.js');
-    return handler(req, res);
-  } catch (e) {
-    console.error(e);
-    Sentry.captureException(e);
-    res.status(500).json({ error: e.message || 'send-reminders load failed' });
-  }
-});
-
 app.post('/api/delete-assets', async (req, res) => {
   try {
     const { default: handler } = await import('./api/delete-assets.js');
@@ -167,8 +156,9 @@ app.post('/api/delete-assets', async (req, res) => {
   }
 });
 
-// ── Billing routes (all methods — mirrors Vercel's file-based routing) ───────
-const billingRoutes = [
+// All-method routes — mirror Vercel's file-based routing (handlers gate on req.method).
+// Includes billing (mixed methods), cron paths (Vercel sends GET), and Twilio webhooks (POST).
+const allMethodRoutes = [
   '/api/billing/clients',
   '/api/billing/invoices',
   '/api/billing/sync-clients',
@@ -180,8 +170,12 @@ const billingRoutes = [
   '/api/billing/sms-optin-confirm',
   '/api/billing/freshbooks-callback',
   '/api/billing/freshbooks-auth',
+  '/api/send-reminders',
+  '/api/cloudinary-audit',
+  '/api/twilio/voice',
+  '/api/twilio/sms',
 ];
-for (const route of billingRoutes) {
+for (const route of allMethodRoutes) {
   const file = route.replace('/api/', './api/') + '.js';
   app.all(route, async (req, res) => {
     try {

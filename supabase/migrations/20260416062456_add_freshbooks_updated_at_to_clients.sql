@@ -1,0 +1,1 @@
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS freshbooks_updated_at TIMESTAMPTZ;

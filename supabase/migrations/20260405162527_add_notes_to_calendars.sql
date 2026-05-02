@@ -1,0 +1,1 @@
+ALTER TABLE calendars ADD COLUMN IF NOT EXISTS notes text DEFAULT '', ADD COLUMN IF NOT EXISTS notes_image text DEFAULT '';

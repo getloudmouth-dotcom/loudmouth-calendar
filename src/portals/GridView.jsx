@@ -129,14 +129,14 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
       showToast("Failed to load Google auth — check your connection.", "error");
       return;
     }
-    const client = window.google.accounts.oauth2.initTokenClient({
+    const googleAuthClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: "https://www.googleapis.com/auth/drive.readonly",
       callback: (response) => {
         if (response.access_token) { setDriveToken(response.access_token); setDriveOpen(true); }
       },
     });
-    client.requestAccessToken();
+    googleAuthClient.requestAccessToken();
   }
 
   async function fetchDriveUrls(fileInfos, onProgress) {

@@ -3,6 +3,7 @@ import { getSlideCropX, getSlideCropY, getSlideScale, getDayName, formatDate, co
 import { CONTENT_TYPES } from "../constants";
 import DraggableImage from "./DraggableImage";
 import { useApp } from "../AppContext";
+import { C } from "../theme";
 
 const CAPTION_EMOJIS = ["❤️","🔥","✨","🙌","👏","💯","🎉","😍","😂","🤣","😊","🥰","🙏","👀","💪","🌟","⭐","🚀","💫","🌈","🎯","💡","📸","🎶","🌺","🌸","💎","👑","🦋","🌙","☀️","🌊","🍀","🌿","💚","💙","💜","🖤","🤍","❤️‍🔥"];
 
@@ -138,7 +139,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-      <div style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 12, fontWeight: 700 }}>
+      <div style={{ background: C.canvas, color: "white", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 12, fontWeight: 700 }}>
         {dayName} {dateStr}
       </div>
       <div
@@ -159,18 +160,18 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
           handleReplaceFiles(e.dataTransfer.files);
         }}
       >
-        <div style={{ outline: reframing ? "2px solid #D7FA06" : "none", borderRadius: 8, transition: "outline 0.15s", visibility: isCarousel ? "hidden" : "visible" }}>
+        <div style={{ outline: reframing ? `2px solid ${C.accent}` : "none", borderRadius: 8, transition: "outline 0.15s", visibility: isCarousel ? "hidden" : "visible" }}>
           <DraggableImage src={mainImage} cropX={effectiveCropX} cropY={effectiveCropY} scale={effectiveScale} onUpdate={handleCropUpdate} isCarousel={isCarousel} isVideo={isReel} placeholder={post.placeholder} />
         </div>
         {dropHighlight && (
-          <div style={{ position: "absolute", inset: 0, background: "rgba(26,26,46,0.5)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 15 }}>
-            <span style={{ color: "#D7FA06", fontWeight: 700, fontSize: 12 }}>Drop to replace</span>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(19,19,19,0.5)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", zIndex: 15 }}>
+            <span style={{ color: C.accent, fontWeight: 700, fontSize: 12 }}>Drop to replace</span>
           </div>
         )}
         {driveUploadProgress && driveUploadProgress.active && driveUploadProgress.day === post.day && driveUploadProgress.postIdx === (post.postIdx ?? 0) && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,0.88)", borderRadius: 8, zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, pointerEvents: "none" }}>
-            <div style={{ width: 36, height: 36, border: "3.5px solid #e8e8e8", borderTop: "3.5px solid #1a1a2e", borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#888", letterSpacing: "0.06em" }}>
+            <div style={{ width: 36, height: 36, border: "3.5px solid #e8e8e8", borderTop: `3.5px solid ${C.canvas}`, borderRadius: "50%", animation: "cardSpin 0.75s linear infinite" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.meta, letterSpacing: "0.06em" }}>
               {driveUploadProgress.total > 1 ? `${driveUploadProgress.done} / ${driveUploadProgress.total}` : "UPLOADING..."}
             </span>
           </div>
@@ -182,7 +183,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
             onMouseDown={e => e.stopPropagation()}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {isCarousel && <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28 }}>#{currentSlide + 1}</span>}
+              {isCarousel && <span style={{ fontSize: 9, color: C.accent, minWidth: 28 }}>#{currentSlide + 1}</span>}
               <span style={{ fontSize: 9, color: "rgba(255,255,255,0.6)", minWidth: 28 }}>zoom</span>
               <input type="range" min="1" max="3" step="0.05"
                 value={isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)}
@@ -197,9 +198,9 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
                     onUpdate("scale", val);
                   }
                 }}
-                style={{ flex: 1, minWidth: 0, accentColor: "#D7FA06", cursor: "pointer", height: 3 }}
+                style={{ flex: 1, minWidth: 0, accentColor: C.accent, cursor: "pointer", height: 3 }}
               />
-              <span style={{ fontSize: 9, color: "#D7FA06", minWidth: 28, textAlign: "right" }}>{Math.round((isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)) * 100)}%</span>
+              <span style={{ fontSize: 9, color: C.accent, minWidth: 28, textAlign: "right" }}>{Math.round((isCarousel ? getSlideScale(post, currentSlide) : (post.scale ?? 1)) * 100)}%</span>
             </div>
             <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>drag to reposition · dbl-click to exit</div>
           </div>
@@ -217,7 +218,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
                     if (post.contentType === "Reel" && t !== "Reel") onUpdate("videoUrl", "");
                     onUpdate("contentType", t);
                     setShowTypeMenu(false);
-                  }} style={{ padding: "7px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: t === post.contentType ? "#f0f4ff" : "white", color: t === post.contentType ? "#1a1a2e" : "#444" }}>{t}</div>
+                  }} style={{ padding: "7px 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: t === post.contentType ? "#f0f4ff" : "white", color: t === post.contentType ? C.canvas : "#444" }}>{t}</div>
                 ))}
               </div>
             )}
@@ -265,8 +266,8 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
         {isCarousel && totalSlides >= 1 && (
           <div style={{ position: "absolute", inset: 0, overflow: "visible", zIndex: 5 }}>
           {totalSlides === 1 && (
-            <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, zIndex: 20, background: "rgba(26,26,46,0.82)", border: "1.5px dashed rgba(215,250,6,0.5)", borderRadius: 7, padding: "8px 10px", textAlign: "center", pointerEvents: "none" }}>
-              <div style={{ fontSize: 10, color: "#D7FA06", fontWeight: 700, letterSpacing: "0.04em" }}>🎠 Drop more photos to build carousel</div>
+            <div style={{ position: "absolute", bottom: 8, left: 8, right: 8, zIndex: 20, background: "rgba(19,19,19,0.82)", border: "1.5px dashed rgba(204,255,0,0.5)", borderRadius: 7, padding: "8px 10px", textAlign: "center", pointerEvents: "none" }}>
+              <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, letterSpacing: "0.04em" }}>🎠 Drop more photos to build carousel</div>
             </div>
           )}
           {[...post.imageUrls].reverse().map((url, i) => {
@@ -319,7 +320,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
                   backgroundSize: sScale <= 1.05 ? "cover" : `${sScale * 100}%`,
                   backgroundPosition: `${sCropX}% ${sCropY}%`,
                   borderRadius: 4,
-                  boxShadow: isSelected ? "0 0 0 2px #D7FA06, 0 4px 12px rgba(0,0,0,0.2)" : "0 4px 12px rgba(0,0,0,0.2)",
+                  boxShadow: isSelected ? `0 0 0 2px ${C.accent}, 0 4px 12px rgba(0,0,0,0.2)` : "0 4px 12px rgba(0,0,0,0.2)",
                   zIndex: isSelected ? 50 : total - stackIdx,
                   cursor: isSelected ? "grab" : "pointer",
 
@@ -332,11 +333,11 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
 
       {isReel && !isExporting && onPickReelLink && !post.videoUrl ? (
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-          <div style={{ flex: 1, background: "transparent", border: "1.5px solid #1a1a2e", borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: "#767676" }}>Reel Link</div>
-          <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: "#1a1a2e", border: "none", color: "#D7FA06", borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
+          <div style={{ flex: 1, background: "transparent", border: `1.5px solid ${C.canvas}`, borderRadius: 24, padding: "5px 0", textAlign: "center", fontSize: 11, fontWeight: 700, color: C.meta }}>Reel Link</div>
+          <button onClick={onPickReelLink} title="Pick reel link from Drive" style={{ background: C.canvas, border: "none", color: C.accent, borderRadius: "50%", width: 28, height: 28, fontSize: 13, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>📁</button>
         </div>
       ) : isCarousel && totalSlides > 0 ? (
-        <div style={{ background: "#1a1a2e", borderRadius: 24, padding: "6px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: Math.max(2, 10 - Math.max(0, totalSlides - 5)), overflow: "hidden" }}>
+        <div style={{ background: C.canvas, borderRadius: 24, padding: "6px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: Math.max(2, 10 - Math.max(0, totalSlides - 5)), overflow: "hidden" }}>
           {Array.from({ length: totalSlides }, (_, i) => {
             const slideUrl = post.urls?.[i] || "";
             const fontSize = Math.max(7, 11 - Math.max(0, totalSlides - 10));
@@ -349,7 +350,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
           })}
         </div>
       ) : (
-        <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : "Photo Link"} target="_blank" rel="noreferrer" style={{ background: "#1a1a2e", color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
+        <a href={linkHref || "#"} data-pdf-link={linkHref || ""} data-pdf-link-text={isReel ? "Reel Link" : "Photo Link"} target="_blank" rel="noreferrer" style={{ background: C.canvas, color: "white", borderRadius: 24, padding: "6px 0", textAlign: "center", fontSize: 11, fontWeight: 700, textDecoration: "underline", display: "block", cursor: "pointer" }}>
           {isReel ? "Reel Link" : "Photo Link"}
         </a>
       )}

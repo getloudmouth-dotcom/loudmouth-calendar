@@ -1,10 +1,10 @@
 import { supabase } from "../supabase";
-import { MONTHS } from "../constants";
+import { MONTHS, PORTALS } from "../constants";
 import { useApp } from "../AppContext";
 import { useState, useEffect } from "react";
 import PinterestPanel from "../components/PinterestPanel";
 
-import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn, PAGE_HEADER, PAGE_TITLE } from "../theme";
+import { SANS, MONO, C, INPUT, LABEL, primaryBtn, ghostBtn, PAGE_HEADER, PAGE_TITLE, BTN_ROW, DISPLAY_TITLE, DISPLAY_SUBTITLE } from "../theme";
 import Skeleton from "../components/Skeleton";
 
 function ContentPlanCardSkeleton() {
@@ -22,8 +22,8 @@ function ContentPlanCardSkeleton() {
 
 const approvalStyle = status => ({
   background: status === "approved" ? "rgba(204,255,0,0.1)" : status === "denied" ? "rgba(255,68,68,0.12)" : C.surface2,
-  color: status === "approved" ? C.accent : status === "denied" ? "#ff6b6b" : C.meta,
-  borderColor: status === "approved" ? C.accent : status === "denied" ? "#ff6b6b" : C.border,
+  color: status === "approved" ? C.accent : status === "denied" ? C.warn : C.meta,
+  borderColor: status === "approved" ? C.accent : status === "denied" ? C.warn : C.border,
 });
 
 export default function ContentPlanPortal({
@@ -80,7 +80,7 @@ export default function ContentPlanPortal({
   const onPreview = activeCPStep === 3;
   const backLabel = onPlansList ? "← Home" : onPreview ? "← Back" : "← Plans";
   const backAction = onPlansList
-    ? () => { setActivePortal(null); }
+    ? () => { setActivePortal(PORTALS.HOME); }
     : onSetup
     ? () => { setActiveCPStep(null); }
     : onPreview
@@ -113,8 +113,8 @@ export default function ContentPlanPortal({
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40 }}>
               <div>
-                <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>Content Plans</div>
-                <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
+                <div style={DISPLAY_TITLE}>Content Plans</div>
+                <div style={DISPLAY_SUBTITLE}>{allContentPlans.length} plan{allContentPlans.length !== 1 ? "s" : ""}</div>
               </div>
             </div>
             {contentPlansLoading && allContentPlans.length === 0 ? (
@@ -156,7 +156,7 @@ export default function ContentPlanPortal({
                       <span style={{
                         fontSize: 9, fontWeight: 700, borderRadius: 20, padding: "2px 7px", lineHeight: 1,
                         fontFamily: MONO, textTransform: "uppercase", letterSpacing: "0.5px",
-                        color: plan.shoot_date === "PENDING" ? "#ff6b6b" : "#7fd99e",
+                        color: plan.shoot_date === "PENDING" ? C.warn : C.success,
                         background: plan.shoot_date === "PENDING" ? "rgba(255,68,68,0.12)" : "rgba(127,217,158,0.12)",
                       }}>
                         {plan.shoot_date === "PENDING" ? "Shoot Pending" : `Shoot: ${plan.shoot_date}`}
@@ -184,8 +184,8 @@ export default function ContentPlanPortal({
         {currentCPId === null && activeCPStep === 1 && (
           <div style={{ maxWidth: 520, margin: "0 auto" }}>
             <div style={{ marginBottom: 40 }}>
-              <div style={{ fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: -0.5 }}>New Content Plan</div>
-              <div style={{ marginTop: 8, fontFamily: SANS, fontSize: 13, color: C.meta }}>Set up the basics for this content plan.</div>
+              <div style={DISPLAY_TITLE}>New Content Plan</div>
+              <div style={DISPLAY_SUBTITLE}>Set up the basics for this content plan.</div>
             </div>
 
             <label style={LABEL}>Client</label>
@@ -398,7 +398,6 @@ export default function ContentPlanPortal({
                 onWidthChange={setPinterestPanelWidth}
                 pinterestToken={pinterestToken}
                 onTokenReceived={setPinterestToken}
-                showToast={showToast}
               />
             </div>
           );
@@ -622,11 +621,11 @@ export default function ContentPlanPortal({
                   )}
                   {cpShareSuccess && <div style={{ fontSize: 13, color: C.accent, fontWeight: 700, marginBottom: 10, lineHeight: 1 }}>{cpShareSuccess}</div>}
                   {cpShareError && <div style={{ fontSize: 12, color: C.error, marginBottom: 10, lineHeight: 1 }}>{cpShareError}</div>}
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={BTN_ROW}>
                     <button
                       onClick={() => doSendContentPlan(overridePhone, overrideEmail)}
                       disabled={cpShareBusy}
-                      style={{ ...primaryBtn, flex: 1, padding: "11px 0", opacity: cpShareBusy ? 0.6 : 1, cursor: cpShareBusy ? "default" : "pointer" }}
+                      style={{ ...primaryBtn, opacity: cpShareBusy ? 0.6 : 1, cursor: cpShareBusy ? "default" : "pointer" }}
                     >
                       {cpShareBusy ? "Sending..." : `Send via ${cpShareMethod === "both" ? "Email & SMS" : cpShareMethod === "email" ? "Email" : "SMS"}`}
                     </button>

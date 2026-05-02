@@ -31,6 +31,10 @@ async function requireBillingAccess(supabase, token) {
 }
 
 async function handler(req, res) {
+  if (req.method !== "GET" && req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   const token = req.headers.authorization?.replace("Bearer ", "");
   if (!token) return res.status(401).json({ error: "Missing authorization token" });
 

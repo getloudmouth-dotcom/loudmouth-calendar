@@ -23,6 +23,7 @@ export default function GridCreatorPortal() {
   // Client + calendar binding (single source of truth — same calendar_drafts.posts row
   // that CalendarBuilder reads, so changes here propagate to the calendar view).
   const [selectedClientId, setSelectedClientId] = useState("");
+  // Local to the grid creator's client picker; not synced to App-level calendar state.
   const [selectedCalendarId, setSelectedCalendarId] = useState("");
   const [newMonthOpen, setNewMonthOpen] = useState(false);
 
@@ -185,7 +186,7 @@ export default function GridCreatorPortal() {
       showToast("Failed to load Google auth — check your connection.", "error");
       return;
     }
-    const client = window.google.accounts.oauth2.initTokenClient({
+    const googleAuthClient = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: "https://www.googleapis.com/auth/drive.readonly",
       callback: (response) => {
@@ -195,7 +196,7 @@ export default function GridCreatorPortal() {
         }
       },
     });
-    client.requestAccessToken();
+    googleAuthClient.requestAccessToken();
   }
 
   async function fetchDriveUrls(fileInfos, onProgress) {

@@ -4,11 +4,11 @@ import NewMonthDialog from "../components/NewMonthDialog";
 import { useApp } from "../AppContext";
 import { MONTHS, CONTENT_TYPES, newPost } from "../constants";
 import { getDayName, formatDate } from "../utils";
-import { C, SANS, DISP, LABEL as labelStyle, INPUT as inputStyle, primaryBtn, ghostBtn, ghostBtn as secondaryBtn, dangerBtn } from "../theme";
+import { C, SANS, DISP, LABEL as labelStyle, INPUT as inputStyle, primaryBtn, ghostBtn, ghostBtn as secondaryBtn, dangerBtn, BTN_ROW } from "../theme";
 import DatePicker from "../components/DatePicker";
 import NavProfileMenu from "../components/NavProfileMenu";
 import SaveMenu from "../components/SaveMenu";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "../components/ui/sonner";
 import DrivePanel from "../components/DrivePanel";
 import CarouselManager from "../components/CarouselManager";
 import DropZone from "../components/DropZone";
@@ -127,8 +127,8 @@ export default function CalendarBuilder({
     </nav>
     <main>
     {(!isOnline || wasOffline) && (
-      <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 99998, display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.5)", background: isOnline ? "rgba(20, 160, 80, 1)" : "#141428", border: isOnline ? "1px solid rgba(100,220,140,0.4)" : "1px solid rgba(232,0,28,0.4)", transition: "background 0.4s, border 0.4s", whiteSpace: "nowrap" }}>
-        <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#6fec9f" : "#E8001C", boxShadow: isOnline ? "0 0 8px #6fec9f" : "0 0 8px #E8001C", flexShrink: 0, animation: isOnline ? "none" : "offlinePulse 1.4s ease-in-out infinite" }} />
+      <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 99998, display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 12, boxShadow: "0 8px 32px rgba(0,0,0,0.5)", background: isOnline ? "rgba(20, 160, 80, 1)" : C.canvas, border: isOnline ? "1px solid rgba(100,220,140,0.4)" : "1px solid rgba(232,0,28,0.4)", transition: "background 0.4s, border 0.4s", whiteSpace: "nowrap" }}>
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: isOnline ? "#6fec9f" : C.error, boxShadow: isOnline ? "0 0 8px #6fec9f" : `0 0 8px ${C.error}`, flexShrink: 0, animation: isOnline ? "none" : "offlinePulse 1.4s ease-in-out infinite" }} />
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: C.text, letterSpacing: "0.02em" }}>
             {isOnline ? "Back online" : "No internet connection"}
@@ -175,9 +175,9 @@ export default function CalendarBuilder({
         <div style={{ fontWeight: 800, fontSize: 17, marginBottom: 6, color: C.text }}>Edit Profile</div>
         <div style={{ fontSize: 12, color: C.meta, marginBottom: 18 }}>This name appears in calendar footers and your account.</div>
         <input autoFocus value={profileInput} onChange={e => setProfileInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveProfile()} placeholder="Your name..." style={{ width: "100%", padding: "10px 14px", border: `1.5px solid ${C.border}`, borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16, background: C.canvas, color: C.text, fontFamily: SANS }} />
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={saveProfile} style={{ flex: 1, padding: "10px 0", background: C.accent, color: "#000", border: "none", borderRadius: 8, fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Save</button>
-          <button onClick={() => setEditingProfile(false)} style={{ padding: "10px 16px", background: C.surface2, color: C.meta, border: "none", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+        <div style={BTN_ROW}>
+          <button onClick={saveProfile} style={primaryBtn}>Save</button>
+          <button onClick={() => setEditingProfile(false)} style={ghostBtn}>Cancel</button>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useApp } from "../AppContext.js";
 
 const CLIENT_ID = import.meta.env.VITE_PINTEREST_CLIENT_ID;
 
@@ -15,7 +16,8 @@ async function generateChallenge(verifier) {
   return btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-export default function PinterestPanel({ isOpen, onClose, onAddImages, width, onWidthChange, pinterestToken, onTokenReceived, showToast }) {
+export default function PinterestPanel({ isOpen, onClose, onAddImages, width, onWidthChange, pinterestToken, onTokenReceived }) {
+  const { showToast } = useApp();
   const [mode, setMode] = useState("choose"); // 'choose' | 'url' | 'oauth'
   const [urlInput, setUrlInput] = useState("");
   const [boards, setBoards] = useState([]);

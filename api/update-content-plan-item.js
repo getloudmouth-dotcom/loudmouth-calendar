@@ -20,7 +20,7 @@ function getSupabaseAdmin() {
 }
 
 async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { token, itemId, field, value } = req.body || {};
   if (!token || !itemId || !field || value === undefined) {

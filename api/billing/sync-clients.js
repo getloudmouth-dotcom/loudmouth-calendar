@@ -255,11 +255,6 @@ async function handler(req, res) {
     created, updated, pushed, skipped, errors,
     total: visibleFbClients.length,
     fetched: allFbClients.length,
-    _debug_fb_clients: visibleFbClients.map(c => ({
-      id: c.id,
-      vis_state: c.vis_state,
-      name: pickClientName(c),
-    })),
   });
 }
 

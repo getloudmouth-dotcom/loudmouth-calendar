@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { ROLE_TOOLS, ALL_TOOLS } from "../constants";
+import { ROLE_TOOLS, ALL_TOOLS, ROLE_LABELS } from "../constants";
 
-import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE } from "../theme";
+import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE, BTN_ROW, primaryBtn, ghostBtn } from "../theme";
 import Skeleton from "../components/Skeleton";
 
 function TeamRowSkeleton() {
@@ -20,16 +20,11 @@ function TeamRowSkeleton() {
   );
 }
 
-const ROLES = [
-  { key: "admin",           label: "Admin" },
-  { key: "smm",             label: "SMM" },
-  { key: "account_manager", label: "Account Manager" },
-  { key: "graphic_designer",label: "Graphic Designer" },
-  { key: "content_creator", label: "Content Creator" },
-  { key: "videographer",    label: "Videographer" },
-  { key: "video_editor",    label: "Video Editor" },
-  { key: "public_relations",label: "Public Relations" },
-];
+const ROLES = Object.entries(ROLE_LABELS).map(([key, { label }]) => ({ key, label }));
+const ROLE_OPTIONS = Object.entries(ROLE_LABELS).map(([key, { label, description }]) => ({
+  value: key,
+  text: description ? `${label} (${description})` : label,
+}));
 
 function SectionHeader({ children }) {
   return (
@@ -223,7 +218,7 @@ export default function AdminPortal({
                       <div style={{
                         width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                         background: isInvited ? "rgba(255,255,255,0.06)" : C.accent,
-                        color: isInvited ? C.meta : "#111",
+                        color: isInvited ? C.meta : "#000",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontWeight: 800, fontSize: 15,
                       }}>
@@ -236,7 +231,7 @@ export default function AdminPortal({
                       <div style={{ display: "flex", gap: 5, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
                         <span style={{
                           background: u.role === "admin" ? C.accent : "rgba(255,255,255,0.08)",
-                          color: u.role === "admin" ? "#111" : C.meta,
+                          color: u.role === "admin" ? "#000" : C.meta,
                           borderRadius: 6, padding: "3px 9px",
                           fontFamily: MONO, fontSize: 9, fontWeight: 700,
                           textTransform: "uppercase", letterSpacing: "0.8px",
@@ -307,7 +302,7 @@ export default function AdminPortal({
           )}
           {permsDirty && (
             <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 10 }}>
-              <button onClick={handleSavePerms} disabled={rolePermsBusy} style={{ background: C.accent, color: "#111", border: "none", padding: "10px 24px", borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: rolePermsBusy ? "default" : "pointer", opacity: rolePermsBusy ? 0.6 : 1 }}>
+              <button onClick={handleSavePerms} disabled={rolePermsBusy} style={{ background: C.accent, color: "#000", border: "none", padding: "10px 24px", borderRadius: 8, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: rolePermsBusy ? "default" : "pointer", opacity: rolePermsBusy ? 0.6 : 1 }}>
                 {rolePermsBusy ? "Saving…" : "Save Changes"}
               </button>
               <button onClick={() => { setLocalPerms(roleToolDefaults); setPermsDirty(false); }} style={{ background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, padding: "10px 18px", borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Discard</button>
@@ -391,21 +386,14 @@ export default function AdminPortal({
             <Input type="text" value={inviteForm.job_title} onChange={e => setInviteForm(f => ({ ...f, job_title: e.target.value }))} placeholder="Social Media Manager" />
             <Label>Role</Label>
             <Select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}>
-              <option value="smm">SMM (Social Media Manager)</option>
-              <option value="account_manager">Account Manager</option>
-              <option value="graphic_designer">Graphic Designer</option>
-              <option value="content_creator">Content Creator</option>
-              <option value="videographer">Videographer</option>
-              <option value="video_editor">Video Editor</option>
-              <option value="public_relations">Public Relations</option>
-              <option value="admin">Admin</option>
+              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.text}</option>)}
             </Select>
             {inviteError && <div style={{ fontSize: 12, color: C.error, marginBottom: 12 }}>{inviteError}</div>}
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={doInviteUser} disabled={inviteBusy || !inviteForm.email.trim()} style={{ flex: 1, padding: "11px 0", background: C.accent, color: "#111", border: "none", borderRadius: 24, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: inviteBusy || !inviteForm.email.trim() ? "default" : "pointer", opacity: inviteForm.email.trim() ? 1 : 0.4 }}>
+            <div style={BTN_ROW}>
+              <button onClick={doInviteUser} disabled={inviteBusy || !inviteForm.email.trim()} style={{ ...primaryBtn, opacity: inviteForm.email.trim() ? 1 : 0.4, cursor: inviteBusy || !inviteForm.email.trim() ? "default" : "pointer" }}>
                 {inviteBusy ? "Sending..." : "Send Invite"}
               </button>
-              <button onClick={() => { setInviteModal(false); setInviteError(""); }} style={{ padding: "11px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setInviteModal(false); setInviteError(""); }} style={ghostBtn}>Cancel</button>
             </div>
           </div>
         </div>
@@ -424,14 +412,7 @@ export default function AdminPortal({
             <Input value={editUserForm.job_title || ""} onChange={e => setEditUserForm(f => ({ ...f, job_title: e.target.value }))} />
             <Label>Role</Label>
             <Select value={editUserForm.role || "smm"} onChange={e => setEditUserForm(f => ({ ...f, role: e.target.value }))}>
-              <option value="smm">SMM (Social Media Manager)</option>
-              <option value="account_manager">Account Manager</option>
-              <option value="graphic_designer">Graphic Designer</option>
-              <option value="content_creator">Content Creator</option>
-              <option value="videographer">Videographer</option>
-              <option value="video_editor">Video Editor</option>
-              <option value="public_relations">Public Relations</option>
-              <option value="admin">Admin</option>
+              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.text}</option>)}
             </Select>
             <Label>Status</Label>
             <Select value={editUserForm.status || "active"} onChange={e => setEditUserForm(f => ({ ...f, status: e.target.value }))}>
@@ -455,11 +436,11 @@ export default function AdminPortal({
                 );
               })}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={doUpdateUser} disabled={editUserBusy} style={{ flex: 1, padding: "11px 0", background: C.accent, color: "#111", border: "none", borderRadius: 24, fontFamily: MONO, fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: editUserBusy ? "default" : "pointer" }}>
+            <div style={BTN_ROW}>
+              <button onClick={doUpdateUser} disabled={editUserBusy} style={{ ...primaryBtn, opacity: editUserBusy ? 0.6 : 1, cursor: editUserBusy ? "default" : "pointer" }}>
                 {editUserBusy ? "Saving..." : "Save Changes"}
               </button>
-              <button onClick={() => { setEditingUser(null); setConfirmDelete(false); }} style={{ padding: "11px 16px", background: "rgba(255,255,255,0.06)", color: C.meta, border: `1px solid ${C.border}`, borderRadius: 24, fontFamily: MONO, fontSize: 10, textTransform: "uppercase", letterSpacing: "1px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setEditingUser(null); setConfirmDelete(false); }} style={ghostBtn}>Cancel</button>
             </div>
 
             {editingUser.id !== currentUserId && (

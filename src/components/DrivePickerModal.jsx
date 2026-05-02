@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { uploadToCloudinary } from "../utils";
 import { useApp } from "../AppContext";
+import { C } from "../theme";
 
 export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
   const { showToast } = useApp();
@@ -79,12 +80,12 @@ export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
           <input value={folderUrl} onChange={e => setFolderUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && loadFolder()}
             placeholder="Paste Drive folder link..."
             style={{ flex: 1, padding: "8px 12px", border: "1.5px solid #e0e0e0", borderRadius: 7, fontSize: 13, outline: "none", fontFamily: "inherit", color: "#333" }} />
-          <button onClick={loadFolder} disabled={loading} style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 700, padding: "8px 18px", cursor: "pointer" }}>
+          <button onClick={loadFolder} disabled={loading} style={{ background: C.canvas, color: C.accent, border: "none", borderRadius: 7, fontSize: 13, fontWeight: 700, padding: "8px 18px", cursor: "pointer" }}>
             {loading ? "Loading..." : "Load"}
           </button>
         </div>
 
-        {error && <div style={{ padding: "8px 20px", fontSize: 12, color: "#E8001C" }}>{error}</div>}
+        {error && <div style={{ padding: "8px 20px", fontSize: 12, color: C.error }}>{error}</div>}
 
         {/* Content */}
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
@@ -99,7 +100,7 @@ export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
               const isSelected = selected?.id === file.id;
               return (
                 <div key={file.id} onClick={() => handleSelect(file)}
-                  style={{ aspectRatio: "1", borderRadius: 8, border: `2px solid ${isSelected ? "#1a1a2e" : "#e8e8e8"}`, background: isSelected ? "#f0f4ff" : "#f8f8f8",
+                  style={{ aspectRatio: "1", borderRadius: 8, border: `2px solid ${isSelected ? C.canvas : "#e8e8e8"}`, background: isSelected ? "#f0f4ff" : "#f8f8f8",
                     cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                     overflow: "hidden", transition: "border-color 0.15s", position: "relative" }}>
                   {isSelected && previewing && previewing !== "error" ? (
@@ -112,7 +113,7 @@ export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
                       </div>
                     </>
                   )}
-                  {isSelected && <div style={{ position: "absolute", top: 4, right: 4, background: "#1a1a2e", color: "#D7FA06", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
+                  {isSelected && <div style={{ position: "absolute", top: 4, right: 4, background: C.canvas, color: C.accent, borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "flex", alignItems: "center", justifyContent: "center" }}>✓</div>}
                 </div>
               );
             })}
@@ -129,7 +130,7 @@ export default function DrivePickerModal({ apiKey, onSelect, onClose }) {
               </div>
               <div style={{ fontSize: 10, color: "#888", wordBreak: "break-word" }}>{selected.name}</div>
               <button onClick={handleAdd} disabled={!previewing || previewing === "error" || adding}
-                style={{ background: "#1a1a2e", color: "#D7FA06", border: "none", borderRadius: 7, fontSize: 13, fontWeight: 700, padding: "10px 0", cursor: "pointer", opacity: (!previewing || previewing === "error" || adding) ? 0.5 : 1 }}>
+                style={{ background: C.canvas, color: C.accent, border: "none", borderRadius: 7, fontSize: 13, fontWeight: 700, padding: "10px 0", cursor: "pointer", opacity: (!previewing || previewing === "error" || adding) ? 0.5 : 1 }}>
                 {adding ? "Adding..." : "Add to Post"}
               </button>
             </div>

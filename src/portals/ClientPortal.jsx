@@ -116,7 +116,7 @@ export default function ClientPortal({
                     style={{
                       position: "absolute", top: -6, right: -6,
                       width: 18, height: 18, borderRadius: "50%",
-                      background: C.error, border: "none", color: "#fff",
+                      background: C.error, border: "none", color: C.text,
                       fontSize: 11, lineHeight: 1, cursor: "pointer",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       opacity: hoveredPill === cal.id ? 1 : 0,

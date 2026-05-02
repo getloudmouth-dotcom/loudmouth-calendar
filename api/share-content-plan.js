@@ -45,12 +45,12 @@ async function sendSms({ to, body }) {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM_NUMBER;
   if (!accountSid || !authToken || !from) throw new Error("Missing Twilio credentials");
-  const client = twilio(accountSid, authToken);
-  await client.messages.create({ to, from, body });
+  const twilioClient = twilio(accountSid, authToken);
+  await twilioClient.messages.create({ to, from, body });
 }
 
 async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) return res.status(401).json({ error: "Missing auth token" });

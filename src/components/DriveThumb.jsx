@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { C } from "../theme";
 
 async function makeThumbnailUrl(blob) {
   return new Promise(resolve => {
@@ -107,9 +108,9 @@ export default function DriveThumb({ fileId, thumbnailLink, token, name, imgStyl
       {src && src !== "err" && <img src={src} alt={name} style={imgStyle} onError={() => { _thumbCache.delete(fileId); setSrc("err"); }} />}
       {src === "err" && (
         mimeType && mimeType.startsWith("video/") ? (
-          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: "#1a1a2e", padding: "4px 6px" }}>
+          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, background: C.canvas, padding: "4px 6px" }}>
             <span style={{ fontSize: 18 }}>🎬</span>
-            <span style={{ fontSize: 7, color: "rgba(215,250,6,0.8)", fontWeight: 700, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "90%", display: "block" }}>{(name || "").replace(/\.[^.]+$/, "").slice(0, 20)}</span>
+            <span style={{ fontSize: 7, color: "rgba(204,255,0,0.8)", fontWeight: 700, textAlign: "center", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "90%", display: "block" }}>{(name || "").replace(/\.[^.]+$/, "").slice(0, 20)}</span>
           </div>
         ) : (
           <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ccc", fontSize: 20 }}>🖼</div>

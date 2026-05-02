@@ -15,9 +15,8 @@ class ErrorBoundary extends Component {
     return this.props.children;
   }
 }
-// PDF export is now handled server-side via /api/export-pdf
 import { supabase } from "./supabase";
-import { MONTHS, CONTENT_FIELDS, ROLE_TOOLS, ALL_TOOLS, newPost } from "./constants";
+import { MONTHS, CONTENT_FIELDS, ROLE_TOOLS, ALL_TOOLS, PORTALS, newPost } from "./constants";
 import { readExportToken, readContentPlanToken, readCPExportToken, readBillingExportToken, readCalendarIdFromUrl, setCalendarIdInUrl, compressToBlob, uploadToCloudinary, getDaysInMonth, getFirstDayOfMonth, chunkArray, loadGsiScript, deleteCloudinaryAssets } from "./utils";
 import ContentPlanPublicView from "./views/ContentPlanPublicView";
 import ContentPlanExportView from "./views/ContentPlanExportView";
@@ -163,13 +162,6 @@ export default function App() {
   const [clientName, setClientName] = useState("");
   const [clientId, setClientId] = useState(null);
   const [clients, setClients] = useState([]);
-  const [_builders, _setBuilders] = useState(() => {
-    try { const s = localStorage.getItem("lm_builders"); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
-  const [_builderName, setBuilderName] = useState("");
-  const [_addingBuilder, _setAddingBuilder] = useState(false);
-  const [_newBuilderInput, _setNewBuilderInput] = useState("");
-  const [_editingBuilders, _setEditingBuilders] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
   const [newClientInput, setNewClientInput] = useState("");
   const [month, setMonth] = useState(today.getMonth());
@@ -185,8 +177,6 @@ const [linkPickMode, setLinkPickMode] = useState({ active: false, onPick: null }
 const [driveOpen, setDriveOpen] = useState(false);
 const [drivePanelWidth, setDrivePanelWidth] = useState(300);
 const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0, day: null, postIdx: null });
-  const [_drafts, _setDrafts] = useState([]);
-  const [_showDrafts, _setShowDrafts] = useState(false);
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authMode, setAuthMode] = useState("login"); // "login" | "signup"
@@ -195,7 +185,9 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [authError, setAuthError] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
   const [showDashboard, setShowDashboard] = useState(() => !readExportToken());
+  // Full list of calendars; source of truth for the sidebar + builder. Populated by loadAllCalendars().
   const [allCalendars, setAllCalendars] = useState([]);
+  // Calendar currently open in CalendarBuilder. null = no edit session.
   const [currentCalendarId, setCurrentCalendarId] = useState(null);
   const [draftHistory, setDraftHistory] = useState([]);
   const [showDraftHistory, setShowDraftHistory] = useState(false);
@@ -228,9 +220,11 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [contentPlansLoading, setContentPlansLoading] = useState(true);
   const [scheduledPostsLoading, setScheduledPostsLoading] = useState(true);
 
+  // Transient flag during toggleSchedule(); cleared after the call.
   const [schedulingCalId, setSchedulingCalId] = useState(null);
-  const [activePortal, setActivePortal] = useState(null); // null | 'calendar' | 'scheduling' | 'admin' | 'clients'
+  const [activePortal, setActivePortal] = useState(PORTALS.HOME);
   const [workspaceClientId, setWorkspaceClientId] = useState(null);
+  // Calendar currently open in MonthWorkspace (the client portal view). Distinct from currentCalendarId.
   const [workspaceCalendarId, setWorkspaceCalendarId] = useState(null);
   // ── RBAC ──
   const [userProfile, setUserProfile] = useState(null);
@@ -274,7 +268,6 @@ const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, 
   const [pinterestPanelWidth, setPinterestPanelWidth] = useState(300);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, message: "", onConfirm: null, onCancel: null });
   const cpAutoSaveTimerRef = useRef(null);
-  // toast state removed — using sonner globally
   // ── Realtime ──
   const realtimeChannelRef = useRef(null);
   const lastSelfCalendarUpdateRef = useRef(null);
@@ -415,7 +408,7 @@ useEffect(() => {
       showToast("Failed to load Google auth — check your connection.", "error");
       return;
     }
-    const client = window.google.accounts.oauth2.initTokenClient({
+    const googleAuthClient = window.google.accounts.oauth2.initTokenClient({
       client_id: "988412963391-j36f4j6or67871i599o17ui2nai59pi9.apps.googleusercontent.com",
       scope: "https://www.googleapis.com/auth/drive.readonly",
       callback: (response) => {
@@ -425,7 +418,7 @@ useEffect(() => {
         }
       },
     });
-    client.requestAccessToken();
+    googleAuthClient.requestAccessToken();
   }
 
   async function fetchDriveUrls(fileInfos, onProgress) {
@@ -1061,7 +1054,7 @@ useEffect(() => {
     Sentry.setUser(null);
     setUser(null); setShowDashboard(true); setAllCalendars([]);
     setCurrentCalendarId(null); setClientName(""); setClientId(null); setSelectedDays([]); setPosts({});
-    setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(null);
+    setUserProfile(null); setUserToolAccess([]); setShowAdminView(false); setAdminUsers([]); setActivePortal(PORTALS.HOME);
     setCalendarsLoading(true); setContentPlansLoading(true); setScheduledPostsLoading(true);
   }
 
@@ -1264,7 +1257,6 @@ useEffect(() => {
     setMonth(cal.month);
     setYear(cal.year);
     setPostsPerPage(cal.posts_per_page);
-    setBuilderName(cal.builder_name || "");
     setSelectedDays(cal.selected_days || []);
     initialSelectedDaysRef.current = cal.selected_days || [];
     setCalendarNotes(cal.notes || "");
@@ -1316,7 +1308,6 @@ useEffect(() => {
         if (typeof row.month === "number") setMonth(row.month);
         if (typeof row.year === "number") setYear(row.year);
         if (typeof row.posts_per_page === "number") setPostsPerPage(row.posts_per_page);
-        if (typeof row.builder_name === "string") setBuilderName(row.builder_name);
         if (Array.isArray(row.selected_days)) setSelectedDays(row.selected_days);
         if (typeof row.notes === "string") setCalendarNotes(row.notes);
         if (typeof row.notes_image === "string") setCalendarNotesImage(row.notes_image);
@@ -1998,8 +1989,6 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally watches scheduledPosts.length only (not full array); syncScheduleForCalendar is invoked via ref
   }, [selectedDays, currentCalendarId, user?.id, scheduledPosts.length, allCalendars]);
 
-  console.log("[App] render", { authLoading, user: !!user, showProfileSetup, showDashboard, exportMode, cpPublicToken: !!cpPublicToken, cpExportToken: !!cpExportToken });
-
   if (window.location.pathname === "/privacy-policy") return <PrivacyPolicyView />;
 
   if (cpPublicToken) return <ErrorBoundary><ContentPlanPublicView token={cpPublicToken} /></ErrorBoundary>;
@@ -2135,10 +2124,10 @@ useEffect(() => {
             loadRoleToolDefaults={loadRoleToolDefaults}
             adminUsers={adminUsers || []}
             roleToolDefaults={roleToolDefaults}
-            onOpenRolePerms={() => { setActivePortal("admin"); setShowDashboard(true); }}
+            onOpenRolePerms={() => { setActivePortal(PORTALS.ADMIN); setShowDashboard(true); }}
             clients={(clients || []).filter(c => c.smm_active !== false)}
             workspaceClientId={workspaceClientId}
-            onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal("clients"); setShowDashboard(true); }}
+            onSelectClient={(id) => { setWorkspaceClientId(id); setWorkspaceCalendarId(null); setActivePortal(PORTALS.CLIENTS); setShowDashboard(true); }}
             addClientDirect={addClientDirect}
           />
         )}

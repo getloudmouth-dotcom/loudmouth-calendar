@@ -1,0 +1,1 @@
+ALTER TABLE content_plans ADD COLUMN IF NOT EXISTS client_id uuid REFERENCES clients(id) ON DELETE SET NULL;
