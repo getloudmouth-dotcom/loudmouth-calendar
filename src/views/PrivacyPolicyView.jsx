@@ -102,7 +102,7 @@ export default function PrivacyPolicyView() {
         <hr style={S.divider} />
 
         {/* ── TERMS & CONDITIONS ── */}
-        <h1 style={{ ...S.h1, fontSize: 22, marginBottom: 8 }}>SMS Terms & Conditions</h1>
+        <h1 id="sms-terms" style={{ ...S.h1, fontSize: 22, marginBottom: 8 }}>SMS Terms & Conditions</h1>
         <p style={{ ...S.updated, marginBottom: 24 }}>Last updated: April 18, 2026</p>
 
         <h2 style={S.h2}>Program Name</h2>
