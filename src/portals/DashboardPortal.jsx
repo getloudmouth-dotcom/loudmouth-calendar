@@ -604,6 +604,7 @@ export default function DashboardPortal({
   allContentPlans, clients, setClients, cpClientId, setCpClientId, addingClient, setAddingClient,
   newClientInput, setNewClientInput,
   newContentPlan, openContentPlan, saveContentPlan, deleteContentPlan, generateCPItems, updateCPItem,
+  startContentPlanForMonth,
   getOrCreateShareToken,
   cpShareModal, setCpShareModal, cpShareEmail, setCpShareEmail,
   cpShareMethod, setCpShareMethod,
@@ -792,6 +793,10 @@ export default function DashboardPortal({
                 removeScheduledPost={removeScheduledPost}
                 toggleNotify={toggleNotify}
                 loadDraftPostsFor={loadDraftPostsFor}
+                allContentPlans={allContentPlans}
+                openContentPlan={openContentPlan}
+                startContentPlanForMonth={startContentPlanForMonth}
+                setActivePortal={setActivePortal}
               />
             );
           }

@@ -1,5 +1,5 @@
-import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE, dangerBtn } from "../theme";
-import { MONTHS } from "../constants";
+import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE, dangerBtn, primaryBtn, ghostBtn, CARD } from "../theme";
+import { MONTHS, PORTALS } from "../constants";
 import { useApp } from "../AppContext";
 import GridView from "./GridView";
 import SchedulerTab from "./SchedulerTab";
@@ -25,9 +25,16 @@ export default function MonthWorkspace({
   removeScheduledPost,
   toggleNotify,
   loadDraftPostsFor,
+  allContentPlans = [],
+  openContentPlan,
+  startContentPlanForMonth,
+  setActivePortal,
 }) {
   const { user, can } = useApp();
   const canDelete = calendar.user_id === user?.id || can("admin_portal");
+  const monthPlans = (allContentPlans || []).filter(
+    p => p.client_id === client?.id && p.month === calendar.month && p.year === calendar.year
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.canvas, fontFamily: SANS }}>
@@ -133,9 +140,56 @@ export default function MonthWorkspace({
         )}
 
         {activeTab === "content" && (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-            <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>Coming soon</div>
-            <div style={{ fontFamily: SANS, fontSize: 13, color: C.meta }}>Content Plan scoped to {MONTHS[calendar.month]} {calendar.year} will appear here.</div>
+          <div style={{ flex: 1, overflow: "auto", padding: "32px 44px", display: "flex", flexDirection: "column", gap: 20 }}>
+            {monthPlans.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>
+                  Existing plans for {MONTHS[calendar.month]} {calendar.year}
+                </div>
+                {monthPlans.map(plan => (
+                  <div key={plan.id} style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ fontFamily: SANS, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                        Shoot: {plan.shoot_date || "PENDING"}
+                      </div>
+                      <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta }}>
+                        Updated by {plan.last_updated_by || "—"}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { openContentPlan?.(plan); setActivePortal?.(PORTALS.CONTENT_PLAN); }}
+                      style={ghostBtn}
+                    >
+                      Open →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "32px 0" }}>
+              {monthPlans.length === 0 && (
+                <>
+                  <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>
+                    No content plan yet
+                  </div>
+                  <div style={{ fontFamily: SANS, fontSize: 13, color: C.meta }}>
+                    Start a content plan for {MONTHS[calendar.month]} {calendar.year}.
+                  </div>
+                </>
+              )}
+              <button
+                onClick={() => startContentPlanForMonth?.({
+                  clientId: client?.id,
+                  clientName: client?.name || "",
+                  month: calendar.month,
+                  year: calendar.year,
+                })}
+                style={primaryBtn}
+              >
+                Start Content Plan
+              </button>
+            </div>
           </div>
         )}
       </div>

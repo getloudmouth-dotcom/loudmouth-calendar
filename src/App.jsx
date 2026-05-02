@@ -1914,6 +1914,22 @@ useEffect(() => {
     setActiveCPStep(1);
   }
 
+  function startContentPlanForMonth({ clientId, clientName, month, year }) {
+    setCurrentCPId(null);
+    setCpClientId(clientId || null);
+    setCpClientName(clientName || "");
+    setCpMonth(month);
+    setCpYear(year);
+    setCpShootDate("PENDING");
+    setCpProducedCount(2);
+    setCpOrganicCount(3);
+    setCpItems([]);
+    setCpReferenceImages([]);
+    setPinterestOpen(false);
+    setActiveCPStep(1);
+    setActivePortal(PORTALS.CONTENT_PLAN);
+  }
+
   async function getOrCreateShareToken(planId) {
     const { data: plan } = await supabase
       .from("content_plans")
@@ -2076,6 +2092,7 @@ useEffect(() => {
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
         newContentPlan={newContentPlan} openContentPlan={openContentPlan}
+        startContentPlanForMonth={startContentPlanForMonth}
         saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
         getOrCreateShareToken={getOrCreateShareToken}
         cpShareModal={cpShareModal} setCpShareModal={setCpShareModal}
