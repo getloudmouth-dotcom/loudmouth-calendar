@@ -86,11 +86,15 @@ export default function GridCreatorPortal() {
       });
   }, [selectedCalendarId]);
 
-  // History = up to the last 3 sibling calendars, excluding the active one.
+  // History = up to the last 3 sibling calendars strictly older than the active one.
   useEffect(() => {
     if (!selectedClientId || !selectedCalendarId) { setHistorySnapshots([]); return; }
+    const active = clientCalendars.find(c => c.id === selectedCalendarId);
+    if (!active) { setHistorySnapshots([]); return; }
+    const activeKey = active.year * 12 + active.month;
     const sibling = clientCalendars
-      .filter(c => c.id !== selectedCalendarId)
+      .filter(c => c.id !== selectedCalendarId && (c.year * 12 + c.month) < activeKey)
+      .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))
       .slice(0, 3);
     if (!sibling.length) { setHistorySnapshots([]); return; }
 

@@ -45,13 +45,17 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
       });
   }, [calendarId]);
 
-  // Load history for this client (last 3 months excluding current)
+  // Load history for this client (last 3 months strictly older than current)
   useEffect(() => {
     if (!clientId || !calendarId || !allCalendars) return;
+    const active = allCalendars.find(x => x.id === calendarId);
+    if (!active) { setHistorySnapshots([]); return; }
+    const activeKey = active.year * 12 + active.month;
     const sibling = allCalendars
       .filter(c =>
         c.id !== calendarId &&
-        (c.client_id === clientId || c.client_name?.toLowerCase() === allCalendars.find(x => x.id === calendarId)?.client_name?.toLowerCase())
+        (c.client_id === clientId || c.client_name?.toLowerCase() === active.client_name?.toLowerCase()) &&
+        (c.year * 12 + c.month) < activeKey
       )
       .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))
       .slice(0, 3);
