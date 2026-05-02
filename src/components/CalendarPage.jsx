@@ -3,9 +3,9 @@ import { compressToBlob, uploadToCloudinary } from "../utils";
 import { MONTHS } from "../constants";
 import PostCard from "./PostCard";
 import ReorderFeedGrid from "./ReorderFeedGrid";
-export default function CalendarPage({ posts, allPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount, onPickReelLink, notes = "", onNotesChange, notesImage = "", onNotesImageChange, driveToken = "" }) {
+export default function CalendarPage({ posts, allPosts, feedPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount, onPickReelLink, notes = "", onNotesChange, notesImage = "", onNotesImageChange, driveToken = "" }) {
   const [notesDragOver, setNotesDragOver] = useState(false);
-  const feedPosts = allPosts.filter(p => p.contentType !== "Story");
+  const feedGridPosts = feedPosts || allPosts.filter(p => p.contentType !== "Story");
 
   async function handleNotesImageDrop(file) {
     if (!file || !file.type.startsWith("image/")) return;
@@ -78,7 +78,7 @@ export default function CalendarPage({ posts, allPosts, clientName, month, year,
             <textarea value={notes} onChange={e => onNotesChange(e.target.value)} rows={notesImage ? 2 : 3} placeholder={notesDragOver ? "Drop image here..." : "Add notes or drop a photo..."} style={{ width: "100%", border: "none", outline: "none", resize: "none", fontSize: 12, color: "#444", fontFamily: "inherit", lineHeight: 1.5, background: "transparent", borderRadius: 4, padding: "2px 0" }} />
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <ReorderFeedGrid allPosts={feedPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} driveUploadProgress={driveUploadProgress} pinnedCount={pinnedCount} setPinnedCount={setPinnedCount} lightMode />
+          <ReorderFeedGrid allPosts={feedGridPosts} onSwap={onSwapPosts} onBatchImport={onBatchImport} onDriveBatchImport={onDriveBatchImport} driveUploadProgress={driveUploadProgress} pinnedCount={pinnedCount} setPinnedCount={setPinnedCount} lightMode />
           </div>
         </div>
       </div>

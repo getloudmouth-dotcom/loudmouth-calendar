@@ -531,6 +531,26 @@ useEffect(() => {
       return dayPosts.map((p, idx) => ({ ...p, day: d, postIdx: idx }));
     }), [sortedDays, posts]);
 
+  // Feed-grid view of allPosts: Story posts dropped (they don't appear on an
+  // IG profile grid), and reordered by `_meta.feedOrder` if a solo Feed Grid
+  // save has set one. Posts without a feedOrder entry trail in default order.
+  // This must mirror postsToGridItems so the calendar editor's `Feed:` preview
+  // matches the solo Feed Grid exactly.
+  const feedPosts = useMemo(() => {
+    const filtered = allPosts.filter(p => p.contentType !== "Story");
+    const feedOrder = posts?._meta?.feedOrder;
+    if (!Array.isArray(feedOrder) || feedOrder.length === 0) return filtered;
+    const keyOf = (p) => `${p.day}-${p.postIdx ?? 0}`;
+    const byKey = new Map(filtered.map(p => [keyOf(p), p]));
+    const ordered = [];
+    for (const k of feedOrder) {
+      const it = byKey.get(k);
+      if (it) { ordered.push(it); byKey.delete(k); }
+    }
+    for (const it of byKey.values()) ordered.push(it);
+    return ordered;
+  }, [allPosts, posts]);
+
   const pages = useMemo(() => chunkArray(allPosts, postsPerPage), [allPosts, postsPerPage]);
 
   const calendarCells = useMemo(() => {
@@ -2114,7 +2134,7 @@ useEffect(() => {
         selectedDays={selectedDays} setSelectedDays={setSelectedDays} posts={posts} setPosts={setPosts}
         postsPerPage={postsPerPage} setPostsPerPage={setPostsPerPage}
         currentCalendarId={currentCalendarId}
-        allPosts={allPosts} pages={pages} sortedDays={sortedDays} calendarCells={calendarCells} daysInMonth={daysInMonth}
+        allPosts={allPosts} feedPosts={feedPosts} pages={pages} sortedDays={sortedDays} calendarCells={calendarCells} daysInMonth={daysInMonth}
         toggleDay={toggleDay} changeDay={changeDay} addPostToDay={addPostToDay} removePostFromDay={removePostFromDay}
         swapPostContent={swapPostContent} removeImageFromPost={removeImageFromPost}
         updatePost={updatePost}

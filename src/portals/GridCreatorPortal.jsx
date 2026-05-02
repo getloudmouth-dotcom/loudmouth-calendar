@@ -38,6 +38,7 @@ export default function GridCreatorPortal() {
   const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0, day: null, postIdx: null });
 
   const addFileInputRef = useRef(null);
+  const originalPostsObjRef = useRef(null);
 
   // Sorted client list for the picker
   const clientOptions = [...clients]
@@ -78,6 +79,7 @@ export default function GridCreatorPortal() {
       .limit(1)
       .then(({ data }) => {
         const postsObj = data?.[0]?.posts;
+        originalPostsObjRef.current = postsObj || null;
         setGridItems(postsToGridItems(postsObj));
         setPinnedCount(postsObj?._meta?.pinnedCount ?? 0);
         setLoading(false);
@@ -145,7 +147,7 @@ export default function GridCreatorPortal() {
     }
     setSaving(true);
     try {
-      const postsObj = gridItemsToPostsObj(gridItems, { pinnedCount });
+      const postsObj = gridItemsToPostsObj(gridItems, { pinnedCount }, originalPostsObjRef.current);
       const { error } = await supabase.from("calendar_drafts").insert({
         calendar_id: selectedCalendarId,
         user_id: user.id,
@@ -154,6 +156,7 @@ export default function GridCreatorPortal() {
         saved_at: new Date().toISOString(),
       });
       if (error) throw error;
+      originalPostsObjRef.current = postsObj;
       showToast("Grid order saved", "success");
     } catch (e) {
       showToast("Save failed: " + e.message, "error");

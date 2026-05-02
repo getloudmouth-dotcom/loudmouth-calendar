@@ -25,6 +25,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
   const [drivePanelWidth, setDrivePanelWidth] = useState(300);
   const [driveUploadProgress, setDriveUploadProgress] = useState({ active: false, done: 0, total: 0, day: null, postIdx: null });
   const addFileInputRef = useRef(null);
+  const originalPostsObjRef = useRef(null);
 
   // Load current calendar's posts
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
       .limit(1)
       .then(({ data }) => {
         const postsObj = data?.[0]?.posts;
+        originalPostsObjRef.current = postsObj || null;
         setGridItems(postsToGridItems(postsObj));
         setPinnedCount(postsObj?._meta?.pinnedCount ?? 0);
         setLoading(false);
@@ -100,7 +102,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
     if (!calendarId || !user) return;
     setSaving(true);
     try {
-      const postsObj = gridItemsToPostsObj(gridItems, { pinnedCount });
+      const postsObj = gridItemsToPostsObj(gridItems, { pinnedCount }, originalPostsObjRef.current);
       await supabase.from("calendar_drafts").insert({
         calendar_id: calendarId,
         user_id: user.id,
@@ -108,6 +110,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
         posts: postsObj,
         saved_at: new Date().toISOString(),
       });
+      originalPostsObjRef.current = postsObj;
       showToast("Grid order saved", "success");
     } catch (e) {
       showToast("Save failed: " + e.message, "error");

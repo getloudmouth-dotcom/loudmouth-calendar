@@ -23,7 +23,7 @@ export default function CalendarBuilder({
   selectedDays, setSelectedDays, posts, setPosts,
   postsPerPage, setPostsPerPage,
   currentCalendarId,
-  allPosts, pages, sortedDays, calendarCells, daysInMonth,
+  allPosts, feedPosts, pages, sortedDays, calendarCells, daysInMonth,
   toggleDay, changeDay, addPostToDay, removePostFromDay, swapPostContent, removeImageFromPost,
   updatePost,
   clients, addingClient, setAddingClient, newClientInput, setNewClientInput, addNewClient,
@@ -507,7 +507,7 @@ updatePost(day, postIdx, "urls", [post.url]);
         {step === 2 && (
           <div style={{ background: "#fff", border: "1px solid #dbdbdb", borderRadius: 12, padding: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.2)" }}>
             <ReorderFeedGrid
-              allPosts={allPosts.filter(p => p.contentType !== "Story")}
+              allPosts={feedPosts}
               onSwap={swapPostContent}
               onBatchImport={handleBatchImport}
               onDriveBatchImport={handleDriveBatchImport}
@@ -540,7 +540,7 @@ updatePost(day, postIdx, "urls", [post.url]);
 {step === 3 && (
     <div className="cal-pages-outer" style={{ padding: "0px 100px 100px", maxWidth: "none", margin: "0", background: C.canvas }}>
       {pages.map((pagePosts, pageIdx) => (
-        <CalendarPage key={pageIdx} posts={pagePosts} allPosts={allPosts} clientName={clientName} month={month} year={year}
+        <CalendarPage key={pageIdx} posts={pagePosts} allPosts={allPosts} feedPosts={feedPosts} clientName={clientName} month={month} year={year}
         onUpdatePost={(day, postIdx, field, val) => updatePost(day, postIdx, field, val)}
         onSwapPosts={swapPostContent}
         onBatchImport={handleBatchImport}
