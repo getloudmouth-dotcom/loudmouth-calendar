@@ -1240,9 +1240,26 @@ useEffect(() => {
     setClientId(cal.client_id || null);
     setClientName(resolvedName);
     if (liveClient && liveClient.name && liveClient.name !== cal.client_name) {
-      // lazy heal: bring the denormalized snapshot back in line with the live client
-      supabase.from("calendars").update({ client_name: liveClient.name }).eq("id", cal.id)
-        .then(({ error }) => { if (error) console.warn("[lazy-heal] client_name update failed:", error.message); });
+      // lazy heal: bring the denormalized snapshot back in line with the live client.
+      // Skip if a sibling row already owns (user_id, target_name, month, year) — the
+      // unique constraint would 409. Caller can clean up the duplicate manually.
+      (async () => {
+        const { data: collision } = await supabase
+          .from("calendars")
+          .select("id")
+          .eq("user_id", cal.user_id)
+          .eq("client_name", liveClient.name)
+          .eq("month", cal.month)
+          .eq("year", cal.year)
+          .neq("id", cal.id)
+          .maybeSingle();
+        if (collision) {
+          console.warn("[lazy-heal] skipped — duplicate calendar exists for", liveClient.name, cal.month, cal.year);
+          return;
+        }
+        const { error } = await supabase.from("calendars").update({ client_name: liveClient.name }).eq("id", cal.id);
+        if (error) console.warn("[lazy-heal] client_name update failed:", error.message);
+      })();
     }
     setMonth(cal.month);
     setYear(cal.year);
