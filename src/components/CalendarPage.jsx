@@ -30,7 +30,7 @@ export default function CalendarPage({ posts, allPosts, feedPosts, clientName, m
   }
   return (
     <div className="cal-page" style={{ background: "white", borderRadius: 0, boxShadow: "none", padding: `${postsPerPage > 2 ? 28 : 40}px ${postsPerPage > 2 ? 40 : 56}px`, marginBottom: 0, border: "1px solid #e8e8e8", aspectRatio: "1.41 / 1", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #d0d0d0", paddingTop: 20, paddingBottom: 20, flexShrink: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #d0d0d0", paddingTop: 22, paddingBottom: 22, flexShrink: 0 }}>
         <h1 style={{ fontFamily: DISP, fontWeight: 400, fontSize: postsPerPage > 3 ? 26 : postsPerPage > 2 ? 31 : 38, color: "#111", lineHeight: 1, textTransform: "uppercase", letterSpacing: 0.5, display: "inline-flex", alignItems: "center", gap: 14, margin: 0 }}>
           <span>{MONTHS[month]} {year}</span>
           <span style={{ fontFamily: SANS, fontStyle: "italic", fontWeight: 400, fontSize: "0.85em", color: "#555", letterSpacing: 0, textTransform: "none", lineHeight: 1 }}>| Content Calendar</span>
