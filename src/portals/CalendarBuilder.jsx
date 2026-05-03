@@ -471,8 +471,11 @@ updatePost(day, postIdx, "urls", [post.url]);
         <div style={{ fontSize: 10, color: C.meta, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 10 }}>Live Preview</div>
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.2)", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${C.border}`, paddingBottom: 10 }}>
-            <div style={{ fontFamily: DISP, fontSize: 11, color: C.text }}>{MONTHS[month]} {year} <em>| Content Calendar</em></div>
-            <div style={{ fontFamily: DISP, fontSize: 11, color: C.meta, fontWeight: 700 }}>{clientName || <span style={{ color: C.meta, fontStyle: "italic", fontWeight: 400 }}>Client Name</span>}</div>
+            <div style={{ fontFamily: DISP, fontSize: 11, color: C.text, textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {MONTHS[month]} {year}
+              <span style={{ fontFamily: SANS, fontStyle: "italic", fontWeight: 400, fontSize: "0.85em", color: C.meta, marginLeft: 8, letterSpacing: 0, textTransform: "none" }}>| Content Calendar</span>
+            </div>
+            <div style={{ fontFamily: DISP, fontSize: 11, color: C.meta, textTransform: "uppercase", letterSpacing: 0.5 }}>{clientName || <span style={{ fontFamily: SANS, fontStyle: "italic", fontWeight: 400, color: C.meta, textTransform: "none", letterSpacing: 0 }}>Client Name</span>}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
             <div style={{ flex: 1, display: "flex", gap: 6 }}>

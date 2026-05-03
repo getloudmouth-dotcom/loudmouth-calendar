@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { compressToBlob, uploadToCloudinary } from "../utils";
 import { MONTHS } from "../constants";
+import { DISP, SANS } from "../theme";
 import PostCard from "./PostCard";
 import ReorderFeedGrid from "./ReorderFeedGrid";
 export default function CalendarPage({ posts, allPosts, feedPosts, clientName, month, year, onUpdatePost, onSwapPosts, onBatchImport, onDriveBatchImport, postsPerPage, exporting, builderName, driveUploadProgress, onDriveDrop, onFilesDrop, pinnedCount, setPinnedCount, onPickReelLink, notes = "", onNotesChange, notesImage = "", onNotesImageChange, driveToken = "" }) {
@@ -30,10 +31,11 @@ export default function CalendarPage({ posts, allPosts, feedPosts, clientName, m
   return (
     <div className="cal-page" style={{ background: "white", borderRadius: 0, boxShadow: "none", padding: `${postsPerPage > 2 ? 28 : 40}px ${postsPerPage > 2 ? 40 : 56}px`, marginBottom: 0, border: "1px solid #e8e8e8", aspectRatio: "1.41 / 1", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, borderBottom: "1px solid #eee", paddingBottom: 8, flexShrink: 0 }}>
-        <h1 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, fontSize: postsPerPage > 3 ? 22 : postsPerPage > 2 ? 26 : 32, color: "#111", lineHeight: 1 }}>
-          {MONTHS[month]} {year} &nbsp;<em>| Content Calendar</em>
+        <h1 style={{ fontFamily: DISP, fontWeight: 400, fontSize: postsPerPage > 3 ? 22 : postsPerPage > 2 ? 26 : 32, color: "#111", lineHeight: 1, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          {MONTHS[month]} {year}
+          <span style={{ fontFamily: SANS, fontStyle: "italic", fontWeight: 400, fontSize: "0.55em", color: "#666", marginLeft: 12, letterSpacing: 0, textTransform: "none" }}>| Content Calendar</span>
         </h1>
-        <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontWeight: 400, fontSize: postsPerPage > 3 ? 20 : postsPerPage > 2 ? 24 : 30, color: "#222" }}>{clientName}</h2>
+        <h2 style={{ fontFamily: DISP, fontWeight: 400, fontSize: postsPerPage > 3 ? 20 : postsPerPage > 2 ? 24 : 30, color: "#222", textTransform: "uppercase", letterSpacing: 0.5 }}>{clientName}</h2>
       </div>
       <div style={{ display: "flex", gap: 20, alignItems: "stretch", flex: 1, minHeight: 0 }}>
       <div style={{ flex: 1, display: "flex", gap: 18, alignItems: "stretch", minHeight: 0 }}>
