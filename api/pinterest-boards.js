@@ -7,11 +7,12 @@ const PINTEREST_API = "https://api.pinterest.com/v5";
 async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).end();
 
-  const { action, boardId, token, code, verifier } = req.query;
+  const { action, boardId, token, code, verifier, redirect_uri } = req.query;
 
   if (action === "exchange") {
     // Exchange OAuth code for access token (PKCE flow)
     if (!code || !verifier) return res.status(400).json({ error: "Missing code or verifier" });
+    if (!redirect_uri) return res.status(400).json({ error: "Missing redirect_uri" });
 
     const clientId = process.env.PINTEREST_CLIENT_ID;
     const clientSecret = process.env.PINTEREST_CLIENT_SECRET;
@@ -19,7 +20,15 @@ async function handler(req, res) {
       return res.status(503).json({ error: "Pinterest app not configured on server" });
     }
 
-    const redirectUri = `${process.env.APP_URL}/pinterest-callback.html`;
+    // Validate redirect_uri against an allow-list to prevent open-redirect-style abuse.
+    // Must end with the callback path AND be on either APP_URL or local dev origin.
+    const allowedOrigins = [process.env.APP_URL, "http://localhost:5173"].filter(Boolean);
+    const isAllowed =
+      redirect_uri.endsWith("/pinterest-callback.html") &&
+      allowedOrigins.some(origin => redirect_uri === `${origin}/pinterest-callback.html`);
+    if (!isAllowed) return res.status(400).json({ error: "Invalid redirect_uri" });
+
+    const redirectUri = redirect_uri;
     const body = new URLSearchParams({
       grant_type: "authorization_code",
       code,
@@ -45,10 +54,13 @@ async function handler(req, res) {
     return res.status(200).json({ access_token: data.access_token });
   }
 
-  // All other actions require a token passed from the client
-  if (!token) return res.status(400).json({ error: "Missing token" });
+  // Fall back to a server-configured default token (single-account mode) when the
+  // client doesn't supply one. Lets us ship without the full OAuth dance for now.
+  const effectiveToken =
+    token && token !== "default" ? token : process.env.PINTEREST_DEFAULT_TOKEN;
+  if (!effectiveToken) return res.status(400).json({ error: "Missing token" });
 
-  const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const authHeaders = { Authorization: `Bearer ${effectiveToken}`, "Content-Type": "application/json" };
 
   if (action === "boards") {
     const resp = await fetch(`${PINTEREST_API}/boards?page_size=50`, { headers: authHeaders });

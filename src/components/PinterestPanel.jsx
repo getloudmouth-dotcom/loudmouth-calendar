@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { useApp } from "../AppContext.js";
 
 const CLIENT_ID = import.meta.env.VITE_PINTEREST_CLIENT_ID;
+const USE_DEFAULT_TOKEN = import.meta.env.VITE_PINTEREST_USE_DEFAULT_TOKEN === "true";
 
 // ── PKCE helpers ──────────────────────────────────────────────────────────────
 function generateVerifier() {
@@ -102,7 +103,8 @@ export default function PinterestPanel({ isOpen, onClose, onAddImages, width, on
   async function exchangeCode(code, verifier) {
     setLoading(true); setError("");
     try {
-      const res = await fetch(`/api/pinterest-boards?action=exchange&code=${encodeURIComponent(code)}&verifier=${encodeURIComponent(verifier)}`);
+      const redirectUri = `${window.location.origin}/pinterest-callback.html`;
+      const res = await fetch(`/api/pinterest-boards?action=exchange&code=${encodeURIComponent(code)}&verifier=${encodeURIComponent(verifier)}&redirect_uri=${encodeURIComponent(redirectUri)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Pinterest login failed. Please try again.");
       onTokenReceived(data.access_token);
@@ -229,13 +231,17 @@ export default function PinterestPanel({ isOpen, onClose, onAddImages, width, on
             </button>
             <button
               onClick={() => {
-                if (pinterestToken) { setMode("oauth"); loadBoards(); }
+                if (USE_DEFAULT_TOKEN) {
+                  setMode("oauth");
+                  if (!pinterestToken) onTokenReceived("default");
+                  loadBoards("default");
+                } else if (pinterestToken) { setMode("oauth"); loadBoards(); }
                 else { setMode("oauth"); connectPinterest(); }
               }}
               style={{ width: "100%", padding: "14px 16px", background: CLIENT_ID ? "white" : "#f8f8f8", border: `2px solid ${CLIENT_ID ? "#1a1a2e" : "#e0e0e0"}`, borderRadius: 10, cursor: CLIENT_ID ? "pointer" : "default", textAlign: "left", fontFamily: "inherit", opacity: CLIENT_ID ? 1 : 0.5 }}
             >
-              <div style={{ fontWeight: 800, fontSize: 13, color: CLIENT_ID ? "#1a1a2e" : "#aaa", marginBottom: 4 }}>🔐 Connect Pinterest Account</div>
-              <div style={{ fontSize: 11, color: "#888", lineHeight: 1.4 }}>{CLIENT_ID ? "Browse your own boards and pins with OAuth." : "Requires VITE_PINTEREST_CLIENT_ID env var."}</div>
+              <div style={{ fontWeight: 800, fontSize: 13, color: CLIENT_ID ? "#1a1a2e" : "#aaa", marginBottom: 4 }}>{USE_DEFAULT_TOKEN ? "📌 Browse Pinterest Boards" : "🔐 Connect Pinterest Account"}</div>
+              <div style={{ fontSize: 11, color: "#888", lineHeight: 1.4 }}>{CLIENT_ID ? (USE_DEFAULT_TOKEN ? "Browse the connected Pinterest account's boards." : "Browse your own boards and pins with OAuth.") : "Requires VITE_PINTEREST_CLIENT_ID env var."}</div>
             </button>
           </div>
         )}
