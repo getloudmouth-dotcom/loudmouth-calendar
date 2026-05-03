@@ -249,7 +249,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
         )}
         {(showPostingNotes || post.postingNotes) && (
           <div
-            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "22%", background: "rgba(255, 237, 80, 0.38)", borderBottomLeftRadius: 8, borderBottomRightRadius: 8, zIndex: 30, padding: "5px 7px", display: "flex", backdropFilter: "none" }}
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "22%", background: C.note, boxShadow: "0 2px 6px rgba(0,0,0,0.25)", borderBottomLeftRadius: 8, borderBottomRightRadius: 8, zIndex: 30, padding: "5px 7px", display: "flex" }}
             onClick={e => e.stopPropagation()}
             onMouseDown={e => e.stopPropagation()}
           >
@@ -259,7 +259,7 @@ export default function PostCard({ post, month, year, onUpdate, isExporting, onD
               onChange={e => onUpdate("postingNotes", e.target.value)}
               placeholder="Posting notes..."
               readOnly={isExporting}
-              style={{ width: "100%", height: "100%", background: "transparent", border: "none", outline: "none", resize: "none", fontFamily: "inherit", fontSize: 10, color: "rgba(50, 40, 0, 0.82)", lineHeight: 1.35, padding: 0, overflow: "hidden" }}
+              style={{ width: "100%", height: "100%", background: "transparent", border: "none", outline: "none", resize: "none", fontFamily: "inherit", fontSize: 10, color: C.noteText, lineHeight: 1.35, padding: 0, overflow: "hidden" }}
             />
           </div>
         )}

@@ -22,6 +22,8 @@ export const C = {
   error:    "#E8001C",
   success:  "#7fd99e",
   warn:     "#ff6b6b",
+  note:     "#FFE94D",   // sticky-note yellow — posting notes overlay
+  noteText: "#2A2200",   // solid dark text on note
 };
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
