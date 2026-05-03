@@ -158,7 +158,16 @@ export function gridItemsToPostsObj(items, meta, originalPostsObj) {
 
   items.forEach((item) => {
     const src = item._src || {};
-    const persisted = { ...src, imageUrls: item.imageUrl ? [item.imageUrl] : [], id: item.id };
+    // Preserve the source post's full imageUrls (carousels have multiple slides).
+    // For brand-new items added via "+ Add Images", _src.imageUrls is already
+    // [item.imageUrl], so this works for both cases. Truncating to
+    // [item.imageUrl] silently downgraded carousels to single-image Photos.
+    const srcUrls = Array.isArray(src.imageUrls) ? src.imageUrls : null;
+    const persisted = {
+      ...src,
+      imageUrls: srcUrls?.length ? srcUrls : (item.imageUrl ? [item.imageUrl] : []),
+      id: item.id,
+    };
     delete persisted._day;
     delete persisted._postIdx;
 

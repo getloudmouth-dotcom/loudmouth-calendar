@@ -162,6 +162,7 @@ export default function MultiMonthFeedGrid({
               style={cellStyle(post, isTarget, dragSrc?.cellIdx === cellIdx, true, false)}
             >
               {renderCellContent(post)}
+              {renderCarouselBadge(post)}
               {showPinBtn && (
                 <button
                   onClick={() => setPinnedCount(c => c + 1)}
@@ -184,6 +185,7 @@ export default function MultiMonthFeedGrid({
             style={cellStyle(post, false, false, false, false)}
           >
             {renderCellContent(post)}
+            {renderCarouselBadge(post)}
             {isFirstInSection && (
               <button
                 onClick={() => onCollapseToggle(snap.calendarId)}
@@ -233,6 +235,20 @@ function cellStyle(post, isTarget, isDragging, draggable, isPinned) {
     transition: "outline 0.1s, opacity 0.1s",
     background: isPinned ? "#f5f5f5" : "#efefef",
   };
+}
+
+function renderCarouselBadge(post) {
+  if (post?.contentType !== "Carousel" || !(post?.imageUrls?.length > 1)) return null;
+  return (
+    <div style={{
+      position: "absolute", bottom: 4, right: 4,
+      background: "rgba(0,0,0,0.6)", color: "#fff",
+      fontSize: 9, fontWeight: 700, borderRadius: 3, padding: "1px 5px",
+      pointerEvents: "none", zIndex: 4,
+    }}>
+      {post.imageUrls.length}
+    </div>
+  );
 }
 
 function renderCellContent(post) {

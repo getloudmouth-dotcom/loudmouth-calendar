@@ -74,10 +74,9 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
         month: cal.month,
         year: cal.year,
         posts: items.map((item, i) => ({
+          ...item._src,
           day: i,
           postIdx: 0,
-          imageUrls: item.imageUrl ? [item.imageUrl] : [],
-          ...item._src,
         })),
       };
     })).then(setHistorySnapshots);
@@ -87,11 +86,13 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
     setCollapsedHistory(prev => ({ ...prev, [calId]: !prev[calId] }));
   }
 
-  // Data adapter for MultiMonthFeedGrid
+  // Data adapter for MultiMonthFeedGrid — preserve full post data (contentType,
+  // full carousel imageUrls, crops/scales) so the renderer can show the carousel
+  // slide-count badge, matching the calendar editor's Feed preview.
   const allPosts = gridItems.map((item, i) => ({
-    day: i, postIdx: 0,
-    imageUrls: item.imageUrl ? [item.imageUrl] : [],
-    contentType: "Photo",
+    ...item._src,
+    day: i,
+    postIdx: 0,
   }));
 
   function handleSwap(dayA, _idxA, dayB) {
