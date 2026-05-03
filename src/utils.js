@@ -107,10 +107,20 @@ export function getSlideScale(post, slideIdx) { return post.scales?.[slideIdx] ?
 // `_meta.feedOrder` is present (a list of "day-postIdx" keys saved by the
 // solo Feed Grid), the items are returned in that order so a user's reorder
 // is preserved across reloads.
-export function postsToGridItems(postsObj) {
+//
+// `selectedDays` is optional. When provided, only posts on those days are
+// returned — matches the calendar editor's `allPosts` (App.jsx) which iterates
+// `sortedDays`. Without this filter, orphaned posts left behind on unselected
+// days (from a prior edit, never garbage-collected) leak into the solo Feed
+// Grid and get rendered as extra cells.
+export function postsToGridItems(postsObj, selectedDays) {
   if (!postsObj || typeof postsObj !== "object") return [];
+  const dayFilter = Array.isArray(selectedDays) ? new Set(selectedDays.map(Number)) : null;
   const items = Object.entries(postsObj)
-    .filter(([day]) => Number.isFinite(Number(day)))
+    .filter(([day]) => {
+      if (!Number.isFinite(Number(day))) return false;
+      return dayFilter ? dayFilter.has(Number(day)) : true;
+    })
     .flatMap(([day, dayPosts]) =>
       (dayPosts || []).map((p, postIdx) => ({ ...p, _day: Number(day), _postIdx: postIdx }))
     )

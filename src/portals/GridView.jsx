@@ -27,10 +27,14 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
   const addFileInputRef = useRef(null);
   const originalPostsObjRef = useRef(null);
 
-  // Load current calendar's posts
+  // Load current calendar's posts. Filter to selected_days so orphan posts
+  // (left behind on days the user later unselected) don't leak into the grid.
+  // Matches the calendar editor's allPosts which iterates sortedDays.
   useEffect(() => {
     if (!calendarId) return;
     setLoading(true);
+    const activeCal = allCalendars?.find(c => c.id === calendarId);
+    const selectedDays = activeCal?.selected_days || null;
     supabase.from("calendar_drafts")
       .select("posts")
       .eq("calendar_id", calendarId)
@@ -39,11 +43,11 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
       .then(({ data }) => {
         const postsObj = data?.[0]?.posts;
         originalPostsObjRef.current = postsObj || null;
-        setGridItems(postsToGridItems(postsObj));
+        setGridItems(postsToGridItems(postsObj, selectedDays));
         setPinnedCount(postsObj?._meta?.pinnedCount ?? 0);
         setLoading(false);
       });
-  }, [calendarId]);
+  }, [calendarId, allCalendars]);
 
   // Load history for this client (last 3 months strictly older than current)
   useEffect(() => {
@@ -68,7 +72,7 @@ export default function GridView({ calendarId, clientId, allCalendars }) {
         .eq("calendar_id", cal.id)
         .order("saved_at", { ascending: false })
         .limit(1);
-      const items = postsToGridItems(data?.[0]?.posts);
+      const items = postsToGridItems(data?.[0]?.posts, cal.selected_days || null);
       return {
         calendarId: cal.id,
         month: cal.month,
