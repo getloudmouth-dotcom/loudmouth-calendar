@@ -24,18 +24,6 @@ const icons = {
       <path d="M8 2v4M16 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   ),
-  contentPlan: (
-    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
-      <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  ),
-  scheduling: (
-    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
-      <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  ),
   admin: (
     <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
       <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="2"/>
@@ -49,14 +37,6 @@ const icons = {
       <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
       <path d="M2 10h20" stroke="currentColor" strokeWidth="2"/>
       <rect x="5" y="14" width="4" height="2" rx="0.5" fill="currentColor"/>
-    </svg>
-  ),
-  grid: (
-    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-      <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-      <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-      <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
     </svg>
   ),
   home: (
@@ -82,17 +62,10 @@ const icons = {
   ),
 };
 
-const TOOL_ITEMS = [
-  { key: PORTALS.SCHEDULING,   permission: "content_scheduling",   label: "Scheduling",   icon: icons.scheduling },
-  { key: PORTALS.CONTENT_PLAN, permission: "content_plan_creator", label: "Content Plans",icon: icons.contentPlan },
-  { key: PORTALS.GRID,         permission: "grid_creator",         label: "Grid Creator", icon: icons.grid },
-];
-
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-export function Sidebar({ activePortal, setActivePortal, profileName, scheduledPosts, can, signOut, setProfileInput, setEditingProfile, loadAllContentPlans, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults, onOpenRolePerms, clients, workspaceClientId, onSelectClient, addClientDirect }) {
+export function Sidebar({ activePortal, setActivePortal, profileName, can, signOut, setProfileInput, setEditingProfile, loadAdminUsers, loadRoleToolDefaults, adminUsers, roleToolDefaults, onOpenRolePerms, clients, workspaceClientId, onSelectClient, addClientDirect }) {
   const { user } = useApp();
   const today = new Date();
-  const upcomingCount = scheduledPosts.filter(r => r.post_date >= today.toISOString().slice(0, 10)).length;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -105,7 +78,6 @@ export function Sidebar({ activePortal, setActivePortal, profileName, scheduledP
   }
 
   function navigateTool(key, permission) {
-    if (permission === "content_plan_creator") loadAllContentPlans();
     if (permission === "admin_portal") {
       if (adminUsers.length === 0) loadAdminUsers();
       if (!roleToolDefaults) loadRoleToolDefaults();
@@ -205,40 +177,6 @@ export function Sidebar({ activePortal, setActivePortal, profileName, scheduledP
           </div>
         )}
       </nav>
-
-      {/* Tool icons row */}
-      {TOOL_ITEMS.some(t => can(t.permission)) && (
-        <div style={{ borderTop: `1px solid ${C.border}`, padding: "8px 12px", display: "flex", gap: 4, justifyContent: "flex-start", flexWrap: "wrap" }}>
-          {TOOL_ITEMS.filter(t => can(t.permission)).map(item => {
-            const isActive = activePortal === item.key;
-            const badge = item.key === "scheduling" && upcomingCount > 0 ? upcomingCount : null;
-            return (
-              <div key={item.key} style={{ position: "relative" }}>
-                <button
-                  onClick={() => navigateTool(item.key, item.permission)}
-                  title={item.label}
-                  style={{
-                    background: isActive ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.06)",
-                    border: "none", borderRadius: 7, width: 32, height: 32,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", color: isActive ? C.accent : C.meta,
-                    transition: "background 0.12s, color 0.12s",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = C.text; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = isActive ? "rgba(204,255,0,0.12)" : "rgba(255,255,255,0.06)"; e.currentTarget.style.color = isActive ? C.accent : C.meta; }}
-                >
-                  {item.icon}
-                </button>
-                {badge && (
-                  <span style={{ position: "absolute", top: -4, right: -4, background: C.accent, color: "#000", borderRadius: 20, padding: "1px 5px", fontSize: 8, fontWeight: 700, fontFamily: MONO, pointerEvents: "none" }}>
-                    {badge}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Logo + settings */}
       <div style={{ padding: "16px 20px 20px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
@@ -355,7 +293,7 @@ function ScheduledPostRowSkeleton() {
 }
 
 // ── Hub ───────────────────────────────────────────────────────────────────────
-function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, openCalendar, deleteCalendar, can, loadAllContentPlans, calendarsLoading, contentPlansLoading, scheduledPostsLoading, clients = [] }) {
+function Hub({ setActivePortal, profileName, allCalendars, calCreators, allContentPlans, scheduledPosts, openCalendar, openContentPlan, deleteCalendar, can, calendarsLoading, contentPlansLoading, scheduledPostsLoading, clients = [] }) {
   const clientsById = new Map(clients.map(c => [c.id, c]));
   const displayClientName = cal => (
     (cal.client_id && clientsById.get(cal.client_id)?.name) || cal.client_name || "Unassigned"
@@ -482,7 +420,7 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
                 ? (plan.items.every(i => i.approval_status === "approved") ? "approved" : "pending")
                 : "pending";
               return (
-                <button key={plan.id} onClick={() => { loadAllContentPlans(); setActivePortal(PORTALS.CONTENT_PLAN); }}
+                <button key={plan.id} onClick={() => { openContentPlan(plan); setActivePortal(PORTALS.CONTENT_PLAN); }}
                   aria-label={`Open content plan for ${plan.client_name || "untitled"}`}
                   style={{ width: 200, flexShrink: 0, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 18px", cursor: "pointer", transition: "border-color 0.15s", display: "flex", flexDirection: "column", textAlign: "left" }}
                   onMouseEnter={e => e.currentTarget.style.borderColor = C.accent}
@@ -510,15 +448,6 @@ function Hub({ setActivePortal, profileName, allCalendars, calCreators, allConte
                 </button>
               );
             })}
-            {/* Dashed "New Plan" card */}
-            <button onClick={() => { loadAllContentPlans(); setActivePortal(PORTALS.CONTENT_PLAN); }}
-              aria-label="Go to content plans"
-              style={{ width: 200, flexShrink: 0, border: "1px dashed rgba(255,255,255,0.2)", borderRadius: 14, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer", minHeight: 90, transition: "all 0.15s", color: C.meta, background: "transparent" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = C.meta; }}>
-              <span style={{ fontSize: 20, lineHeight: 1 }}>+</span>
-              <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px" }}>New Plan</span>
-            </button>
           </div>
         </div>
       )}
@@ -603,7 +532,7 @@ export default function DashboardPortal({
   cpOrganicCount, setCpOrganicCount, cpItems, setCpItems, cpSaving,
   allContentPlans, clients, setClients, cpClientId, setCpClientId, addingClient, setAddingClient,
   newClientInput, setNewClientInput,
-  newContentPlan, openContentPlan, saveContentPlan, deleteContentPlan, generateCPItems, updateCPItem,
+  openContentPlan, saveContentPlan, deleteContentPlan, generateCPItems, updateCPItem,
   startContentPlanForMonth,
   getOrCreateShareToken,
   cpShareModal, setCpShareModal, cpShareEmail, setCpShareEmail,
@@ -672,9 +601,9 @@ export default function DashboardPortal({
             allContentPlans={allContentPlans}
             scheduledPosts={scheduledPosts}
             openCalendar={openCalendar}
+            openContentPlan={openContentPlan}
             deleteCalendar={deleteCalendar}
             can={can}
-            loadAllContentPlans={loadAllContentPlans}
             calendarsLoading={calendarsLoading}
             contentPlansLoading={contentPlansLoading}
             scheduledPostsLoading={scheduledPostsLoading}
@@ -743,7 +672,7 @@ export default function DashboardPortal({
             clients={clients} setClients={setClients}
             addingClient={addingClient} setAddingClient={setAddingClient}
             newClientInput={newClientInput} setNewClientInput={setNewClientInput}
-            newContentPlan={newContentPlan} openContentPlan={openContentPlan}
+            openContentPlan={openContentPlan}
             saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan}
             generateCPItems={generateCPItems} updateCPItem={updateCPItem}
             getOrCreateShareToken={getOrCreateShareToken}

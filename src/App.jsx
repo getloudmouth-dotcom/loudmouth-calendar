@@ -1905,22 +1905,6 @@ useEffect(() => {
     setActiveCPStep(2);
   }
 
-  function newContentPlan() {
-    setCpEntryFromMonth(false);
-    setCurrentCPId(null);
-    setCpClientId(null);
-    setCpClientName("");
-    setCpMonth(today.getMonth());
-    setCpYear(today.getFullYear());
-    setCpShootDate("PENDING");
-    setCpProducedCount(2);
-    setCpOrganicCount(3);
-    setCpItems([]);
-    setCpReferenceImages([]);
-    setPinterestOpen(false);
-    setActiveCPStep(1);
-  }
-
   function startContentPlanForMonth({ clientId, clientName, month, year }) {
     const existing = allContentPlans
       .filter(p => p.client_id === clientId && p.month === month && p.year === year)
@@ -2108,7 +2092,7 @@ useEffect(() => {
         cpEntryFromMonth={cpEntryFromMonth} setCpEntryFromMonth={setCpEntryFromMonth}
         addingClient={addingClient} setAddingClient={setAddingClient}
         newClientInput={newClientInput} setNewClientInput={setNewClientInput}
-        newContentPlan={newContentPlan} openContentPlan={openContentPlan}
+        openContentPlan={openContentPlan}
         startContentPlanForMonth={startContentPlanForMonth}
         saveContentPlan={saveContentPlan} deleteContentPlan={deleteContentPlan} generateCPItems={generateCPItems} updateCPItem={updateCPItem}
         getOrCreateShareToken={getOrCreateShareToken}

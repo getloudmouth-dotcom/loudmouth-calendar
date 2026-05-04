@@ -165,6 +165,51 @@ export const segmentBtn = (active) => ({
   lineHeight: 1, transition: "all 0.15s",
 });
 
+// ── Document / paper surface ──────────────────────────────────────────────────
+// Mirrors the white-page styling used by CalendarPage.jsx (the Calendar Builder
+// preview). Use anywhere a surface should read as a printable artifact.
+
+export const DOC = {
+  page:         "#ffffff",
+  text:         "#111111",
+  meta:         "#555555",
+  metaSoft:     "#888888",
+  border:       "#e8e8e8",
+  borderStrong: "#d0d0d0",
+  accent:       "#1a1a2e",
+  cell:         "#f7f7f7",
+};
+
+export const DOC_PAGE_OUTER = {
+  padding: "32px 24px 100px",
+  background: C.canvas,
+};
+
+export const DOC_PAGE = {
+  background: DOC.page,
+  color: DOC.text,
+  maxWidth: 900,
+  margin: "0 auto",
+  padding: "56px 64px",
+  border: `1px solid ${DOC.border}`,
+  borderRadius: 2,
+  boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+  fontFamily: SANS,
+  boxSizing: "border-box",
+};
+
+export const DOC_INPUT = {
+  ...INPUT,
+  background: DOC.page,
+  color: DOC.text,
+  border: `1.5px solid ${DOC.border}`,
+};
+
+export const DOC_LABEL = {
+  ...LABEL,
+  color: DOC.meta,
+};
+
 // ── Page header bar ───────────────────────────────────────────────────────────
 
 // Wrapper for every portal's top header bar. Contains PAGE_TITLE + optional actions.

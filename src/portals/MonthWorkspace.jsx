@@ -1,4 +1,4 @@
-import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE, dangerBtn, primaryBtn, CARD } from "../theme";
+import { SANS, MONO, DISP, C, PAGE_HEADER, PAGE_TITLE, dangerBtn } from "../theme";
 import { MONTHS, PORTALS } from "../constants";
 import { useApp } from "../AppContext";
 import GridView from "./GridView";
@@ -32,13 +32,9 @@ export default function MonthWorkspace({
 }) {
   const { user, can } = useApp();
   const canDelete = calendar.user_id === user?.id || can("admin_portal");
-  const monthPlans = (allContentPlans || []).filter(
-    p => p.client_id === client?.id && p.month === calendar.month && p.year === calendar.year
-  );
-  const monthPlan = monthPlans.length > 0
-    ? [...monthPlans].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0]
-    : null;
-  const olderPlanCount = Math.max(0, monthPlans.length - 1);
+  const monthPlan = (allContentPlans || [])
+    .filter(p => p.client_id === client?.id && p.month === calendar.month && p.year === calendar.year)
+    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0] || null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.canvas, fontFamily: SANS }}>
@@ -71,6 +67,18 @@ export default function MonthWorkspace({
               onClick={() => {
                 if (tab.key === "calendar") {
                   onOpenCalendar(calendar);
+                } else if (tab.key === "content") {
+                  if (monthPlan) {
+                    openContentPlan?.(monthPlan, { fromMonth: true });
+                    setActivePortal?.(PORTALS.CONTENT_PLAN);
+                  } else {
+                    startContentPlanForMonth?.({
+                      clientId: client?.id,
+                      clientName: client?.name || "",
+                      month: calendar.month,
+                      year: calendar.year,
+                    });
+                  }
                 } else {
                   setActiveTab(tab.key);
                 }
@@ -143,53 +151,6 @@ export default function MonthWorkspace({
           />
         )}
 
-        {activeTab === "content" && (
-          <div style={{ flex: 1, overflow: "auto", padding: "32px 44px", display: "flex", flexDirection: "column", gap: 20 }}>
-            {monthPlan ? (
-              <div style={{ ...CARD, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div style={{ fontFamily: SANS, fontSize: 14, color: C.text, fontWeight: 600 }}>
-                    Shoot: {monthPlan.shoot_date || "PENDING"}
-                  </div>
-                  <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta }}>
-                    Updated by {monthPlan.last_updated_by || "—"}
-                  </div>
-                </div>
-                <button
-                  onClick={() => { openContentPlan?.(monthPlan, { fromMonth: true }); setActivePortal?.(PORTALS.CONTENT_PLAN); }}
-                  style={primaryBtn}
-                >
-                  Open Content Plan →
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "32px 0" }}>
-                <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.8px", color: C.meta }}>
-                  No content plan yet
-                </div>
-                <div style={{ fontFamily: SANS, fontSize: 13, color: C.meta }}>
-                  Start a content plan for {MONTHS[calendar.month]} {calendar.year}.
-                </div>
-                <button
-                  onClick={() => startContentPlanForMonth?.({
-                    clientId: client?.id,
-                    clientName: client?.name || "",
-                    month: calendar.month,
-                    year: calendar.year,
-                  })}
-                  style={primaryBtn}
-                >
-                  Start Content Plan
-                </button>
-              </div>
-            )}
-            {olderPlanCount > 0 && (
-              <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: C.meta, textAlign: "center" }}>
-                {olderPlanCount} older plan{olderPlanCount !== 1 ? "s" : ""} for this month — clean up from the Content Plans page
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
